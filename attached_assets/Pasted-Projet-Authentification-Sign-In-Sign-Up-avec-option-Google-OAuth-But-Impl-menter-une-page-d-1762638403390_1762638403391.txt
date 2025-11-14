@@ -1,0 +1,63 @@
+Projet : Authentification (Sign In / Sign Up) avec option Google OAuth
+
+But : Implémenter une page d'authentification responsive pour une app Next.js qui permet :
+- Sign In (connexion) et Sign Up (création de compte) via Google en un clic
+- Afficher l'état connecté (nom + avatar) et possibilité de logout
+- Créer automatiquement un enregistrement user en base lors du premier login Google
+
+Contraintes et stack recommandés :
+- Frontend : Next.js + Tailwind CSS (ou Chakra) — page accessible via /auth
+- Auth : NextAuth.js avec adapter Prisma → base Postgres
+- DB : PostgreSQL (Prisma) — table `User` minimale (id, name, email, image, provider, providerAccountId, createdAt)
+- Sessions : stockées en DB via NextAuth adapter
+- Hébergement : compatible Replit / Vercel
+- Sécurité : NEVER expose GOOGLE_CLIENT_SECRET côté client
+
+Fonctionnalités à implémenter :
+1. Page `/auth` : UX simple avec deux sections (Sign In / Sign Up) ou un seul écran avec CTA principal :
+   - Bouton principal vert : **Se connecter avec Google**
+   - Texte explicatif : "Se connecter ou créer un compte en un clic avec Google"
+   - Lien secondaire : "Se connecter avec email" (optionnel)
+2. Backend NextAuth configuration :
+   - Provider : Google (provider Google OAuth)
+   - Callbacks : créer l’utilisateur en base si nouveau, mapper `name`, `email`, `image`
+   - Sessions JWT + DB session storage
+3. Redirection : après connexion → redirect to `/dashboard`
+4. Dashboard minimal : affiche `Bonjour, {name}` et avatar + bouton Déconnexion
+5. README : expliquer comment configurer Google Cloud Console (création OAuth client) et lister les env vars à ajouter dans Replit Secrets.
+6. Tests basiques : vérifier qu’un nouvel utilisateur créé en DB après first Google login (mock possible en dev)
+
+Env vars attendues (ne pas demander la clé avant readiness) :
+- NEXTAUTH_URL (ex: https://tonapp.repl.co)
+- NEXTAUTH_SECRET (valeur aléatoire)
+- DATABASE_URL (Postgres)
+- GOOGLE_CLIENT_ID (to be provided later)
+- GOOGLE_CLIENT_SECRET (to be provided later)
+
+Redirect URI à configurer dans Google Cloud Console :
+- `${NEXTAUTH_URL}/api/auth/callback/google` (ex: `https://tonapp.repl.co/api/auth/callback/google`)
+- En local : `http://localhost:3000/api/auth/callback/google`
+
+Points techniques détaillés :
+- Installer : `next-auth`, `@next-auth/prisma-adapter`, `prisma`, `@prisma/client`
+- Prisma schema minimal pour User (id, name, email unique, image, provider, providerAccountId, createdAt)
+- NextAuth config file (`/pages/api/auth/[...nextauth].js` ou app router équivalent)
+- Frontend : bouton appelle `signIn("google")` de `next-auth/react`
+- Do not log or return GOOGLE_CLIENT_SECRET anywhere in client responses
+- Provide endpoint `GET /api/auth/session` (NextAuth provides) and ensure `/dashboard` checks `useSession()` and redirects to `/auth` if not authenticated
+
+Deliverables attendus :
+- Page `/auth` (desktop & mobile responsive)
+- NextAuth configuration + Prisma adapter + DB migrations + seed (optional)
+- README expliquant comment fournir GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET
+- URL du dev (Replit) où tester `/auth` et credentials seed si any
+
+Procédure de remise / handoff :
+- Ne me demandez pas le GOOGLE_CLIENT_ID / SECRET tant que l’app n’a pas l’environnement prêt.
+- Implémentez un endpoint `GET /admin/auth_ready` qui retourne `{ "ready": true }` **seulement** quand : migrations appliquées, DB connectée, NextAuth routes existantes (`/api/auth/*`) et page `/auth` rendable.
+- Lorsque `GET /admin/auth_ready` renvoie `{ "ready": true }`, **répondez exactement** :  
+  `"Auth Google ready — provide GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"`  
+  et indiquez l’URL dev (ex: `https://project-xyz.repl.co/auth`).
+- À la réception des deux secrets, stockez-les dans les env vars Replit Secrets et effectuez un test de connexion Google complet (first-login → user created in DB → redirect to /dashboard). Fournir un court log / capture d’écran montrant l’utilisateur créé.
+
+Merci — reste fidèle au design et à l’UX. Réponds quand c’est prêt pour recevoir les clés.

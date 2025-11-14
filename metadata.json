@@ -1,0 +1,5 @@
+{
+  "name": "Viralis Studio",
+  "description": "An AI-powered web app to generate viral videos from text prompts or images using Google's generative AI. Features a subscription and token-based system for content creation.",
+  "requestFramePermissions": []
+}
