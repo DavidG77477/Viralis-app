@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   avatar_url TEXT,
   provider TEXT NOT NULL DEFAULT 'google',
-  tokens INTEGER NOT NULL DEFAULT 100,
+  tokens INTEGER NOT NULL DEFAULT 45,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -149,7 +149,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', SPLIT_PART(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture'),
     COALESCE(NEW.raw_app_meta_data->>'provider', 'email'),
-    100
+    45
   );
   RETURN NEW;
 END;
