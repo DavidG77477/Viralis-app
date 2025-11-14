@@ -15,8 +15,8 @@ const isInvalidApiKeyError = (error: unknown) => {
   return message.includes('invalid api key');
 };
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY;
 
 export const IS_SUPABASE_CONFIGURED = Boolean(supabaseUrl && supabaseAnonKey);
 
