@@ -55,6 +55,25 @@ export const translations = {
                 description: "Contrôlez la durée, les transitions, la musique et le ton — laissez Viralis Studio faire le reste.",
             },
         ],
+        growthHighlightsTitle: "Pourquoi Viralis propulse vos vidéos",
+        growthHighlightsSubtitle: "Trois accélérateurs qui transforment une simple idée en un contenu premium prêt à monétiser.",
+        growthHighlights: [
+            {
+                icon: "🚀",
+                title: "Accroches hyper addictives",
+                description: "Chaque vidéo démarre avec des accroches testées qui capturent l'attention en moins de 3 secondes et boostent la rétention."
+            },
+            {
+                icon: "🎯",
+                title: "Synchronisation audience",
+                description: "Viralis adapte automatiquement le ton et les thématiques à vos segments (gaming, coaching, lifestyle) pour un rendu sur-mesure."
+            },
+            {
+                icon: "💰",
+                title: "Prêt à monétiser",
+                description: "Exports optimisés avec scripts, sous-titres et formats prêts pour les partenariats, affiliés et placements produits."
+            }
+        ],
 
         // Trust Section
         trustTitle: "🌍 Plus de 10 000 créateurs font confiance à Viralis Studio",
@@ -532,6 +551,25 @@ export const translations = {
                 description: "Control the duration, transitions, music, and tone — let Viralis Studio do the rest.",
             },
         ],
+        growthHighlightsTitle: "What Makes Viralis Different",
+        growthHighlightsSubtitle: "Three strategic boosts that turn any idea into a polished, profitable video asset.",
+        growthHighlights: [
+            {
+                icon: "🚀",
+                title: "Instant Viral Hooks",
+                description: "Every video starts with a tested hook that captures attention in under 3 seconds and boosts retention."
+            },
+            {
+                icon: "🎯",
+                title: "Smart Audience Sync",
+                description: "Viralis adapts tone and topics to your niches (gaming, coaching, lifestyle) so each clip feels tailor-made."
+            },
+            {
+                icon: "💰",
+                title: "Monetization Ready",
+                description: "Exports include optimized scripts, captions, and formats aligned with brand deals, affiliates, and product placements."
+            }
+        ],
 
         // Trust Section
         trustTitle: "🌍 Over 10,000 creators trust Viralis Studio",
@@ -1007,6 +1045,25 @@ export const translations = {
                 title: "Personalización Avanzada",
                 description: "Controla la duración, las transiciones, la música y el tono — deja que Viralis Studio haga el resto.",
             },
+        ],
+        growthHighlightsTitle: "Por qué Viralis marca la diferencia",
+        growthHighlightsSubtitle: "Tres impulsos estratégicos que convierten cualquier idea en un video pulido y listo para monetizar.",
+        growthHighlights: [
+            {
+                icon: "🚀",
+                title: "Ganchos virales inmediatos",
+                description: "Cada video arranca con ganchos probados que capturan la atención en menos de 3 segundos y elevan la retención."
+            },
+            {
+                icon: "🎯",
+                title: "Sincronía con tu audiencia",
+                description: "Viralis ajusta tono y temáticas a tus nichos (gaming, coaching, lifestyle) para que cada clip parezca hecho a medida."
+            },
+            {
+                icon: "💰",
+                title: "Listo para monetizar",
+                description: "Exportaciones con guiones, subtítulos y formatos optimizados para patrocinios, afiliados y campañas de productos."
+            }
         ],
 
         // Trust Section

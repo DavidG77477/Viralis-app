@@ -13,6 +13,7 @@ import TrustSection from '../components/TrustSection';
 import PromptExamples from '../components/PromptExamples';
 import SuccessStories from '../components/SuccessStories';
 import FAQ from '../components/FAQ';
+import GrowthHighlights from '../components/GrowthHighlights';
 import type { Language } from '../App';
 import { useLocation } from 'react-router-dom';
 
@@ -175,6 +176,7 @@ const HomePage: React.FC<HomePageProps> = ({ language, setLanguage }) => {
           <VideoGenerator userTokens={userTokens} setUserTokens={setUserTokens} language={language} />
         </section>
         <Features language={language} />
+        <GrowthHighlights language={language} />
         <TrustSection language={language} />
         <Testimonials language={language} />
         <Demo language={language} />
