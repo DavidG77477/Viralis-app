@@ -27,15 +27,31 @@ const secondaryVideos = [
 
 const featuredVideoUrl = '/videos/un_cafe-con_leche.mp4';
 
-const showFirstFrame = (event: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-  const videoElement = event.currentTarget;
-  try {
-    requestAnimationFrame(() => {
+const showFirstFrame = (videoElement: HTMLVideoElement) => {
+  const seekToFirstFrame = () => {
+    try {
       videoElement.pause();
       videoElement.currentTime = 0.05;
-    });
-  } catch (error) {
-    console.warn('Unable to display first frame:', error);
+    } catch (error) {
+      console.warn('Unable to set preview frame:', error);
+    } finally {
+      videoElement.removeEventListener('seeked', seekToFirstFrame);
+    }
+  };
+
+  if (videoElement.readyState >= 2) {
+    seekToFirstFrame();
+  } else {
+    const handleLoadedMetadata = () => {
+      videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      videoElement.addEventListener('seeked', seekToFirstFrame);
+      try {
+        videoElement.currentTime = 0.05;
+      } catch (error) {
+        console.warn('Unable to seek video preview:', error);
+      }
+    };
+    videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
   }
 };
 
@@ -59,8 +75,8 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
         src={video}
         muted
         playsInline
-        preload="metadata"
-        onLoadedData={showFirstFrame}
+        preload="auto"
+        onLoadedMetadata={(event) => showFirstFrame(event.currentTarget)}
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
       />
     ) : (
@@ -148,8 +164,8 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               src={featuredVideoUrl}
               muted
               playsInline
-              preload="metadata"
-              onLoadedData={showFirstFrame}
+              preload="auto"
+              onLoadedMetadata={(event) => showFirstFrame(event.currentTarget)}
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
             />
             
