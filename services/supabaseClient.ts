@@ -104,7 +104,7 @@ export const updateUserTokens = async (userId: string, tokensUsed: number): Prom
     return null;
   }
   const { data, error } = await supabase.rpc('decrement_tokens', {
-    user_uuid: userId,
+    user_id: userId,
     tokens_to_use: tokensUsed,
   });
   

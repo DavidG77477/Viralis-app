@@ -8,7 +8,6 @@ import type { Language } from '../App';
 import { translations } from '../translations';
 import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
-import { downloadWithWatermark } from '../utils/downloadWithWatermark';
 import SocialProofStats from './SocialProofStats';
 
 interface VideoGeneratorProps {
@@ -343,35 +342,27 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         }
 
         setIsDownloading(true);
-        setDownloadMessage(t.downloadPreparing ?? 'Préparation du filigrane…');
+        setDownloadMessage(t.downloadPreparing ?? 'Préparation du téléchargement…');
 
         try {
-            await downloadWithWatermark({
-                videoSourceUrl: generatedVideoUrl,
-                fileName: `viralis-${Date.now()}.webm`,
-                onProgress: (stage) => {
-                    switch (stage) {
-                        case 'preparing-video':
-                            setDownloadMessage(t.downloadPreparing ?? 'Préparation du filigrane…');
-                            break;
-                        case 'loading-assets':
-                            setDownloadMessage(t.downloadLoadingWatermark ?? 'Chargement du filigrane…');
-                            break;
-                        case 'recording':
-                            setDownloadMessage(t.downloadCompositing ?? 'Assemblage vidéo + audio…');
-                            break;
-                        case 'finalizing':
-                            setDownloadMessage(t.downloadFinalizing ?? 'Finalisation…');
-                            break;
-                        default:
-                            setDownloadMessage(null);
-                            break;
-                    }
-                },
-            });
+            const response = await fetch(generatedVideoUrl);
+            if (!response.ok) {
+                throw new Error(`Impossible de récupérer la vidéo (status ${response.status}).`);
+            }
+            setDownloadMessage(t.downloadFinalizing ?? 'Finalisation…');
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `viralis-${Date.now()}.mp4`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            setDownloadMessage(null);
         } catch (downloadError) {
             console.error('Erreur lors du téléchargement filigrané :', downloadError);
-            setError(t.downloadError ?? 'Impossible de générer la vidéo filigranée. Réessaie.');
+            setError(t.downloadError ?? 'Impossible de télécharger la vidéo. Réessaie.');
         } finally {
             setIsDownloading(false);
             setDownloadMessage(null);
@@ -379,9 +370,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     }, [
         generatedVideoUrl,
         isDownloading,
-        t.downloadPreparing,
-        t.downloadLoadingWatermark,
-        t.downloadCompositing,
         t.downloadFinalizing,
         t.downloadError,
     ]);
