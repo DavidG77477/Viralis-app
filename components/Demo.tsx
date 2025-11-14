@@ -26,8 +26,18 @@ const secondaryVideos = [
 ];
 
 const featuredVideoUrl = '/videos/un_cafe-con_leche.mp4';
-const featuredVideoPoster =
-  "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?q=80&w=1200";
+
+const showFirstFrame = (event: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+  const videoElement = event.currentTarget;
+  try {
+    requestAnimationFrame(() => {
+      videoElement.pause();
+      videoElement.currentTime = 0.05;
+    });
+  } catch (error) {
+    console.warn('Unable to display first frame:', error);
+  }
+};
 
 const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
   video,
@@ -50,9 +60,7 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
         muted
         playsInline
         preload="metadata"
-        poster={placeholder}
-        autoPlay
-        loop
+        onLoadedData={showFirstFrame}
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
       />
     ) : (
@@ -141,9 +149,7 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               muted
               playsInline
               preload="metadata"
-              poster={featuredVideoPoster}
-              autoPlay
-              loop
+              onLoadedData={showFirstFrame}
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
             />
             
