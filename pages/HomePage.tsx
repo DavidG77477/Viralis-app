@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
 import Header from '../components/Header';
 import VideoGenerator from '../components/VideoGenerator';
 import Testimonials from '../components/Testimonials';
@@ -16,6 +15,7 @@ import FAQ from '../components/FAQ';
 import GrowthHighlights from '../components/GrowthHighlights';
 import type { Language } from '../App';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const ContactSection: React.FC<{ language: Language }> = ({ language }) => {
   const t = {
@@ -140,13 +140,13 @@ const HomePage: React.FC<HomePageProps> = ({ language, setLanguage }) => {
   const [pricingAlert, setPricingAlert] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLoaded, isSignedIn } = useUser();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (!isLoading && user) {
       navigate('/dashboard');
     }
-  }, [isLoaded, isSignedIn, navigate]);
+  }, [isLoading, user, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -173,7 +173,12 @@ const HomePage: React.FC<HomePageProps> = ({ language, setLanguage }) => {
       <main>
         <Hero language={language} />
         <section id="generator" className="pb-24 px-4 md:px-8">
-          <VideoGenerator userTokens={userTokens} setUserTokens={setUserTokens} language={language} />
+          <VideoGenerator
+            userTokens={userTokens}
+            setUserTokens={setUserTokens}
+            language={language}
+            supabaseUserId={user?.id ?? null}
+          />
         </section>
         <Features language={language} />
         <GrowthHighlights language={language} />

@@ -1,46 +1,35 @@
 import { createClient } from '@supabase/supabase-js';
 
+export class SupabaseCredentialsError extends Error {
+  constructor(message = 'Supabase API key invalide. Vérifie VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.') {
+    super(message);
+    this.name = 'SupabaseCredentialsError';
+  }
+}
+
+const isInvalidApiKeyError = (error: unknown) => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const message = (error as { message?: string }).message?.toLowerCase() ?? '';
+  return message.includes('invalid api key');
+};
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not configured. Authentication will not work.');
+export const IS_SUPABASE_CONFIGURED = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!IS_SUPABASE_CONFIGURED) {
+  console.warn(
+    '[Supabase] Credentials missing (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY). Running in guest mode with local memory only.',
+  );
 }
 
-let currentClerkUserId: string | null = null;
-
-const withClerkHeader: typeof fetch = async (input, init: RequestInit = {}) => {
-  const headers = new Headers(init.headers ?? {});
-
-  if (currentClerkUserId) {
-    headers.set('x-clerk-user-id', currentClerkUserId);
-  } else {
-    headers.delete('x-clerk-user-id');
-  }
-
-  return fetch(input, {
-    ...init,
-    headers,
-  });
-};
-
-export const setClerkSupabaseAuth = (clerkId: string | null) => {
-  currentClerkUserId = clerkId;
-};
-
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
-  {
-    global: {
-      fetch: withClerkHeader,
-    },
-  }
-);
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key');
 
 export interface UserProfile {
   id: string;
-  clerk_id: string;
   email: string;
   name?: string;
   avatar_url?: string;
@@ -48,9 +37,13 @@ export interface UserProfile {
   tokens: number;
   provider?: string;
   updated_at?: string;
+  clerk_id?: string | null;
 }
 
 export const getUserProfileById = async (userId: string): Promise<UserProfile | null> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    return null;
+  }
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -58,6 +51,9 @@ export const getUserProfileById = async (userId: string): Promise<UserProfile | 
     .maybeSingle();
 
   if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
     console.error('Erreur lors de la récupération du profil (id):', error);
     return null;
   }
@@ -65,44 +61,38 @@ export const getUserProfileById = async (userId: string): Promise<UserProfile | 
   return data;
 };
 
-export const getUserProfileByClerkId = async (clerkId: string): Promise<UserProfile | null> => {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('clerk_id', clerkId)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Erreur lors de la récupération du profil (clerk_id):', error);
-    return null;
-  }
-
-  return data;
-};
-
-interface ClerkUserPayload {
-  clerkId: string;
+interface SupabaseUserPayload {
+  userId: string;
   email: string | null;
   name?: string | null;
   avatarUrl?: string | null;
+  provider?: string | null;
 }
 
-export const ensureUserProfile = async (payload: ClerkUserPayload): Promise<UserProfile | null> => {
+export const ensureUserProfile = async (payload: SupabaseUserPayload): Promise<UserProfile | null> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    return null;
+  }
   const profilePayload = {
-    clerk_id: payload.clerkId,
+    id: payload.userId,
     email: payload.email,
     name: payload.name ?? payload.email?.split('@')[0] ?? 'Utilisateur',
     avatar_url: payload.avatarUrl ?? undefined,
+    provider: payload.provider ?? 'google',
+    clerk_id: null,
   };
 
   const { data, error } = await supabase
     .from('users')
-    .upsert(profilePayload, { onConflict: 'clerk_id' })
+    .upsert(profilePayload, { onConflict: 'id' })
     .select()
     .maybeSingle();
 
   if (error) {
-    console.error('Erreur lors de la synchronisation du profil Clerk → Supabase :', error);
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
+    console.error('Erreur lors de la synchronisation du profil Supabase :', error);
     return null;
   }
 
@@ -110,12 +100,18 @@ export const ensureUserProfile = async (payload: ClerkUserPayload): Promise<User
 };
 
 export const updateUserTokens = async (userId: string, tokensUsed: number): Promise<number | null> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    return null;
+  }
   const { data, error } = await supabase.rpc('decrement_tokens', {
     user_uuid: userId,
     tokens_to_use: tokensUsed,
   });
   
   if (error || data === null) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
     console.error('Error updating tokens:', error);
     return null;
   }
@@ -137,7 +133,7 @@ export interface Video {
 }
 
 export const saveVideo = async (video: Omit<Video, 'id' | 'created_at'>): Promise<Video | null> => {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!IS_SUPABASE_CONFIGURED) {
     console.warn('Supabase credentials not configured. Video save skipped.');
     return null;
   }
@@ -149,6 +145,9 @@ export const saveVideo = async (video: Omit<Video, 'id' | 'created_at'>): Promis
     .single();
 
   if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
     console.error('Error saving video:', error);
     throw error;
   }
@@ -157,7 +156,7 @@ export const saveVideo = async (video: Omit<Video, 'id' | 'created_at'>): Promis
 };
 
 export const getUserVideos = async (userId: string, limit: number = 10): Promise<Video[]> => {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!IS_SUPABASE_CONFIGURED) {
     console.warn('Supabase credentials not configured. Returning empty videos.');
     return [];
   }
@@ -170,6 +169,9 @@ export const getUserVideos = async (userId: string, limit: number = 10): Promise
     .limit(limit);
 
   if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
     console.error('Error fetching videos:', error);
     return [];
   }
@@ -178,7 +180,7 @@ export const getUserVideos = async (userId: string, limit: number = 10): Promise
 };
 
 export const deleteVideo = async (videoId: string): Promise<void> => {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!IS_SUPABASE_CONFIGURED) {
     console.warn('Supabase credentials not configured. Video delete skipped.');
     return;
   }
@@ -189,6 +191,9 @@ export const deleteVideo = async (videoId: string): Promise<void> => {
     .eq('id', videoId);
 
   if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
     console.error('Error deleting video:', error);
     throw error;
   }
@@ -197,7 +202,7 @@ export const deleteVideo = async (videoId: string): Promise<void> => {
 const PROCESSED_VIDEO_BUCKET = 'processed-videos';
 
 export const uploadProcessedVideo = async (file: File, storagePath: string): Promise<string | null> => {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!IS_SUPABASE_CONFIGURED) {
     console.warn('Supabase credentials not configured. Upload skipped.');
     return null;
   }
@@ -209,6 +214,9 @@ export const uploadProcessedVideo = async (file: File, storagePath: string): Pro
   });
 
   if (uploadError) {
+    if (isInvalidApiKeyError(uploadError)) {
+      throw new SupabaseCredentialsError();
+    }
     console.error('Error uploading processed video:', uploadError);
     return null;
   }

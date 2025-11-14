@@ -1,8 +1,8 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
+import { AuthProvider } from './contexts/AuthContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -10,18 +10,11 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!clerkPublishableKey) {
-  console.error(
-    'La clé Clerk est manquante. Assure-toi de définir VITE_CLERK_PUBLISHABLE_KEY dans ton fichier .env.local.'
-  );
-}
 
 root.render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={clerkPublishableKey}>
+    <AuthProvider>
       <App />
-    </ClerkProvider>
-  </React.StrictMode>
+    </AuthProvider>
+  </React.StrictMode>,
 );

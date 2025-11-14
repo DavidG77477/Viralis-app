@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 import type { Language } from '../App';
 import { translations } from '../translations';
 import logoImage from '../attached_assets/LOGO.png';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
     language: Language;
@@ -11,6 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
+  const { user, isLoading, signInWithGoogle, signOut } = useAuth();
     
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -64,27 +65,40 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
                     </ul>
                 </nav>
                 <div className="flex items-center space-x-3">
-                    <SignedOut>
-                        <SignInButton mode="modal" afterSignInUrl="/dashboard">
-                            <button className="rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10">
-                                {translations[language].login}
-                            </button>
-                        </SignInButton>
-                        <SignUpButton mode="modal" afterSignUpUrl="/dashboard">
-                            <button className="rounded-lg bg-brand-green px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-brand-green/80">
-                                {language === 'en' ? 'Sign up' : language === 'es' ? 'Registro' : 'Inscription'}
-                            </button>
-                        </SignUpButton>
-                    </SignedOut>
-                    <SignedIn>
-                        <Link
-                            to="/dashboard"
-                            className="hidden sm:inline-flex rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10"
+                    {!user && !isLoading && (
+                      <>
+                        <button
+                          onClick={signInWithGoogle}
+                          className="rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10"
                         >
-                            Tableau de bord
+                          {translations[language].login}
+                        </button>
+                        <button
+                          onClick={signInWithGoogle}
+                          className="rounded-lg bg-brand-green px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-brand-green/80"
+                        >
+                          {language === 'en' ? 'Continue with Google' : language === 'es' ? 'Google' : 'Continuer avec Google'}
+                        </button>
+                      </>
+                    )}
+                    {user && (
+                      <>
+                        <Link
+                          to="/dashboard"
+                          className="hidden sm:inline-flex rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10"
+                        >
+                          Tableau de bord
                         </Link>
-                        <UserButton afterSignOutUrl="/" />
-                    </SignedIn>
+                        <button
+                          onClick={async () => {
+                            await signOut();
+                          }}
+                          className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
+                        >
+                          Déconnexion
+                        </button>
+                      </>
+                    )}
                     {/* Language Dropdown */}
                     <div className="relative" ref={dropdownRef}>
                         <button

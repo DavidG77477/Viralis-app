@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useClerk } from '@clerk/clerk-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { generateVideo, pollVideoOperation, generateScript, fileToBase64, enhancePromptWithTheme } from '../services/kieService';
 import { ImageIcon, WandIcon, XCircleIcon, AspectRatioIcon, BrainCircuitIcon, FilmIcon, GridPattern, ResolutionIcon, ArrowDownCircleIcon } from './icons/Icons';
 import { VIDEO_GENERATION_COST_720P, VIDEO_GENERATION_COST_1080P, SCRIPT_GENERATION_COST } from '../constants';
 import type { AspectRatio, Resolution } from '../types';
 import type { Language } from '../App';
 import { translations } from '../translations';
-import { saveVideo, updateUserTokens } from '../services/supabaseClient';
+import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
 import { downloadWithWatermark } from '../utils/downloadWithWatermark';
 import SocialProofStats from './SocialProofStats';
@@ -18,7 +17,6 @@ interface VideoGeneratorProps {
     language: Language;
     onVideoGenerated?: (video: Video) => void;
     supabaseUserId?: string | null;
-    clerkUserId?: string | null;
     showSocialProof?: boolean;
 }
 
@@ -41,12 +39,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     language,
     onVideoGenerated,
     supabaseUserId,
-    clerkUserId,
     showSocialProof = true,
 }) => {
     const t = translations[language];
     const navigate = useNavigate();
-    const { openSignIn } = useClerk();
+    const location = useLocation();
     const [prompt, setPrompt] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -204,15 +201,16 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     const videoCost = resolution === '1080p' ? VIDEO_GENERATION_COST_1080P : VIDEO_GENERATION_COST_720P;
 
     const handleGenerate = async () => {
-        if (!clerkUserId || !supabaseUserId) {
-            setError('Veuillez vous connecter via Clerk pour lancer la génération.');
-            try {
-                await openSignIn({});
-            } catch (err) {
-                console.error('Erreur lors de l’ouverture de la fenêtre Clerk :', err);
-                navigate('/');
-            }
+        if (!supabaseUserId) {
+            setError('Connecte-toi pour générer ta vidéo.');
+            const redirectParam = encodeURIComponent(location.pathname + location.search);
+            navigate(`/auth?intent=generate&next=${redirectParam}`);
             return;
+        }
+
+        const shouldPersist = Boolean(supabaseUserId && IS_SUPABASE_CONFIGURED);
+        if (!shouldPersist) {
+            console.warn('Supabase user ID absent : enregistrement désactivé pour cette génération.');
         }
 
         setError(null);
@@ -252,7 +250,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             return;
         }
 
-        if (userTokens < videoCost) {
+        if (userTokens < videoCost && shouldPersist) {
             navigate('/pricing?reason=low-tokens');
             return;
         }
@@ -263,6 +261,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
 
         setIsLoading(true);
         setLoadingMessage(t.enhancingPromptMessage ?? t.loadingMessages[0]);
+        let tokensDeducted = false;
 
         try {
             let imagePayload;
@@ -273,7 +272,10 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             
                 const enhancedPrompt = await enhancePromptWithTheme(prompt, { themeInstruction, musicInstruction, styleInstruction });
             setLoadingMessage(t.loadingMessages[0]);
-            setUserTokens(prev => prev - videoCost);
+            if (shouldPersist) {
+                setUserTokens(prev => prev - videoCost);
+                tokensDeducted = true;
+            }
             
             let initialOperation = await generateVideo({ prompt: enhancedPrompt, aspectRatio, resolution, image: imagePayload });
             const finalOperation = await pollVideoOperation(initialOperation);
@@ -287,33 +289,39 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             setLoadingMessage(t.loadingMessages[1] ?? t.loadingMessages[0]);
             const finalPersistedUrl = downloadLink;
 
-            try {
-                const savedVideo = await saveVideo({
-                    user_id: supabaseUserId,
-                    prompt: enhancedPrompt,
-                    video_url: finalPersistedUrl,
-                    aspect_ratio: aspectRatio,
-                    resolution,
-                    tokens_used: videoCost,
-                });
+            if (shouldPersist && supabaseUserId) {
+                try {
+                    const savedVideo = await saveVideo({
+                        user_id: supabaseUserId,
+                        prompt: enhancedPrompt,
+                        video_url: finalPersistedUrl,
+                        aspect_ratio: aspectRatio,
+                        resolution,
+                        tokens_used: videoCost,
+                    });
 
-                if (!savedVideo) {
-                    throw new Error('Impossible de sauvegarder la vidéo générée.');
-                }
+                    if (!savedVideo) {
+                        throw new Error('Impossible de sauvegarder la vidéo générée.');
+                    }
 
-                const updatedTokenBalance = await updateUserTokens(supabaseUserId, videoCost);
-                if (updatedTokenBalance === null) {
-                    setUserTokens(prev => prev + videoCost);
-                    setError('Impossible de mettre à jour tes jetons. Réessaie plus tard.');
-                    return;
-                }
-                setUserTokens(updatedTokenBalance);
+                    const updatedTokenBalance = await updateUserTokens(supabaseUserId, videoCost);
+                    if (updatedTokenBalance === null) {
+                        setUserTokens(prev => prev + videoCost);
+                        setError('Impossible de mettre à jour tes jetons. Réessaie plus tard.');
+                        return;
+                    }
+                    setUserTokens(updatedTokenBalance);
 
-                if (onVideoGenerated) {
-                    onVideoGenerated(savedVideo);
+                    if (onVideoGenerated) {
+                        onVideoGenerated(savedVideo);
+                    }
+                } catch (saveError) {
+                    console.error('Error saving video to database:', saveError);
                 }
-            } catch (saveError) {
-                console.error('Error saving video to database:', saveError);
+            } else {
+                // Mode invité : on décrémente localement mais on ne persiste pas
+                setUserTokens(prev => Math.max(0, prev - videoCost));
+                tokensDeducted = true;
             }
         } catch (err: any) {
             if (err.message && err.message.includes("Requested entity was not found.")) {
@@ -321,7 +329,9 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             } else {
                 setError(err.message || t.errorUnknown);
             }
-            setUserTokens(prev => prev + videoCost); // Refund tokens on failure
+            if (tokensDeducted) {
+                setUserTokens(prev => prev + videoCost); // Refund tokens on failure
+            }
         } finally {
             setIsLoading(false);
         }

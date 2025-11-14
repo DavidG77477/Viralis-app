@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useClerk, useUser } from '@clerk/clerk-react';
+import { useAuth } from '../contexts/AuthContext';
 import {
-  getUserProfileByClerkId,
+  getUserProfileById,
   ensureUserProfile,
   UserProfile,
   getUserVideos,
   Video,
   deleteVideo,
-  setClerkSupabaseAuth,
+  IS_SUPABASE_CONFIGURED,
+  SupabaseCredentialsError,
 } from '../services/supabaseClient';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
@@ -37,8 +38,7 @@ const dashboardLabels: Record<
 > = {
   fr: {
     loading: 'Chargement...',
-    signInMessage:
-      "Connecte-toi avec Clerk pour retrouver tes jetons et générer des vidéos en toute sécurité.",
+    signInMessage: 'Connecte-toi avec Google pour retrouver tes jetons et générer des vidéos en toute sécurité.',
     backHome: "Retour à l’accueil",
     logout: 'Déconnexion',
     generateTitle: 'Générer une nouvelle vidéo',
@@ -54,8 +54,7 @@ const dashboardLabels: Record<
   },
   en: {
     loading: 'Loading...',
-    signInMessage:
-      'Sign in with Clerk to restore your tokens and generate videos securely.',
+    signInMessage: 'Sign in with Google to restore your tokens and generate videos securely.',
     backHome: 'Back to home',
     logout: 'Log out',
     generateTitle: 'Generate a new video',
@@ -71,8 +70,7 @@ const dashboardLabels: Record<
   },
   es: {
     loading: 'Cargando...',
-    signInMessage:
-      'Inicia sesión con Clerk para recuperar tus tokens y generar videos de forma segura.',
+    signInMessage: 'Inicia sesión con Google para recuperar tus tokens y generar videos de forma segura.',
     backHome: 'Volver al inicio',
     logout: 'Cerrar sesión',
     generateTitle: 'Generar un nuevo video',
@@ -94,13 +92,13 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) => {
-  const { isLoaded, isSignedIn, user } = useUser();
-  const { signOut: clerkSignOut } = useClerk();
+  const { user, isLoading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userTokens, setUserTokens] = useState(100);
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const navigate = useNavigate();
   const inferredProfile = (profile ?? null) as (UserProfile & {
     plan?: string | null;
@@ -119,6 +117,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
     { code: 'es', name: 'Español' },
   ];
 
+  const userNameFromMetadata =
+    (user?.user_metadata?.full_name as string | undefined) ||
+    (user?.user_metadata?.name as string | undefined) ||
+    user?.email ||
+    undefined;
+  const userAvatarFromMetadata =
+    (user?.user_metadata?.avatar_url as string | undefined) ||
+    (user?.user_metadata?.picture as string | undefined) ||
+    undefined;
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
@@ -133,67 +141,99 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
   }, []);
 
   useEffect(() => {
-    if (!isLoaded) {
+    if (authLoading) {
       return;
     }
 
-    if (!isSignedIn || !user) {
-      setClerkSupabaseAuth(null);
+    if (!user) {
       setProfile(null);
       setVideos([]);
       setIsLoading(false);
+      setSupabaseError(null);
       return;
     }
 
     const bootstrap = async () => {
-      setClerkSupabaseAuth(user.id);
-      setIsLoading(true);
-      const supabaseProfile = await loadUserProfile(user.id, {
-        email: user.primaryEmailAddress?.emailAddress ?? null,
-        name: user.fullName,
-        avatarUrl: user.imageUrl,
-      });
-      if (supabaseProfile) {
-        await loadUserVideos(supabaseProfile.id);
+      try {
+        if (!IS_SUPABASE_CONFIGURED) {
+          setProfile(null);
+          setUserTokens(100);
+          setSupabaseError('Supabase n’est pas configuré. Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.');
+          setIsLoading(false);
+          return;
+        }
+
+        setSupabaseError(null);
+        setIsLoading(true);
+        const supabaseProfile = await loadUserProfile(user.id, {
+          email: user.email ?? null,
+          name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+          avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+        });
+        if (supabaseProfile) {
+          await loadUserVideos(supabaseProfile.id);
+        }
+        setIsLoading(false);
+      } catch (error) {
+        if (error instanceof SupabaseCredentialsError) {
+          setSupabaseError(error.message);
+        } else {
+          console.error('Erreur inattendue Dashboard:', error);
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     bootstrap();
-
-    return () => {
-      setClerkSupabaseAuth(null);
-    };
-  }, [isLoaded, isSignedIn, user]);
+  }, [authLoading, user]);
 
   const loadUserProfile = async (
-    clerkId: string,
+    userId: string,
     metadata: { email: string | null; name?: string | null; avatarUrl?: string | null },
   ) => {
-    let userProfile = await getUserProfileByClerkId(clerkId);
+    try {
+      let userProfile = await getUserProfileById(userId);
 
-    if (!userProfile) {
-      userProfile = await ensureUserProfile({
-        clerkId,
-        email: metadata.email,
-        name: metadata.name,
-        avatarUrl: metadata.avatarUrl,
-      });
+      if (!userProfile) {
+        userProfile = await ensureUserProfile({
+          userId,
+          email: metadata.email,
+          name: metadata.name,
+          avatarUrl: metadata.avatarUrl,
+          provider: 'google',
+        });
+      }
+
+      if (userProfile) {
+        setProfile(userProfile);
+        setUserTokens(userProfile.tokens);
+      }
+
+      return userProfile;
+    } catch (error) {
+      if (error instanceof SupabaseCredentialsError) {
+        setSupabaseError(error.message);
+        throw error;
+      }
+      console.error('Erreur loadUserProfile:', error);
+      return null;
     }
-
-    if (userProfile) {
-      setProfile(userProfile);
-      setUserTokens(userProfile.tokens);
-    }
-
-    return userProfile;
   };
 
   const loadUserVideos = async (userId: string) => {
-    setIsLoadingVideos(true);
-    const userVideos = await getUserVideos(userId, 10);
-    setVideos(userVideos);
-    setIsLoadingVideos(false);
+    try {
+      setIsLoadingVideos(true);
+      const userVideos = await getUserVideos(userId, 10);
+      setVideos(userVideos);
+      setIsLoadingVideos(false);
+    } catch (error) {
+      if (error instanceof SupabaseCredentialsError) {
+        setSupabaseError(error.message);
+      } else {
+        console.error('Erreur lors du chargement des vidéos:', error);
+      }
+      setIsLoadingVideos(false);
+    }
   };
 
   const handleDeleteVideo = async (videoId: string) => {
@@ -212,10 +252,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
 
   const handleSignOut = async () => {
     try {
-      await clerkSignOut();
-      setClerkSupabaseAuth(null);
+      await signOut();
     } catch (error) {
-      console.error('Erreur lors de la déconnexion Clerk :', error);
+      console.error('Erreur lors de la déconnexion :', error);
     } finally {
       navigate('/');
     }
@@ -226,9 +265,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
 
     if (user) {
       await loadUserProfile(user.id, {
-        email: user.primaryEmailAddress?.emailAddress ?? null,
-        name: user.fullName,
-        avatarUrl: user.imageUrl,
+        email: user.email ?? null,
+        name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
       });
     }
   };
@@ -239,7 +278,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
     }
   };
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0F12' }}>
         <div className="text-center">
@@ -250,7 +289,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
     );
   }
 
-  if (!isSignedIn || !user) {
+  if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-200">
         <img src={logoImage} alt="Viralis Studio" className="h-24 w-auto md:h-28" />
@@ -267,6 +306,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
 
   return (
     <div className="min-h-screen font-sans relative overflow-hidden bg-slate-950">
+      {supabaseError && (
+        <div className="bg-red-500/10 border border-red-500/40 text-red-200 px-4 py-3 text-sm text-center">
+          {supabaseError} Vérifie les variables Vercel (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) puis redeploie.
+        </div>
+      )}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-[#021C1F] via-[#031E30] to-[#04121D] opacity-95" />
         <div className="absolute -top-1/3 right-0 w-[60rem] h-[60rem] bg-emerald-400/25 rounded-full blur-[160px] animate-slow-spin" />
@@ -289,16 +333,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
               <div className="flex items-center gap-4">
                 {/* User Info */}
                 <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.name} className="w-8 h-8 rounded-full" />
+                  {profile?.avatar_url || userAvatarFromMetadata ? (
+                    <img
+                      src={profile?.avatar_url || userAvatarFromMetadata}
+                      alt={profile?.name || userNameFromMetadata || 'Utilisateur'}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-green to-blue-400 flex items-center justify-center text-white font-bold">
-                      {profile?.name?.[0]?.toUpperCase() || 'U'}
+                      {(profile?.name || userNameFromMetadata || 'U')[0]?.toUpperCase() || 'U'}
                     </div>
                   )}
                   <div className="hidden md:block">
                     <p className="text-sm font-medium text-white">
-                      {profile?.name || user.primaryEmailAddress?.emailAddress}
+                      {profile?.name || userNameFromMetadata}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-brand-green font-semibold">
                       <img src={tokenIcon} alt="Jetons" className="w-4 h-4" />
@@ -369,15 +417,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
           {/* Video Generator Section */}
           <section className="max-w-5xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">{d.generateTitle}</h2>
-            <VideoGenerator
-              userTokens={userTokens}
-              setUserTokens={setUserTokens}
-              language={language}
-              supabaseUserId={profile?.id}
-              clerkUserId={user.id}
-              onVideoGenerated={handleVideoGenerated}
-              showSocialProof={false}
-            />
+            {user && (
+              <VideoGenerator
+                userTokens={userTokens}
+                setUserTokens={setUserTokens}
+                language={language}
+                supabaseUserId={profile?.id ?? user.id}
+                onVideoGenerated={handleVideoGenerated}
+                showSocialProof={false}
+              />
+            )}
           </section>
 
           {/* My Videos Section */}
