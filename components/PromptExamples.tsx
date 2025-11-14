@@ -1,5 +1,5 @@
 import React from 'react';
-import { FilmIcon } from './icons/Icons';
+import { FilmIcon, PlayIcon } from './icons/Icons';
 import type { Language } from '../App';
 import { translations } from '../translations';
 
@@ -45,13 +45,26 @@ const PromptExamples: React.FC<{ language: Language }> = ({ language }) => {
                                     aria-label="Media preview"
                                 >
                                     {ex.mediaKey && mediaAssets[ex.mediaKey] ? (
-                                        <video
-                                            src={mediaAssets[ex.mediaKey]!}
-                                            className="absolute inset-0 h-full w-full object-cover"
-                                            controls
-                                            preload="metadata"
-                                            playsInline
-                                        />
+                                        <>
+                                            <video
+                                                src={mediaAssets[ex.mediaKey]!}
+                                                className="absolute inset-0 h-full w-full object-cover"
+                                                preload="auto"
+                                                playsInline
+                                                muted
+                                                loop
+                                                autoPlay
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none"></div>
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full blur-xl opacity-40"></div>
+                                                    <div className="relative bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full p-4 shadow-[0_0_30px_rgba(0,255,153,0.4)]">
+                                                        <PlayIcon className="w-8 h-8 text-slate-950" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
                                     ) : (
                                         <div className="flex h-full w-full items-center justify-center">
                                             <FilmIcon className="w-16 h-16 text-slate-600" />
