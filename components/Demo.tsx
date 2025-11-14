@@ -51,12 +51,9 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
         playsInline
         preload="metadata"
         poster={placeholder}
+        autoPlay
+        loop
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
-        onMouseEnter={(e) => e.currentTarget.play()}
-        onMouseLeave={(e) => {
-          e.currentTarget.pause();
-          e.currentTarget.currentTime = 0;
-        }}
       />
     ) : (
       <img
@@ -68,11 +65,11 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent opacity-40 group-hover:opacity-80 transition-opacity duration-500"></div>
     
     {/* Play button overlay */}
-    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-6 group-hover:translate-y-0 z-20">
+    <div className="absolute inset-0 flex items-center justify-center opacity-100 transition-all duration-500 transform group-hover:scale-105 z-20 pointer-events-none">
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full blur-xl opacity-60 animate-pulse"></div>
-        <div className="relative bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full p-5 shadow-[0_0_40px_rgba(0,255,153,0.7)] transform group-hover:scale-110 transition-transform duration-300">
-          <PlayIcon className="w-14 h-14 text-slate-950 relative z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full blur-xl opacity-40 animate-pulse"></div>
+        <div className="relative bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full p-5 shadow-[0_0_40px_rgba(0,255,153,0.5)]">
+          <PlayIcon className="w-12 h-12 text-slate-950 relative z-10" />
         </div>
       </div>
     </div>
@@ -145,23 +142,20 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               playsInline
               preload="metadata"
               poster={featuredVideoPoster}
+              autoPlay
+              loop
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
-              onMouseEnter={(e) => e.currentTarget.play()}
-              onMouseLeave={(e) => {
-                e.currentTarget.pause();
-                e.currentTarget.currentTime = 0;
-              }}
             />
             
             {/* Enhanced gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent opacity-40 group-hover:opacity-90 transition-opacity duration-500 z-10"></div>
             
             {/* Enhanced Play button overlay */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-6 group-hover:translate-y-0 z-20">
+            <div className="absolute inset-0 flex items-center justify-center opacity-100 transition-all duration-500 group-hover:scale-105 z-20 pointer-events-none">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full blur-2xl opacity-70 animate-pulse"></div>
-                <div className="relative bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full p-8 shadow-[0_0_60px_rgba(0,255,153,0.8)] transform group-hover:scale-110 transition-transform duration-300">
-                  <PlayIcon className="w-20 h-20 text-slate-950 relative z-10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full blur-2xl opacity-40 animate-pulse"></div>
+                <div className="relative bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full p-8 shadow-[0_0_60px_rgba(0,255,153,0.6)]">
+                  <PlayIcon className="w-16 h-16 text-slate-950 relative z-10" />
                 </div>
               </div>
             </div>
