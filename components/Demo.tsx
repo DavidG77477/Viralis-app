@@ -26,6 +26,8 @@ const secondaryVideos = [
 ];
 
 const featuredVideoUrl = '/videos/un_cafe-con_leche.mp4';
+const featuredVideoViews = '20M';
+const featuredVideoLikes = '1.2M';
 
 const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
   video,
