@@ -26,6 +26,8 @@ const secondaryVideos = [
 ];
 
 const featuredVideoUrl = '/videos/un_cafe-con_leche.mp4';
+const featuredVideoPoster =
+  "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?q=80&w=1200";
 
 const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
   video,
@@ -48,6 +50,7 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
         muted
         playsInline
         preload="metadata"
+        poster={placeholder}
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
         onMouseEnter={(e) => e.currentTarget.play()}
         onMouseLeave={(e) => {
@@ -141,6 +144,7 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               muted
               playsInline
               preload="metadata"
+              poster={featuredVideoPoster}
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
               onMouseEnter={(e) => e.currentTarget.play()}
               onMouseLeave={(e) => {
