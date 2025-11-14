@@ -35,7 +35,7 @@ const GrowthHighlights: React.FC<{ language: Language }> = ({ language }) => {
               key={index}
               className="bg-panel-gradient rounded-2xl border border-slate-800 px-8 py-10 text-left shadow-inner-panel transition-transform hover:-translate-y-2 hover:border-[#00ff9d]/60"
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#ff8a5c] to-[#ff4f81] flex items-center justify-center text-3xl mb-6 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00ff9d] to-[#00b3ff] flex items-center justify-center text-3xl mb-6 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                 {item.icon}
               </div>
               <h3 className="text-2xl font-bold text-white mb-3">
