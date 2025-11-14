@@ -8,6 +8,7 @@ import type { Language } from '../App';
 import { translations } from '../translations';
 import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
+import { appendClosingClip } from '../services/videoPostProcessor';
 import SocialProofStats from './SocialProofStats';
 
 interface VideoGeneratorProps {
@@ -345,23 +346,28 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         setDownloadMessage(t.downloadPreparing ?? 'Préparation du téléchargement…');
 
         try {
-            const response = await fetch(generatedVideoUrl);
-            if (!response.ok) {
-                throw new Error(`Impossible de récupérer la vidéo (status ${response.status}).`);
+            const processed = await appendClosingClip(generatedVideoUrl, {
+                resolutionLabel: resolution,
+                requestedAspectRatio: aspectRatio,
+                preferredFileName: `viralis-${Date.now()}`,
+            });
+
+            if (!processed) {
+                throw new Error('Post-traitement impossible.');
             }
+
             setDownloadMessage(t.downloadFinalizing ?? 'Finalisation…');
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
+            const url = URL.createObjectURL(processed.blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `viralis-${Date.now()}.mp4`;
+            link.download = processed.outputFileName;
             document.body.appendChild(link);
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
             setDownloadMessage(null);
         } catch (downloadError) {
-            console.error('Erreur lors du téléchargement filigrané :', downloadError);
+            console.error('Erreur lors du téléchargement :', downloadError);
             setError(t.downloadError ?? 'Impossible de télécharger la vidéo. Réessaie.');
         } finally {
             setIsDownloading(false);
@@ -370,6 +376,9 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     }, [
         generatedVideoUrl,
         isDownloading,
+        resolution,
+        aspectRatio,
+        t.downloadPreparing,
         t.downloadFinalizing,
         t.downloadError,
     ]);
