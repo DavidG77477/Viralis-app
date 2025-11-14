@@ -181,6 +181,39 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
                 </div>
               </div>
             </div>
+            <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2 rounded-full bg-slate-950/70 backdrop-blur-md px-4 py-2 border border-white/10 shadow-[0_10px_25px_rgba(0,0,0,0.35)]">
+              <svg className="w-4 h-4 text-[#00ff9d]" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+              </svg>
+              <span className="text-white font-semibold text-sm">20M views</span>
+            </div>
+
+            {/* Bottom info overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-8 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-bold text-2xl mb-2 drop-shadow-lg">Featured Video</p>
+                  <div className="flex items-center gap-4 text-sm text-slate-300">
+                    <span className="flex items-center gap-1 text-[#00ff9d]">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
+                      <span className="font-semibold">20M views</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-[#00b3ff]">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.834a1 1 0 001.707.707l3.548-3.548a1 1 0 00.293-.707V6.667a1 1 0 00-1.707-.707L7.293 9.333a1 1 0 00-.293.707zM15.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                      </svg>
+                      <span className="font-semibold">{featuredVideoLikes} likes</span>
+                    </span>
+                    <span className="text-[#00ff9d]">•</span>
+                    <span>Viral</span>
+                  </div>
+                </div>
+              </div>
+            </div>
             
           </div>
         </div>
