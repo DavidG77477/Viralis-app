@@ -27,34 +27,6 @@ const secondaryVideos = [
 
 const featuredVideoUrl = '/videos/un_cafe-con_leche.mp4';
 
-const showFirstFrame = (videoElement: HTMLVideoElement) => {
-  const seekToFirstFrame = () => {
-    try {
-      videoElement.pause();
-      videoElement.currentTime = 0.05;
-    } catch (error) {
-      console.warn('Unable to set preview frame:', error);
-    } finally {
-      videoElement.removeEventListener('seeked', seekToFirstFrame);
-    }
-  };
-
-  if (videoElement.readyState >= 2) {
-    seekToFirstFrame();
-  } else {
-    const handleLoadedMetadata = () => {
-      videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      videoElement.addEventListener('seeked', seekToFirstFrame);
-      try {
-        videoElement.currentTime = 0.05;
-      } catch (error) {
-        console.warn('Unable to seek video preview:', error);
-      }
-    };
-    videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-  }
-};
-
 const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
   video,
   caption,
@@ -76,7 +48,8 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
         muted
         playsInline
         preload="auto"
-        onLoadedMetadata={(event) => showFirstFrame(event.currentTarget)}
+        autoPlay
+        loop
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
       />
     ) : (
@@ -165,7 +138,8 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               muted
               playsInline
               preload="auto"
-              onLoadedMetadata={(event) => showFirstFrame(event.currentTarget)}
+              autoPlay
+              loop
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
             />
             
