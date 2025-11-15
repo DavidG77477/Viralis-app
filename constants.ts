@@ -3,4 +3,4 @@
 export const VIDEO_GENERATION_COST_720P = 15;
 export const VIDEO_GENERATION_COST_1080P = 30;
 export const SCRIPT_GENERATION_COST = 5;
-export const DEFAULT_FREE_TOKENS = 30;
+export const DEFAULT_FREE_TOKENS = 0;
