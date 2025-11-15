@@ -1,9 +1,85 @@
 import type { AspectRatio, Resolution } from '../types';
 
+export type VideoModel = 
+  | 'sora-2'
+  | 'sora-2-pro'
+  | 'veo-3-api'
+  | 'veo-3-1-api'
+  | 'kling-api'
+  | 'kling-2-1'
+  | 'kling-2-5'
+  | 'wan-video-api'
+  | 'wan-2-2'
+  | 'wan-2-5';
+
+export interface VideoModelInfo {
+  value: VideoModel;
+  label: string;
+  description: string;
+  requiresWatermarkRemoval?: boolean;
+  endpoint?: string;
+}
+
+export const AVAILABLE_MODELS: VideoModelInfo[] = [
+  {
+    value: 'sora-2',
+    label: 'Sora 2',
+    description: 'OpenAI Sora 2 - Standard',
+    requiresWatermarkRemoval: true,
+  },
+  {
+    value: 'sora-2-pro',
+    label: 'Sora 2 Pro',
+    description: 'OpenAI Sora 2 Pro - Premium',
+    requiresWatermarkRemoval: true,
+  },
+  {
+    value: 'veo-3-api',
+    label: 'Veo 3',
+    description: 'Google Veo 3 - Fast generation',
+  },
+  {
+    value: 'veo-3-1-api',
+    label: 'Veo 3.1',
+    description: 'Google Veo 3.1 - Enhanced quality',
+  },
+  {
+    value: 'kling-api',
+    label: 'KLING API',
+    description: 'Kling AI - Standard',
+  },
+  {
+    value: 'kling-2-1',
+    label: 'Kling 2.1',
+    description: 'Kling AI 2.1',
+  },
+  {
+    value: 'kling-2-5',
+    label: 'Kling 2.5',
+    description: 'Kling AI 2.5 - Latest',
+  },
+  {
+    value: 'wan-video-api',
+    label: 'WAN VIDEO API',
+    description: 'Wan Video - Standard',
+  },
+  {
+    value: 'wan-2-2',
+    label: 'Wan 2.2',
+    description: 'Wan Video 2.2',
+  },
+  {
+    value: 'wan-2-5',
+    label: 'Wan 2.5',
+    description: 'Wan Video 2.5 - Latest',
+  },
+];
+
 interface GenerateVideoParams {
     prompt: string;
     aspectRatio: AspectRatio;
     resolution: Resolution;
+    model?: VideoModel;
     image?: {
         base64: string;
         mimeType: string;
@@ -71,20 +147,46 @@ const getOpenAiApiKey = (options?: { silent?: boolean }) => {
     return apiKey;
 };
 
-export const generateVideo = async ({ prompt, aspectRatio, image, resolution }: GenerateVideoParams) => {
+export const generateVideo = async ({ prompt, aspectRatio, image, resolution, model }: GenerateVideoParams) => {
     const apiKey = getApiKey();
     
-    const model = resolution === '1080p' ? 'veo3_quality' : 'veo3_fast';
+    // Si aucun modèle n'est spécifié, utiliser la logique actuelle (rétrocompatibilité)
+    let selectedModel: string;
+    if (model) {
+        selectedModel = model;
+    } else {
+        // Fallback sur l'ancienne logique
+        selectedModel = resolution === '1080p' ? 'veo3_quality' : 'veo3_fast';
+    }
+    
+    // Déterminer l'endpoint selon le modèle
+    // Par défaut, on utilise /veo/generate pour Veo et les anciens modèles
+    // Pour les autres modèles, on peut utiliser le même endpoint ou un endpoint spécifique
+    let endpoint = '/veo/generate';
+    
+    // Si le modèle est spécifié explicitement, on peut ajuster l'endpoint
+    // Note: KIE peut utiliser le même endpoint pour tous les modèles, le paramètre model détermine le modèle réel
+    if (selectedModel.startsWith('sora-')) {
+        endpoint = '/veo/generate'; // À ajuster selon la doc KIE
+    } else if (selectedModel.startsWith('kling-')) {
+        endpoint = '/veo/generate'; // À ajuster selon la doc KIE
+    } else if (selectedModel.startsWith('wan-')) {
+        endpoint = '/veo/generate'; // À ajuster selon la doc KIE
+    }
     
     const requestBody: any = {
         prompt: prompt,
-        model: model,
+        model: selectedModel,
         aspectRatio: aspectRatio,
         enableTranslation: true,
         generationType: 'TEXT_2_VIDEO',
     };
 
-    const response = await fetch(`${KIE_API_BASE}/veo/generate`, {
+    if (image) {
+        requestBody.imageUrl = `data:${image.mimeType};base64,${image.base64}`;
+    }
+
+    const response = await fetch(`${KIE_API_BASE}${endpoint}`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -192,6 +294,90 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
     }
     
     throw new Error('La génération de vidéo a expiré (plus de 2 minutes sans réponse).');
+};
+
+interface WatermarkRemovalResult {
+    taskId: string;
+    status: string;
+}
+
+export const removeSoraWatermark = async (videoUrl: string): Promise<WatermarkRemovalResult> => {
+    const apiKey = getApiKey();
+    
+    const response = await fetch(`${KIE_API_BASE}/jobs/createTask`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: 'sora-watermark-remover',
+            input: {
+                video_url: videoUrl,
+            },
+        }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`KIE watermark removal error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.code && data.code !== 200) {
+        throw new Error(data.msg || `Erreur API KIE (code ${data.code})`);
+    }
+    
+    return {
+        taskId: data.taskId || data.data?.taskId || data.id,
+        status: data.status || 'pending',
+    };
+};
+
+export const pollWatermarkRemoval = async (taskId: string): Promise<string> => {
+    const apiKey = getApiKey();
+    const maxAttempts = 30;
+    const delay = 3000; // 3 secondes entre chaque tentative
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const response = await fetch(`${KIE_API_BASE}/jobs/task-info?taskId=${taskId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erreur de polling watermark removal: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.code && result.code !== 200) {
+            throw new Error(result.msg || `Erreur API KIE (code ${result.code})`);
+        }
+        
+        const data = result.data;
+        
+        // Vérifier si la tâche est terminée
+        if (data.status === 'completed' || data.successFlag === 1) {
+            const videoUrl = data.response?.resultUrls?.[0] || data.output?.video_url || data.video_url;
+            if (videoUrl) {
+                return videoUrl;
+            }
+        }
+        
+        if (data.status === 'failed' || data.successFlag === 2 || data.successFlag === 3) {
+            throw new Error(result.msg || 'Watermark removal failed');
+        }
+        
+        console.log(`Watermark removal in progress... (attempt ${attempt + 1}/${maxAttempts})`);
+    }
+    
+    throw new Error('Watermark removal timeout');
 };
 
 export const generateScript = async (prompt: string): Promise<string> => {

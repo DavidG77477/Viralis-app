@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { generateVideo, pollVideoOperation, generateScript, fileToBase64, enhancePromptWithTheme } from '../services/kieService';
+import { generateVideo, pollVideoOperation, generateScript, fileToBase64, enhancePromptWithTheme, removeSoraWatermark, pollWatermarkRemoval, AVAILABLE_MODELS, type VideoModel } from '../services/kieService';
 import { ImageIcon, WandIcon, XCircleIcon, AspectRatioIcon, BrainCircuitIcon, FilmIcon, GridPattern, ResolutionIcon, ArrowDownCircleIcon } from './icons/Icons';
 import { VIDEO_GENERATION_COST_720P, VIDEO_GENERATION_COST_1080P, SCRIPT_GENERATION_COST } from '../constants';
 import type { AspectRatio, Resolution } from '../types';
@@ -250,6 +250,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     const [selectedTheme, setSelectedTheme] = useState<string>('none');
     const [selectedMusic, setSelectedMusic] = useState<string>('none');
     const [selectedStyle, setSelectedStyle] = useState<string>('none');
+    const [selectedModel, setSelectedModel] = useState<VideoModel | null>(null);
     const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
     const [isMusicDropdownOpen, setIsMusicDropdownOpen] = useState(false);
     const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
@@ -507,12 +508,32 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 tokensDeducted = true;
             }
             
-            let initialOperation = await generateVideo({ prompt: enhancedPrompt, aspectRatio, resolution, image: imagePayload });
+            let initialOperation = await generateVideo({ 
+                prompt: enhancedPrompt, 
+                aspectRatio, 
+                resolution, 
+                model: selectedModel || undefined,
+                image: imagePayload 
+            });
             const finalOperation = await pollVideoOperation(initialOperation);
 
-            const downloadLink = finalOperation.response?.generatedVideos?.[0]?.video?.uri;
+            let downloadLink = finalOperation.response?.generatedVideos?.[0]?.video?.uri;
             if (!downloadLink) {
                 throw new Error(t.errorRetrieveVideo);
+            }
+
+            // Vérifier si le modèle nécessite la suppression du watermark
+            const modelInfo = selectedModel ? AVAILABLE_MODELS.find(m => m.value === selectedModel) : null;
+            
+            if (modelInfo?.requiresWatermarkRemoval) {
+                setLoadingMessage('Removing watermark...');
+                try {
+                    const watermarkRemovalTask = await removeSoraWatermark(downloadLink);
+                    downloadLink = await pollWatermarkRemoval(watermarkRemovalTask.taskId);
+                } catch (watermarkError) {
+                    console.warn('Watermark removal failed, using original video:', watermarkError);
+                    // Continuer avec la vidéo originale si la suppression échoue
+                }
             }
 
             setGeneratedVideoUrl(downloadLink);
@@ -714,6 +735,35 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 )}
                             </div>
                         )}
+
+                        <div className="relative">
+                            <label className="text-slate-300 font-medium flex items-center gap-2 mb-2">
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-green/10 text-brand-green font-semibold">🤖</span>
+                                AI Model
+                            </label>
+                            <p className="text-xs text-slate-400 mb-3">
+                                Choose the AI model for video generation
+                            </p>
+                            <select
+                                value={selectedModel || ''}
+                                onChange={(e) => setSelectedModel(e.target.value as VideoModel || null)}
+                                disabled={isLoading}
+                                className="w-full rounded-xl border border-slate-700/50 bg-gradient-to-r from-slate-900/60 to-slate-800/60 px-4 py-3.5 text-sm text-slate-200 focus:border-[#00ff9d]/50 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <option value="">Auto (based on resolution)</option>
+                                {AVAILABLE_MODELS.map(model => (
+                                    <option key={model.value} value={model.value}>
+                                        {model.label} {model.description && `- ${model.description}`}
+                                    </option>
+                                ))}
+                            </select>
+                            {selectedModel && AVAILABLE_MODELS.find(m => m.value === selectedModel)?.requiresWatermarkRemoval && (
+                                <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                                    <span>⚠️</span>
+                                    <span>Watermark will be automatically removed</span>
+                                </p>
+                            )}
+                        </div>
 
                         {themeOptions.length > 0 && (
                             <div ref={themeDropdownRef} className="relative">
