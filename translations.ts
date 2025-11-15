@@ -30,6 +30,10 @@ export const translations = {
                 magicLinkSuccess: "Lien envoyé ! Consulte ta boîte mail pour accéder au tableau de bord.",
                 registerPrompt: "Pas encore de compte ?",
                 registerCta: "Créer un compte",
+                forgotCta: "Mot de passe oublié ?",
+                forgotSending: "Envoi du lien…",
+                forgotSuccess: "Un email de réinitialisation vient d'être envoyé. Clique sur le lien pour choisir un nouveau mot de passe.",
+                forgotMissingEmail: "Entre ton email pour recevoir le lien de réinitialisation.",
             },
             register: {
                 title: "Créer un compte",
@@ -577,6 +581,10 @@ export const translations = {
                 magicLinkSuccess: "Magic link sent! Check your inbox to open the dashboard.",
                 registerPrompt: "No account yet?",
                 registerCta: "Create an account",
+                forgotCta: "Forgot your password?",
+                forgotSending: "Sending reset link…",
+                forgotSuccess: "Reset email sent! Open the link to choose a new password.",
+                forgotMissingEmail: "Please enter your email to receive the reset link.",
             },
             register: {
                 title: "Create an account",
@@ -1123,6 +1131,10 @@ export const translations = {
                 magicLinkSuccess: "¡Enlace enviado! Revisa tu bandeja para abrir el panel.",
                 registerPrompt: "¿Aún no tienes cuenta?",
                 registerCta: "Crear una cuenta",
+                forgotCta: "¿Olvidaste tu contraseña?",
+                forgotSending: "Enviando enlace…",
+                forgotSuccess: "Te enviamos un correo para restablecer tu contraseña. Ábrelo para continuar.",
+                forgotMissingEmail: "Ingresa tu email para recibir el enlace de restablecimiento.",
             },
             register: {
                 title: "Crear una cuenta",

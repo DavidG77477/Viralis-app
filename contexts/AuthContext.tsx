@@ -9,6 +9,7 @@ interface AuthContextValue {
   signInWithPassword: (email: string, password: string) => Promise<AuthResponse['data']>;
   signUpWithEmail: (email: string, password: string) => Promise<AuthResponse['data']>;
   sendMagicLink: (email: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -88,6 +89,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    if (error) {
+      console.error('Erreur reset password Supabase:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -104,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInWithPassword,
       signUpWithEmail,
       sendMagicLink,
+      sendPasswordReset,
       signOut,
     }),
     [user, session, isLoading],
