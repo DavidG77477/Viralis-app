@@ -179,6 +179,7 @@ const HomePage: React.FC<HomePageProps> = ({ language, onLanguageChange }) => {
             setUserTokens={setUserTokens}
             language={language}
             supabaseUserId={user?.id ?? null}
+            userProfile={null}
           />
         </section>
         <Features language={language} />

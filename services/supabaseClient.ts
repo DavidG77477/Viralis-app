@@ -38,7 +38,13 @@ export interface UserProfile {
   provider?: string;
   updated_at?: string;
   clerk_id?: string | null;
+  subscription_status?: 'free' | 'pro_monthly' | 'pro_annual' | null;
 }
+
+export const isUserPro = (profile: UserProfile | null): boolean => {
+  if (!profile) return false;
+  return profile.subscription_status === 'pro_monthly' || profile.subscription_status === 'pro_annual';
+};
 
 export const getUserProfileById = async (userId: string): Promise<UserProfile | null> => {
   if (!IS_SUPABASE_CONFIGURED) {

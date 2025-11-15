@@ -426,6 +426,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                 supabaseUserId={profile?.id ?? user.id}
                 onVideoGenerated={handleVideoGenerated}
                 showSocialProof={false}
+                userProfile={profile}
               />
             )}
           </section>

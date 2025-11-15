@@ -6,7 +6,7 @@ import { VIDEO_GENERATION_COST_720P, VIDEO_GENERATION_COST_1080P, SCRIPT_GENERAT
 import type { AspectRatio, Resolution } from '../types';
 import type { Language } from '../App';
 import { translations } from '../translations';
-import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED } from '../services/supabaseClient';
+import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED, isUserPro, type UserProfile } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
 import SocialProofStats from './SocialProofStats';
 
@@ -17,6 +17,7 @@ interface VideoGeneratorProps {
     onVideoGenerated?: (video: Video) => void;
     supabaseUserId?: string | null;
     showSocialProof?: boolean;
+    userProfile?: UserProfile | null;
 }
 
 type StyleOption = {
@@ -220,6 +221,8 @@ const CAMERA_STYLE_LIBRARY: Record<Language, StyleCategory[]> = {
         },
     ],
 };
+type GenerationMode = 'text-to-video' | 'photo-to-video';
+
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     userTokens,
     setUserTokens,
@@ -227,13 +230,16 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     onVideoGenerated,
     supabaseUserId,
     showSocialProof = true,
+    userProfile,
 }) => {
     const t = translations[language];
     const navigate = useNavigate();
     const location = useLocation();
+    const [generationMode, setGenerationMode] = useState<GenerationMode>('text-to-video');
     const [prompt, setPrompt] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const isPro = isUserPro(userProfile ?? null);
     const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
     const [resolution, setResolution] = useState<Resolution>('720p');
     const [useThinkingMode, setUseThinkingMode] = useState(false);
@@ -324,6 +330,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         }
     }, [selectedStyle, styleCategories]);
 
+    // Réinitialiser l'image quand on passe en mode text-to-video
+    useEffect(() => {
+        if (generationMode === 'text-to-video') {
+            setImageFile(null);
+            setImagePreview(null);
+        }
+    }, [generationMode]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
@@ -403,9 +417,20 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         setGeneratedVideoUrl(null);
         setGeneratedScript(null);
         
-        if (!prompt && !imageFile) {
-            setError(t.errorPromptOrImage);
+        // Validation selon le mode
+        if (generationMode === 'text-to-video' && !prompt) {
+            setError(t.errorPromptOrImage ?? 'Please enter a prompt');
             return;
+        }
+        if (generationMode === 'photo-to-video') {
+            if (!isPro) {
+                navigate('/pricing?reason=pro-required');
+                return;
+            }
+            if (!imageFile) {
+                setError('Please upload an image');
+                return;
+            }
         }
 
         const themeInstruction = selectedThemeOption?.promptInstruction ?? selectedThemeOption?.label ?? undefined;
@@ -458,19 +483,24 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
 
         try {
             let imagePayload;
-            if (imageFile) {
+            if (generationMode === 'photo-to-video' && imageFile) {
                 const base64 = await fileToBase64(imageFile);
                 imagePayload = { base64, mimeType: imageFile.type };
             }
             
-                const enhancedPrompt = await enhancePromptWithTheme(prompt, {
-                    themeInstruction,
-                    musicInstruction,
-                    styleInstruction,
-                    aspectRatio,
-                    language,
-                    durationSec: 30,
-                });
+            // Pour photo-to-video, on peut utiliser un prompt optionnel ou générer un prompt basé sur l'image
+            const promptToEnhance = generationMode === 'photo-to-video' 
+                ? (prompt || 'Transform this image into a dynamic video')
+                : prompt;
+            
+            const enhancedPrompt = await enhancePromptWithTheme(promptToEnhance, {
+                themeInstruction,
+                musicInstruction,
+                styleInstruction,
+                aspectRatio,
+                language,
+                durationSec: 30,
+            });
             setLoadingMessage(t.loadingMessages[0]);
             if (shouldPersist) {
                 setUserTokens(prev => prev - videoCost);
@@ -584,9 +614,47 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                     <div className="absolute -inset-1 bg-gradient-to-r from-[#00ff9d]/20 via-[#00b3ff]/20 to-[#00ff9d]/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
                     
                     <div className="relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                        <h2 className="text-2xl font-bold mb-6" style={{background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent'}}>
-                            {t.generatorSettingsTitle}
-                        </h2>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold" style={{background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent'}}>
+                                {t.generatorSettingsTitle}
+                            </h2>
+                            <div className="flex items-center gap-2 bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
+                                <button
+                                    type="button"
+                                    onClick={() => setGenerationMode('text-to-video')}
+                                    disabled={isLoading}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 ${
+                                        generationMode === 'text-to-video'
+                                            ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_10px_rgba(0,255,153,0.4)]'
+                                            : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    Text
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!isPro) {
+                                            navigate('/pricing?reason=pro-required');
+                                            return;
+                                        }
+                                        setGenerationMode('photo-to-video');
+                                    }}
+                                    disabled={isLoading}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 relative ${
+                                        generationMode === 'photo-to-video'
+                                            ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_10px_rgba(0,255,153,0.4)]'
+                                            : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${!isPro ? 'opacity-60' : ''}`}
+                                    title={!isPro ? 'Pro subscription required' : ''}
+                                >
+                                    Photo
+                                    {!isPro && (
+                                        <span className="absolute -top-1 -right-1 text-[8px] bg-amber-500 text-slate-950 rounded-full px-1 font-bold">PRO</span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                         <div className="space-y-5">
                         {styleCategories.length > 0 && (
                             <div className="relative">
@@ -795,29 +863,41 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                             </div>
                         )}
 
-                        <textarea
-                            className="w-full bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-slate-700/50 rounded-xl p-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00ff9d]/50 focus:border-[#00ff9d]/50 transition-all duration-300 backdrop-blur-sm resize-none"
-                            rows={5}
-                            placeholder={t.promptPlaceholder}
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            disabled={isLoading}
-                        />
-                        
-                        {imagePreview ? (
-                            <div className="relative group">
-                                <img src={imagePreview} alt="Upload preview" className="w-full h-auto rounded-lg" />
-                                <button onClick={removeImage} className="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100" disabled={isLoading}>
-                                    <XCircleIcon className="w-6 h-6" />
-                                </button>
-                            </div>
+                        {generationMode === 'text-to-video' ? (
+                            <textarea
+                                className="w-full bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-slate-700/50 rounded-xl p-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00ff9d]/50 focus:border-[#00ff9d]/50 transition-all duration-300 backdrop-blur-sm resize-none"
+                                rows={5}
+                                placeholder={t.promptPlaceholder}
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                disabled={isLoading}
+                            />
                         ) : (
-                            <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-br from-slate-900/60 to-slate-800/60 hover:from-[#00ff9d]/10 hover:to-[#00b3ff]/10 border border-dashed border-slate-600/50 hover:border-[#00ff9d]/50 rounded-xl p-6 text-slate-400 hover:text-white transition-all duration-300 group" disabled={isLoading}>
-                               <ImageIcon className="w-6 h-6 group-hover:text-[#00ff9d] transition-colors" />
-                               <span className="font-medium">{t.uploadImageLabel}</span>
-                            </button>
+                            <>
+                                {imagePreview ? (
+                                    <div className="relative group">
+                                        <img src={imagePreview} alt="Upload preview" className="w-full h-auto rounded-lg" />
+                                        <button onClick={removeImage} className="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100" disabled={isLoading}>
+                                            <XCircleIcon className="w-6 h-6" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-br from-slate-900/60 to-slate-800/60 hover:from-[#00ff9d]/10 hover:to-[#00b3ff]/10 border border-dashed border-slate-600/50 hover:border-[#00ff9d]/50 rounded-xl p-6 text-slate-400 hover:text-white transition-all duration-300 group" disabled={isLoading}>
+                                       <ImageIcon className="w-6 h-6 group-hover:text-[#00ff9d] transition-colors" />
+                                       <span className="font-medium">{t.uploadImageLabel ?? 'Upload an Image'}</span>
+                                    </button>
+                                )}
+                                <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+                                <textarea
+                                    className="w-full bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-slate-700/50 rounded-xl p-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00ff9d]/50 focus:border-[#00ff9d]/50 transition-all duration-300 backdrop-blur-sm resize-none"
+                                    rows={3}
+                                    placeholder="Optional: Add a description or prompt for the video transformation"
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                    disabled={isLoading}
+                                />
+                            </>
                         )}
-                        <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
 
                         <div className="flex items-center justify-between p-4 bg-gradient-to-br from-slate-900/40 to-slate-800/40 rounded-xl border border-slate-700/30">
                              <label className="text-slate-200 font-semibold flex items-center gap-2"><AspectRatioIcon className="w-5 h-5 text-[#00ff9d]"/>{t.aspectRatioLabel}</label>
@@ -853,7 +933,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
 
                         <button
                             onClick={handleGenerate}
-                            disabled={isLoading || (!prompt && !imageFile)}
+                            disabled={isLoading || (generationMode === 'text-to-video' && !prompt) || (generationMode === 'photo-to-video' && !imageFile)}
                             className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 shadow-[0_0_25px_rgba(0,255,153,0.3)] hover:shadow-[0_0_40px_rgba(0,255,153,0.5)] relative overflow-hidden group"
                         >
                             <style>
