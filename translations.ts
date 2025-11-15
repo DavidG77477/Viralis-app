@@ -427,6 +427,7 @@ export const translations = {
         ],
         generatorThemeLabel: "Thème de la vidéo",
         generatorThemeDescription: "Affinez l'ambiance générale pour guider l'IA et obtenir un rendu cohérent.",
+        generatorThemePlaceholder: "Sélectionner un thème",
         generatorThemeOptions: [
             { value: "none", label: "Aucun (laisser le prompt libre)" },
             { value: "horror", label: "Horreur cinématique", color: "#FE4A49", promptInstruction: "Créer un univers angoissant, sombre, avec une tension progressive digne d'un thriller viral." },
@@ -465,6 +466,7 @@ export const translations = {
         ],
         generatorMusicLabel: "Ambiance musicale",
         generatorMusicDescription: "Choisissez une couleur sonore pour renforcer l'émotion et la dynamique.",
+        generatorMusicPlaceholder: "Sélectionner une ambiance sonore",
         generatorMusicOptions: [
             { value: "none", label: "Aucune ambiance (laisser le prompt libre)" },
             { value: "cinematic", label: "Épique cinématique", color: "#5D3FD3", promptInstruction: "Bande-son orchestrale avec percussions puissantes et crescendos dramatiques." },
@@ -980,6 +982,7 @@ export const translations = {
         ],
         generatorThemeLabel: "Video theme",
         generatorThemeDescription: "Fine-tune the overall mood to guide the AI and keep the result on brand.",
+        generatorThemePlaceholder: "Select a theme",
         generatorThemeOptions: [
             { value: "none", label: "None (stick to the user prompt)" },
             { value: "horror", label: "Cinematic horror", color: "#FE4A49", promptInstruction: "Create a chilling, suspenseful atmosphere with dramatic pacing fit for viral thrillers." },
@@ -1018,6 +1021,7 @@ export const translations = {
         ],
         generatorMusicLabel: "Music vibe",
         generatorMusicDescription: "Pick a soundscape so the AI suggests the perfect audio energy.",
+        generatorMusicPlaceholder: "Select a soundscape",
         generatorMusicOptions: [
             { value: "none", label: "No music (prompt only)" },
             { value: "cinematic", label: "Epic cinematic", color: "#5D3FD3", promptInstruction: "Orchestral score with powerful drums, brass hits and dramatic crescendos." },
@@ -1532,6 +1536,7 @@ export const translations = {
         ],
         generatorThemeLabel: "Tema del video",
         generatorThemeDescription: "Ajusta la atmósfera general para guiar la IA y mantener la coherencia del resultado.",
+        generatorThemePlaceholder: "Seleccionar un tema",
         generatorThemeOptions: [
             { value: "none", label: "Ninguno (usar solo el prompt)" },
             { value: "horror", label: "Terror cinematográfico", color: "#FE4A49", promptInstruction: "Crear un universo inquietante y oscuro, con una tensión progresiva digna de un thriller viral." },
@@ -1570,6 +1575,7 @@ export const translations = {
         ],
         generatorMusicLabel: "Ambiente musical",
         generatorMusicDescription: "Elige la banda sonora ideal para potenciar la emoción del video.",
+        generatorMusicPlaceholder: "Seleccionar una ambientación sonora",
         generatorMusicOptions: [
             { value: "none", label: "Sin música (solo prompt)" },
             { value: "cinematic", label: "Épico cinematográfico", color: "#5D3FD3", promptInstruction: "Partitura orquestal con percusiones potentes y crescendos dramáticos." },

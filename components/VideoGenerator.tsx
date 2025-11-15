@@ -910,7 +910,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                             className="h-3 w-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(255,255,255,0.2)]"
                                             style={{ backgroundColor: selectedThemeOption?.color ?? '#3DFF8C' }}
                                         />
-                                        <span className="font-medium">{selectedThemeOption?.label ?? 'Sélectionner un thème'}</span>
+                                        <span className="font-medium">{selectedThemeOption?.label ?? t.generatorThemePlaceholder}</span>
                                     </span>
                                     <svg
                                         className={`w-4 h-4 transition-transform ${isThemeDropdownOpen ? 'rotate-180' : ''}`}
@@ -989,7 +989,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                             className="h-3 w-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(255,255,255,0.2)]"
                                             style={{ backgroundColor: selectedMusicOption?.color ?? '#3DFF8C' }}
                                         />
-                                        <span className="font-medium">{selectedMusicOption?.label ?? 'Sélectionner une ambiance sonore'}</span>
+                                        <span className="font-medium">{selectedMusicOption?.label ?? t.generatorMusicPlaceholder}</span>
                                     </span>
                                     <svg
                                         className={`w-4 h-4 transition-transform ${isMusicDropdownOpen ? 'rotate-180' : ''}`}
