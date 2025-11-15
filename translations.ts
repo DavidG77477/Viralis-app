@@ -65,7 +65,7 @@ export const translations = {
         // Hero
         heroTitle: "Générateur de Vidéos IA Virales pour TikTok",
         heroSubtitle: "Créez des vidéos qui génèrent des millions de vues et des revenus passifs. L'IA la plus avancée transforme vos idées en contenu viral en quelques minutes — sans compétences techniques.",
-        heroCta: "Réclamer mes 30 jetons gratuits !",
+        heroCta: "Générer mes premières vidéos virales",
         heroSocialProof: {
             introText: "Déjà membre de Viralis Studio ?",
             linkText: "Connexion",
@@ -618,7 +618,7 @@ export const translations = {
         // Hero
         heroTitle: "Viral AI Video Generator for TikTok",
         heroSubtitle: "Create videos that generate millions of views and passive income. The most advanced AI turns your ideas into viral content in minutes — no technical skills required.",
-        heroCta: "Claim my 30 free tokens !",
+        heroCta: "Generate my first viral videos",
         heroSocialProof: {
             introText: "Already using Viralis Studio?",
             linkText: "Sign In",
@@ -1170,7 +1170,7 @@ export const translations = {
         // Hero
         heroTitle: "Generador de Videos Virales con IA para TikTok",
         heroSubtitle: "Crea videos que generan millones de vistas e ingresos pasivos. La IA más avanzada convierte tus ideas en contenido viral en minutos — sin habilidades técnicas.",
-        heroCta: "¡Reclamar mis 30 tokens gratis !",
+        heroCta: "Generar mis primeros videos virales",
         heroSocialProof: {
             introText: "¿Ya usas Viralis Studio?",
             linkText: "Iniciar sesión",
