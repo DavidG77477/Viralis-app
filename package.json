@@ -16,9 +16,12 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "2",
+    "@types/nodemailer": "^7.0.3",
+    "nodemailer": "^7.0.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.5"
+    "react-router-dom": "^7.9.5",
+    "resend": "^6.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
