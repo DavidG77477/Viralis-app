@@ -650,12 +650,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                             <h2 className="text-2xl font-bold" style={{background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent'}}>
                                 {t.generatorSettingsTitle}
                             </h2>
-                            <div className="flex items-center gap-2 bg-slate-900/60 p-1 rounded-lg border border-slate-700/50">
+                            <div className="flex items-center gap-1.5 bg-slate-900/60 p-0.5 rounded-lg border border-slate-700/50">
                                 <button
                                     type="button"
                                     onClick={() => setGenerationMode('text-to-video')}
                                     disabled={isLoading}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 flex items-center gap-1 ${
+                                    className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-all duration-300 flex items-center gap-0.5 ${
                                         generationMode === 'text-to-video'
                                             ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_10px_rgba(0,255,153,0.4)]'
                                             : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -669,7 +669,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                     type="button"
                                     onClick={() => setGenerationMode('photo-to-video')}
                                     disabled={isLoading}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 relative flex items-center gap-1 ${
+                                    className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-all duration-300 relative flex items-center gap-0.5 ${
                                         generationMode === 'photo-to-video'
                                             ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_10px_rgba(0,255,153,0.4)]'
                                             : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
@@ -680,7 +680,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                     <span>→</span>
                                     <span>Video</span>
                                     {!isPro && (
-                                        <span className="absolute -top-1 -right-1 text-[8px] bg-amber-500 text-slate-950 rounded-full px-1 font-bold">PRO</span>
+                                        <span className="absolute -top-0.5 -right-0.5 text-[7px] bg-amber-500 text-slate-950 rounded-full px-0.5 font-bold">PRO</span>
                                     )}
                                 </button>
                             </div>
