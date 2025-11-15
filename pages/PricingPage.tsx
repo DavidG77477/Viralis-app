@@ -24,15 +24,6 @@ const PricingPage: React.FC<PricingPageProps> = ({ language, onLanguageChange })
           <div className="absolute top-1/2 right-0 w-[50vw] h-[50vw] bg-sky-500/10 blur-[140px]" />
         </div>
 
-        <div className="relative z-10 container mx-auto px-4 md:px-8 mb-12 text-center max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
-            {t.pricingTitle}
-          </h1>
-          <p className="text-lg md:text-xl text-slate-300 mb-6">
-            {t.pricingSubtitle}
-          </p>
-        </div>
-
         <div className="relative z-10">
           <Pricing language={language} />
         </div>
