@@ -16,6 +16,7 @@ import GrowthHighlights from '../components/GrowthHighlights';
 import type { Language } from '../App';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { DEFAULT_FREE_TOKENS } from '../constants';
 
 const ContactSection: React.FC<{ language: Language }> = ({ language }) => {
   const t = {
@@ -136,7 +137,7 @@ interface HomePageProps {
 }
 
 const HomePage: React.FC<HomePageProps> = ({ language, onLanguageChange }) => {
-  const [userTokens, setUserTokens] = useState(100);
+  const [userTokens, setUserTokens] = useState(DEFAULT_FREE_TOKENS);
   const [pricingAlert, setPricingAlert] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();

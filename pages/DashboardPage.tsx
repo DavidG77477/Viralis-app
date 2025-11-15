@@ -16,6 +16,7 @@ import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
 import tokenIcon from '../attached_assets/token.png';
 import { translations } from '../translations';
+import { DEFAULT_FREE_TOKENS } from '../constants';
 
 const dashboardLabels: Record<
   Language,
@@ -95,7 +96,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const { user, isLoading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userTokens, setUserTokens] = useState(100);
+  const [userTokens, setUserTokens] = useState(DEFAULT_FREE_TOKENS);
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
@@ -157,7 +158,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       try {
         if (!IS_SUPABASE_CONFIGURED) {
           setProfile(null);
-          setUserTokens(100);
+          setUserTokens(DEFAULT_FREE_TOKENS);
           setSupabaseError('Supabase n’est pas configuré. Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.');
           setIsLoading(false);
           return;

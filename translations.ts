@@ -176,7 +176,7 @@ export const translations = {
         generatedIn: "Généré en",
         promptExamples: [
             {
-                category: "🎤 Interview Tendance",
+                category: "🦒 Interview Virale",
                 prompt: "A realistic scene of a car towing two giraffes on the highway while passing under a bridge — bright daylight, dynamic motion, humorous and cinematic composition.",
                 generationTime: "1 minute",
                 mediaKey: "giraffeInterview"
@@ -729,7 +729,7 @@ export const translations = {
         generatedIn: "Generated in",
         promptExamples: [
             {
-                category: "🎤 Trending Interview",
+                category: "🦒 Viral Giraffe Interview",
                 prompt: "A realistic scene of a car towing two giraffes on the highway while passing under a bridge — bright daylight, dynamic motion, humorous and cinematic composition.",
                 generationTime: "1 minute",
                 mediaKey: "giraffeInterview"
@@ -1281,7 +1281,7 @@ export const translations = {
         generatedIn: "Generado en",
         promptExamples: [
             {
-                category: "🎤 Entrevista de Tendencia",
+                category: "🦒 Entrevista Viral de Jirafas",
                 prompt: "A realistic scene of a car towing two giraffes on the highway while passing under a bridge — bright daylight, dynamic motion, humorous and cinematic composition.",
                 generationTime: "1 minuto",
                 mediaKey: "giraffeInterview"
