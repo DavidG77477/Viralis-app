@@ -21,10 +21,11 @@ const loadTemplate = async (relativePath) => {
 
 try {
   console.log('📨 Loading HTML templates…');
-  const [confirmation, magicLink, passwordReset] = await Promise.all([
+  const [confirmation, magicLink, passwordReset, invite] = await Promise.all([
     loadTemplate('emails/templates/confirmation.html'),
     loadTemplate('emails/templates/magic-link.html'),
     loadTemplate('emails/templates/password-reset.html'),
+    loadTemplate('emails/templates/invite.html'),
   ]);
 
   const payload = {
@@ -34,6 +35,8 @@ try {
     mailer_templates_magic_link_content: magicLink,
     mailer_subjects_recovery: 'Réinitialisez votre mot de passe Viralis Studio',
     mailer_templates_recovery_content: passwordReset,
+    mailer_subjects_invite: 'You\'re Invited to Viralis Studio',
+    mailer_templates_invite_content: invite,
   };
 
   console.log('🚀 Uploading templates to Supabase project:', PROJECT_REF);
