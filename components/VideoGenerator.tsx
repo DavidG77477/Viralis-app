@@ -8,7 +8,6 @@ import type { Language } from '../App';
 import { translations } from '../translations';
 import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
-import { appendClosingClip } from '../services/videoPostProcessor';
 import SocialProofStats from './SocialProofStats';
 
 interface VideoGeneratorProps {
@@ -33,6 +32,194 @@ type StyleCategory = {
     options: StyleOption[];
 };
 
+const CAMERA_STYLE_LIBRARY: Record<Language, StyleCategory[]> = {
+    fr: [
+        {
+            id: 'law_enforcement',
+            title: 'Caméras opérationnelles',
+            description: 'Angles bruts des forces de l’ordre et équipes d’intervention.',
+            options: [
+                { value: 'bodycam_day', label: 'Bodycam policière (jour)', promptInstruction: 'POV bodycam sur gilet, léger fisheye, HUD/timestamp discret et secousses réalistes.' },
+                { value: 'bodycam_night', label: 'Bodycam policière (nuit)', promptInstruction: 'Bodycam nocturne ISO élevé, gyrophares, halos bleus/rouges et bruit numérique marqué.' },
+                { value: 'riot_helmet_cam', label: 'Caméra casque anti-émeute', promptInstruction: 'Point de vue casque avec visière, mouvements violents, sons étouffés et respiration du porteur.' },
+                { value: 'tactical_chest_cam', label: 'Chest cam SWAT', promptInstruction: 'Caméra de poitrine sur gilet tactique, déplacements rapides, reflets infrarouges et HUD minimal.' },
+                { value: 'swat_overwatch_drone', label: 'Drone d’intervention', promptInstruction: 'Vue aérienne style drone thermique, overlay cible et zooms rapides.' },
+            ],
+        },
+        {
+            id: 'surveillance',
+            title: 'Surveillance & CCTV',
+            description: 'Caméras fixes de magasins, parkings, entrepôts ou distributeurs.',
+            options: [
+                { value: 'store_cctv_day', label: 'Caméra magasin (jour)', promptInstruction: 'Plan fixe en hauteur, compression 480p, overlay date/heure et saturation faible façon CCTV.' },
+                { value: 'store_cctv_night', label: 'Caméra magasin (nuit)', promptInstruction: 'Vision nocturne monochrome, halos lumineux, silhouettes floues et timestamp rouge.' },
+                { value: 'warehouse_cctv', label: 'Entrepôt industriel', promptInstruction: 'CCTV grand angle au plafond, tonalité verdâtre et bruit vidéo constant.' },
+                { value: 'parking_cctv', label: 'Parking souterrain', promptInstruction: 'Perspective plafonnière, néons froids, distorsion fish-eye et compression agressive.' },
+                { value: 'atm_cctv', label: 'Caméra ATM', promptInstruction: 'Plan serré sur distributeur, fisheye discret, overlay banque + date et éclairage frontal dur.' },
+            ],
+        },
+        {
+            id: 'home_security',
+            title: 'Sécurité domestique',
+            description: 'Ring Doorbell, baby monitor ou caméras d’immeuble.',
+            options: [
+                { value: 'ring_day', label: 'Ring Doorbell (jour)', promptInstruction: 'Plan fixe de sonnette connectée en plein jour, perspective inclinée et compression légère.' },
+                { value: 'ring_night', label: 'Ring Doorbell (nuit)', promptInstruction: 'Mode vision nocturne infrarouge, halos bleutés et silhouettes rétroéclairées.' },
+                { value: 'baby_monitor', label: 'Baby monitor', promptInstruction: 'Caméra infrarouge dans une chambre, angle élevé, overlay volume/température, tonalité verte.' },
+                { value: 'nanny_cam', label: 'Nanny cam', promptInstruction: 'Caméra discrète posée sur une étagère, profondeur de champ large et ambiance intérieure chaleureuse.' },
+                { value: 'elevator_cam', label: 'Caméra d’ascenseur', promptInstruction: 'Grand angle dans un ascenseur inox, reflets métalliques et distorsion fisheye.' },
+            ],
+        },
+        {
+            id: 'mobile_social',
+            title: 'Smartphone & dashcam',
+            description: 'Captations improvisées depuis un téléphone, une dashcam ou une action cam.',
+            options: [
+                { value: 'smartphone_vertical', label: 'Smartphone vertical amateur', promptInstruction: 'Vidéo verticale tremblée, autofocus hésitant, exposition auto et audio ambiant brut.' },
+                { value: 'smartphone_horizontal', label: 'Smartphone horizontal stabilisé', promptInstruction: 'Clip 16:9 filmé à la main, légère stabilisation numérique et colorimétrie HDR.' },
+                { value: 'dashcam_day', label: 'Dashcam voiture (jour)', promptInstruction: 'Vue pare-brise, reflets sur le tableau de bord, overlay GPS minimal et vibrations moteur.' },
+                { value: 'dashcam_night', label: 'Dashcam voiture (nuit)', promptInstruction: 'Traînées lumineuses, pluie possible sur le pare-brise, ISO élevé et halos.' },
+                { value: 'action_helmet_cam', label: 'Caméra casque action', promptInstruction: 'Caméra sur casque de sport, mouvements rapides, bords courbés et bruit de vent.' },
+            ],
+        },
+        {
+            id: 'broadcast_journalism',
+            title: 'Journalisme & reportage',
+            description: 'Captations ENG, paparazzi ou livestream terrain.',
+            options: [
+                { value: 'news_shoulder_cam', label: 'Caméra épaule journaliste', promptInstruction: 'Caméra ENG sur l’épaule, zoom progressif, micro col de cygne visible et balance neutre.' },
+                { value: 'reporter_handheld', label: 'Reporter caméra à la main', promptInstruction: 'Prise de vue documentaire à main levée, zoom optique saccadé et micro HF dans le champ.' },
+                { value: 'paparazzi_zoom', label: 'Paparazzi téléobjectif', promptInstruction: 'Longue focale instable, mise au point hésitante, bruit d’obturateur et flashs agressifs.' },
+                { value: 'livestream_gimbal', label: 'Livestream gimbal IRL', promptInstruction: 'Vidéo stabilisée gimbal, overlay chat/donation, micro-cravate et ambiance rue en direct.' },
+                { value: 'webcam_diy', label: 'Webcam bricolée', promptInstruction: 'Plan fixe webcam 720p, éclairage domestique, profondeur de champ infinie et audio compressé.' },
+            ],
+        },
+    ],
+    en: [
+        {
+            id: 'law_enforcement',
+            title: 'Law enforcement cams',
+            description: 'Body cams, helmet cams and tactical drones.',
+            options: [
+                { value: 'bodycam_day', label: 'Police body cam (day)', promptInstruction: 'POV body cam on a vest, light fisheye, subtle HUD/timestamp and realistic micro shakes.' },
+                { value: 'bodycam_night', label: 'Police body cam (night)', promptInstruction: 'Night body cam with high ISO, flashing lights, red/blue halos and heavy noise.' },
+                { value: 'riot_helmet_cam', label: 'Riot helmet cam', promptInstruction: 'Helmet POV with visor reflections, violent camera motion, muffled audio and breathing.' },
+                { value: 'tactical_chest_cam', label: 'SWAT chest cam', promptInstruction: 'Chest-mounted cam on tactical gear, fast movements, IR highlights and minimal HUD.' },
+                { value: 'swat_overwatch_drone', label: 'Overwatch drone', promptInstruction: 'Thermal/visible drone feed hovering above an operation, target overlays and quick zooms.' },
+            ],
+        },
+        {
+            id: 'surveillance',
+            title: 'Surveillance & CCTV',
+            description: 'Retail stores, parking lots, warehouses or ATMs.',
+            options: [
+                { value: 'store_cctv_day', label: 'Store CCTV (day)', promptInstruction: 'High angle 480p feed with timestamp overlay, washed colors and analog artifacts.' },
+                { value: 'store_cctv_night', label: 'Store CCTV (night)', promptInstruction: 'Monochrome night vision, blown-out halos, blurry silhouettes and red timestamp.' },
+                { value: 'warehouse_cctv', label: 'Warehouse camera', promptInstruction: 'Ceiling-mounted CCTV, greenish tint, vertical smear and constant static noise.' },
+                { value: 'parking_cctv', label: 'Underground parking cam', promptInstruction: 'Ceiling POV, cold neon lights, fisheye distortion and aggressive compression.' },
+                { value: 'atm_cctv', label: 'ATM camera', promptInstruction: 'Tight fisheye shot on an ATM, bank overlay and harsh frontal lighting.' },
+            ],
+        },
+        {
+            id: 'home_security',
+            title: 'Home security',
+            description: 'Ring doorbells, baby monitors and elevator cams.',
+            options: [
+                { value: 'ring_day', label: 'Ring doorbell (day)', promptInstruction: 'Fixed smart doorbell shot in daylight, slight tilt, auto exposure and mild compression.' },
+                { value: 'ring_night', label: 'Ring doorbell (night)', promptInstruction: 'Infrared night mode, cyan glow, silhouetted visitors and vignetted corners.' },
+                { value: 'baby_monitor', label: 'Baby monitor', promptInstruction: 'Infrared nursery cam, top corner angle, on-screen sound/temperature overlay, pale green tones.' },
+                { value: 'nanny_cam', label: 'Hidden nanny cam', promptInstruction: 'Camera hidden on a shelf, deep depth of field, warm indoor lighting and subtle vignette.' },
+                { value: 'elevator_cam', label: 'Elevator cam', promptInstruction: 'Ceiling fisheye inside a stainless elevator, reflections everywhere, harsh overhead lights.' },
+            ],
+        },
+        {
+            id: 'mobile_social',
+            title: 'Smartphone & dashcam',
+            description: 'Phone footage, dashcam or action helmet shots.',
+            options: [
+                { value: 'smartphone_vertical', label: 'Vertical phone clip', promptInstruction: 'Handheld vertical video, shaky movement, auto exposure pulses and raw ambient audio.' },
+                { value: 'smartphone_horizontal', label: 'Horizontal phone clip', promptInstruction: '16:9 handheld video, slight EIS stabilization, HDR highlights and realistic skin tones.' },
+                { value: 'dashcam_day', label: 'Dashcam (day)', promptInstruction: 'Windshield POV, reflections on the dash, subtle GPS overlay and engine vibration.' },
+                { value: 'dashcam_night', label: 'Dashcam (night)', promptInstruction: 'Night dashcam with streaking headlights, wet windshield and high ISO noise.' },
+                { value: 'action_helmet_cam', label: 'Action helmet cam', promptInstruction: 'Helmet-mounted POV, extreme motion, curved edges and audible wind/breathing.' },
+            ],
+        },
+        {
+            id: 'broadcast_journalism',
+            title: 'Broadcast & journalism',
+            description: 'ENG crews, paparazzi lenses or live IRL streams.',
+            options: [
+                { value: 'news_shoulder_cam', label: 'News shoulder cam', promptInstruction: 'ENG camera on the shoulder, slow zooms, visible on-camera mic and neutral white balance.' },
+                { value: 'reporter_handheld', label: 'Handheld reporter', promptInstruction: 'Documentary-style handheld, quick zooms and reporter microphone in frame.' },
+                { value: 'paparazzi_zoom', label: 'Paparazzi telephoto', promptInstruction: 'Long telephoto lens, jittery focus pulls, shutter clicks and aggressive flash bursts.' },
+                { value: 'livestream_gimbal', label: 'Livestream gimbal', promptInstruction: 'Gimbal-stabilized IRL stream, chat/donation overlays, lav mic audio and street ambience.' },
+                { value: 'webcam_diy', label: 'DIY webcam', promptInstruction: 'Static 720p webcam, home office lighting, infinite focus and compressed mic audio.' },
+            ],
+        },
+    ],
+    es: [
+        {
+            id: 'law_enforcement',
+            title: 'Cámaras operativas',
+            description: 'Ángulos crudos usados por policía y equipos tácticos.',
+            options: [
+                { value: 'bodycam_day', label: 'Bodycam policial (día)', promptInstruction: 'POV bodycam en el chaleco, ligero ojo de pez, HUD/timestamp discreto y sacudidas reales.' },
+                { value: 'bodycam_night', label: 'Bodycam policial (noche)', promptInstruction: 'Bodycam nocturna con ISO alto, luces rojas/azules y mucho ruido digital.' },
+                { value: 'riot_helmet_cam', label: 'Cámara casco antidisturbios', promptInstruction: 'Vista desde el casco con visera, movimientos bruscos, audio amortiguado y respiración.' },
+                { value: 'tactical_chest_cam', label: 'Chest cam SWAT', promptInstruction: 'Cámara en el pecho sobre chaleco táctico, movimientos rápidos, reflejos IR y HUD mínimo.' },
+                { value: 'swat_overwatch_drone', label: 'Drone de apoyo', promptInstruction: 'Feed aéreo estilo dron térmico, overlays de objetivo y zooms rápidos.' },
+            ],
+        },
+        {
+            id: 'surveillance',
+            title: 'Vigilancia & CCTV',
+            description: 'Cámaras fijas de tiendas, parkings, almacenes o cajeros.',
+            options: [
+                { value: 'store_cctv_day', label: 'CCTV tienda (día)', promptInstruction: 'Plano fijo superior, compresión 480p, timestamp y colores lavados.' },
+                { value: 'store_cctv_night', label: 'CCTV tienda (noche)', promptInstruction: 'Visión nocturna monocroma, halos luminosos y timestamp rojo.' },
+                { value: 'warehouse_cctv', label: 'CCTV almacén', promptInstruction: 'Gran angular en el techo de un almacén, tinte verdoso y ruido constante.' },
+                { value: 'parking_cctv', label: 'CCTV estacionamiento', promptInstruction: 'Perspectiva desde el techo, neones fríos, distorsión ojo de pez y compresión fuerte.' },
+                { value: 'atm_cctv', label: 'Cámara de cajero', promptInstruction: 'Primer plano ojo de pez sobre un cajero, overlay del banco y luz frontal dura.' },
+            ],
+        },
+        {
+            id: 'home_security',
+            title: 'Seguridad doméstica',
+            description: 'Ring Doorbell, baby monitor o cámaras de edificio.',
+            options: [
+                { value: 'ring_day', label: 'Ring Doorbell (día)', promptInstruction: 'Plano fijo de timbre inteligente, ligera inclinación y autoexposición.' },
+                { value: 'ring_night', label: 'Ring Doorbell (noche)', promptInstruction: 'Visión nocturna IR, brillo azul verdoso y siluetas retroiluminadas.' },
+                { value: 'baby_monitor', label: 'Baby monitor', promptInstruction: 'Cámara infrarroja en la habitación, ángulo elevado, overlay de sonido/temperatura.' },
+                { value: 'nanny_cam', label: 'Cámara nanny cam', promptInstruction: 'Cámara oculta en un estante, profundidad de campo amplia y ambiente cálido.' },
+                { value: 'elevator_cam', label: 'Cámara de ascensor', promptInstruction: 'Gran angular en el techo del ascensor, reflejos metálicos y distorsión.' },
+            ],
+        },
+        {
+            id: 'mobile_social',
+            title: 'Smartphone & dashcam',
+            description: 'Grabaciones espontáneas con móvil, dashcam o casco.',
+            options: [
+                { value: 'smartphone_vertical', label: 'Móvil vertical amateur', promptInstruction: 'Video vertical tembloroso, autofocus indeciso, autoexposición y audio ambiente sin filtrar.' },
+                { value: 'smartphone_horizontal', label: 'Móvil horizontal estabilizado', promptInstruction: 'Clip 16:9 grabado a mano, ligera estabilización digital y look HDR.' },
+                { value: 'dashcam_day', label: 'Dashcam (día)', promptInstruction: 'POV desde el parabrisas, reflejos del salpicadero y vibración del motor.' },
+                { value: 'dashcam_night', label: 'Dashcam (noche)', promptInstruction: 'Dashcam nocturna con estelas de luz, parabrisas mojado y ruido alto.' },
+                { value: 'action_helmet_cam', label: 'Cámara casco acción', promptInstruction: 'POV montado en casco, movimientos extremos, bordes curvos y viento audible.' },
+            ],
+        },
+        {
+            id: 'broadcast_journalism',
+            title: 'Periodismo y directo',
+            description: 'Unidades ENG, paparazzi o streams IRL.',
+            options: [
+                { value: 'news_shoulder_cam', label: 'Cámara ENG al hombro', promptInstruction: 'Cámara ENG sobre el hombro, zooms suaves, micro visible y balance neutro.' },
+                { value: 'reporter_handheld', label: 'Reportero cámara en mano', promptInstruction: 'Estilo documental a pulso, zoom óptico brusco y micrófono HF en cuadro.' },
+                { value: 'paparazzi_zoom', label: 'Teleobjetivo paparazzi', promptInstruction: 'Teleobjetivo largo, foco titubeante, disparos de obturador y flashes agresivos.' },
+                { value: 'livestream_gimbal', label: 'Directo con gimbal', promptInstruction: 'Stream IRL estabilizado, overlay de chat/donaciones y micro de solapa.' },
+                { value: 'webcam_diy', label: 'Webcam casera', promptInstruction: 'Plano fijo 720p, iluminación casera, enfoque infinito y audio comprimido.' },
+            ],
+        },
+    ],
+};
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     userTokens,
     setUserTokens,
@@ -52,23 +239,20 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     const [useThinkingMode, setUseThinkingMode] = useState(false);
     const themeOptions = useMemo(() => t.generatorThemeOptions ?? [], [t]);
     const musicOptions = useMemo(() => t.generatorMusicOptions ?? [], [t]);
-    const styleCategories = useMemo<StyleCategory[]>(() => {
-        const categories = t.generatorStyleCategories as StyleCategory[] | undefined;
-        return Array.isArray(categories) ? categories : [];
-    }, [t]);
+    const styleCategories = useMemo<StyleCategory[]>(() => CAMERA_STYLE_LIBRARY[language] ?? [], [language]);
 
-    const [selectedTheme, setSelectedTheme] = useState<string>(themeOptions[0]?.value ?? '');
-    const [selectedMusic, setSelectedMusic] = useState<string>(musicOptions[0]?.value ?? '');
+    const [selectedTheme, setSelectedTheme] = useState<string>('none');
+    const [selectedMusic, setSelectedMusic] = useState<string>('none');
     const [selectedStyle, setSelectedStyle] = useState<string>('none');
     const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
     const [isMusicDropdownOpen, setIsMusicDropdownOpen] = useState(false);
     const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
     const selectedThemeOption = useMemo(
-        () => themeOptions.find(option => option.value === selectedTheme),
+        () => (selectedTheme === 'none' ? null : themeOptions.find(option => option.value === selectedTheme)),
         [themeOptions, selectedTheme]
     );
     const selectedMusicOption = useMemo(
-        () => musicOptions.find(option => option.value === selectedMusic),
+        () => (selectedMusic === 'none' ? null : musicOptions.find(option => option.value === selectedMusic)),
         [musicOptions, selectedMusic]
     );
     const selectedStyleOption = useMemo(() => {
@@ -112,17 +296,19 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
 
     useEffect(() => {
         if (!themeOptions.length) {
-            setSelectedTheme('');
+            setSelectedTheme('none');
             setIsThemeDropdownOpen(false);
         } else if (!themeOptions.some(option => option.value === selectedTheme)) {
-            setSelectedTheme(themeOptions[0].value);
+            const noneOption = themeOptions.find(option => option.value === 'none');
+            setSelectedTheme(noneOption ? 'none' : themeOptions[0].value);
         }
 
         if (!musicOptions.length) {
-            setSelectedMusic('');
+            setSelectedMusic('none');
             setIsMusicDropdownOpen(false);
         } else if (!musicOptions.some(option => option.value === selectedMusic)) {
-            setSelectedMusic(musicOptions[0].value);
+            const noneMusic = musicOptions.find(option => option.value === 'none');
+            setSelectedMusic(noneMusic ? 'none' : musicOptions[0].value);
         }
     }, [themeOptions, selectedTheme, musicOptions, selectedMusic]);
 
@@ -238,7 +424,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             setLoadingMessage(t.enhancingPromptMessage ?? t.loadingCreative);
             setUserTokens(prev => prev - SCRIPT_GENERATION_COST);
             try {
-                const enhancedPrompt = await enhancePromptWithTheme(prompt, { themeInstruction, musicInstruction, styleInstruction });
+                const enhancedPrompt = await enhancePromptWithTheme(prompt, {
+                    themeInstruction,
+                    musicInstruction,
+                    styleInstruction,
+                    aspectRatio,
+                    language,
+                    durationSec: 20,
+                });
                 const script = await generateScript(enhancedPrompt);
                 setGeneratedScript(script);
                 setPrompt(prev => `${prev}\n\n${t.generatedScriptIdea}:\n${script}`);
@@ -270,7 +463,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 imagePayload = { base64, mimeType: imageFile.type };
             }
             
-                const enhancedPrompt = await enhancePromptWithTheme(prompt, { themeInstruction, musicInstruction, styleInstruction });
+                const enhancedPrompt = await enhancePromptWithTheme(prompt, {
+                    themeInstruction,
+                    musicInstruction,
+                    styleInstruction,
+                    aspectRatio,
+                    language,
+                    durationSec: 30,
+                });
             setLoadingMessage(t.loadingMessages[0]);
             if (shouldPersist) {
                 setUserTokens(prev => prev - videoCost);
@@ -337,7 +537,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         }
     };
 
-    const handleDownload = useCallback(async () => {
+    const handleDownload = useCallback(() => {
         if (!generatedVideoUrl || isDownloading) {
             return;
         }
@@ -346,25 +546,13 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         setDownloadMessage(t.downloadPreparing ?? 'Préparation du téléchargement…');
 
         try {
-            const processed = await appendClosingClip(generatedVideoUrl, {
-                resolutionLabel: resolution,
-                requestedAspectRatio: aspectRatio,
-                preferredFileName: `viralis-${Date.now()}`,
-            });
-
-            if (!processed) {
-                throw new Error('Post-traitement impossible.');
-            }
-
-            setDownloadMessage(t.downloadFinalizing ?? 'Finalisation…');
-            const url = URL.createObjectURL(processed.blob);
             const link = document.createElement('a');
-            link.href = url;
-            link.download = processed.outputFileName;
+            link.href = generatedVideoUrl;
+            link.download = `viralis-${Date.now()}.mp4`;
+            link.target = '_blank';
             document.body.appendChild(link);
             link.click();
             link.remove();
-            URL.revokeObjectURL(url);
             setDownloadMessage(null);
         } catch (downloadError) {
             console.error('Erreur lors du téléchargement :', downloadError);
@@ -373,15 +561,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             setIsDownloading(false);
             setDownloadMessage(null);
         }
-    }, [
-        generatedVideoUrl,
-        isDownloading,
-        resolution,
-        aspectRatio,
-        t.downloadPreparing,
-        t.downloadFinalizing,
-        t.downloadError,
-    ]);
+    }, [generatedVideoUrl, isDownloading, t.downloadPreparing, t.downloadError]);
 
     return (
         <>

@@ -11,7 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
-  const { user, isLoading, signInWithGoogle, signOut } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
     
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -67,18 +67,18 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
                 <div className="flex items-center space-x-3">
                     {!user && !isLoading && (
                       <>
-                        <button
-                          onClick={signInWithGoogle}
+                        <Link
+                          to="/auth"
                           className="rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10"
                         >
                           {translations[language].login}
-                        </button>
-                        <button
-                          onClick={signInWithGoogle}
+                        </Link>
+                        <Link
+                          to="/register"
                           className="rounded-lg bg-brand-green px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-brand-green/80"
                         >
-                          {language === 'en' ? 'Continue with Google' : language === 'es' ? 'Google' : 'Continuer avec Google'}
-                        </button>
+                          {language === 'en' ? 'Sign up' : language === 'es' ? 'Crear cuenta' : "S'inscrire"}
+                        </Link>
                       </>
                     )}
                     {user && (

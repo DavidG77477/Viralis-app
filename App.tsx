@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
+import RegisterPage from './pages/RegisterPage';
+import PasswordResetPage from './pages/PasswordResetPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminAuthReady from './pages/AdminAuthReady';
 import PricingPage from './pages/PricingPage';
@@ -59,6 +61,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage language={language} setLanguage={setLanguage} />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/auth/reset" element={<PasswordResetPage />} />
             <Route
               path="/dashboard"
               element={

@@ -200,7 +200,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
           email: metadata.email,
           name: metadata.name,
           avatarUrl: metadata.avatarUrl,
-          provider: 'google',
+          provider: 'email',
         });
       }
 

@@ -218,6 +218,9 @@ interface PromptEnhancementOptions {
     themeInstruction?: string;
     musicInstruction?: string;
     styleInstruction?: string;
+    aspectRatio?: string;
+    language?: string;
+    durationSec?: number | null;
 }
 
 const buildInstructionSummary = (options?: PromptEnhancementOptions): string => {
@@ -227,13 +230,19 @@ const buildInstructionSummary = (options?: PromptEnhancementOptions): string => 
 
     const parts: string[] = [];
     if (options.themeInstruction) {
-        parts.push(`Thème visuel : ${options.themeInstruction}`);
+        parts.push(`Thème : ${options.themeInstruction}`);
     }
     if (options.musicInstruction) {
         parts.push(`Ambiance musicale : ${options.musicInstruction}`);
     }
     if (options.styleInstruction) {
-        parts.push(`Style artistique : ${options.styleInstruction}`);
+        parts.push(`Caméra : ${options.styleInstruction}`);
+    }
+    if (options.aspectRatio) {
+        parts.push(`Ratio : ${options.aspectRatio}`);
+    }
+    if (typeof options.durationSec === 'number') {
+        parts.push(`Durée cible : ${options.durationSec}s`);
     }
 
     return parts.length > 0 ? parts.join(' | ') : 'libre';
@@ -254,6 +263,22 @@ export const enhancePromptWithTheme = async (prompt: string, options?: PromptEnh
     }
 
     try {
+        const systemPrompt = [
+            'Tu es un Video Prompt Optimizer. Ton objectif : recevoir le prompt brut de l’utilisateur',
+            'et l’améliorer pour le rendre viral tout en respectant strictement les paramètres fournis.',
+            'Retourne UNIQUEMENT un JSON valide suivant le schéma imposé (pas de texte hors JSON).'
+        ].join(' ');
+
+        const payload = {
+            input_style: options?.styleInstruction ?? 'libre',
+            input_theme: options?.themeInstruction ?? 'libre',
+            input_music: options?.musicInstruction ?? 'libre',
+            input_duration_sec: options?.durationSec ?? null,
+            input_aspect_ratio: options?.aspectRatio ?? '9:16',
+            input_language: options?.language ?? 'fr',
+            input_prompt: prompt,
+        };
+
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -261,31 +286,19 @@ export const enhancePromptWithTheme = async (prompt: string, options?: PromptEnh
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'gpt-4',
+                model: 'gpt-5-thinking-mini',
+                temperature: 0.7,
+                max_tokens: 1024,
                 messages: [
                     {
                         role: 'system',
-                        content: [
-                            'Tu es un expert en marketing vidéo court, spécialiste des prompts viraux.',
-                            'Tu réécris le prompt utilisateur pour TikTok/Shorts en intégrant le ton demandé.',
-                            'Le résultat doit être direct, descriptif et exploitable par une IA vidéo (KIE).',
-                            'Ajoute des précisions sensorielles, de la dynamique et une structure claire des plans.'
-                        ].join(' '),
+                        content: systemPrompt,
                     },
                     {
                         role: 'user',
-                        content: `
-Instructions créatives : ${buildInstructionSummary(options)}
-
-Prompt original :
-${prompt}
-
-Réécris un seul prompt optimisé (en français si l'original est en français, sinon en anglais) prêt pour une IA vidéo. Utilise un ton accrocheur, mentionne les émotions, le rythme, les transitions, et précise l'ambiance sonore/musicale adaptée. Donne plusieurs plans dynamiques et indications de montage.
-                        `.trim(),
+                        content: JSON.stringify(payload, null, 2),
                     },
                 ],
-                temperature: 0.7,
-                max_tokens: 280,
             }),
         });
 
@@ -295,8 +308,22 @@ Réécris un seul prompt optimisé (en français si l'original est en français,
         }
 
         const data = await response.json();
-        const enhanced = data.choices?.[0]?.message?.content?.trim();
-        return enhanced || fallbackPrompt;
+        const rawContent = data.choices?.[0]?.message?.content?.trim();
+        if (!rawContent) {
+            return fallbackPrompt;
+        }
+
+        try {
+            const parsed = JSON.parse(rawContent);
+            if (parsed && typeof parsed.kie_prompt === 'string' && parsed.kie_prompt.trim().length > 0) {
+                return parsed.kie_prompt.trim();
+            }
+        } catch (jsonErr) {
+            console.warn('Unable to parse optimizer JSON, falling back to raw content.', jsonErr);
+            return rawContent;
+        }
+
+        return fallbackPrompt;
     } catch (error) {
         console.error('Error enhancing prompt with theme:', error);
         return fallbackPrompt;

@@ -14,7 +14,7 @@ export const translations = {
         heroSocialProof: {
             introText: "Déjà membre de Viralis Studio ?",
             linkText: "Connexion",
-            linkHref: "/auth?mode=sign-in",
+            linkHref: "/auth",
             totalUsers: 2291,
             totalUsersOverride: "10 000+",
             totalLabel: "Créateurs heureux",
@@ -265,12 +265,12 @@ export const translations = {
         generatorTitle: "Passez de l'Idée à la Vidéo",
         generatorSubtitle: "C'est ici que la magie opère. Utilisez notre IA pour générer votre prochaine vidéo virale en quelques secondes.",
         generatorSettingsTitle: "Paramètres de Génération",
-        generatorStyleLabel: "Style artistique",
-        generatorStyleDescription: "Définissez l'ADN visuel de votre vidéo. Choisissez un style précis ou laissez l'IA improviser.",
-        generatorStyleButton: "Choisir un style artistique",
+        generatorStyleLabel: "Style de la vidéo",
+        generatorStyleDescription: "Choisis le dispositif de prise de vue (bodycam, CCTV, smartphone, dashcam…) pour forcer l’IA à respecter cet angle.",
+        generatorStyleButton: "Choisir un style de caméra",
         generatorStyleNone: "Aucun style (laisser l'IA choisir)",
-        generatorStyleModalTitle: "Sélection du style artistique",
-        generatorStyleModalSubtitle: "Parcourez les univers visuels et choisissez celui qui correspond le mieux à votre idée.",
+        generatorStyleModalTitle: "Sélection du style de caméra",
+        generatorStyleModalSubtitle: "Inspire-toi des caméras réelles les plus virales : l’IA collera exactement à cette prise de vue.",
         generatorStyleCategories: [
             {
                 id: "hyper_realism",
@@ -373,6 +373,7 @@ export const translations = {
         generatorThemeLabel: "Thème de la vidéo",
         generatorThemeDescription: "Affinez l'ambiance générale pour guider l'IA et obtenir un rendu cohérent.",
         generatorThemeOptions: [
+            { value: "none", label: "Aucun (laisser le prompt libre)" },
             { value: "horror", label: "Horreur cinématique", color: "#FE4A49", promptInstruction: "Créer un univers angoissant, sombre, avec une tension progressive digne d'un thriller viral." },
             { value: "joyful", label: "Énergie joyeuse", color: "#FFD166", promptInstruction: "Mettre en scène une ambiance lumineuse, positive et motivante qui capte l'attention." },
             { value: "fantasy", label: "Fantastique immersif", color: "#9C6BFF", promptInstruction: "Déployer un monde magique ou futuriste riche en détails visuels spectaculaires." },
@@ -410,6 +411,7 @@ export const translations = {
         generatorMusicLabel: "Ambiance musicale",
         generatorMusicDescription: "Choisissez une couleur sonore pour renforcer l'émotion et la dynamique.",
         generatorMusicOptions: [
+            { value: "none", label: "Aucune ambiance (laisser le prompt libre)" },
             { value: "cinematic", label: "Épique cinématique", color: "#5D3FD3", promptInstruction: "Bande-son orchestrale avec percussions puissantes et crescendos dramatiques." },
             { value: "synthwave", label: "Synthwave futuriste", color: "#A855F7", promptInstruction: "Synthés rétro, basses lourdes et rythme électronique années 80." },
             { value: "lofi", label: "Lo-fi chill", color: "#64DFDF", promptInstruction: "Battements doux, crackle de vinyle et ambiance relaxante." },
@@ -510,7 +512,7 @@ export const translations = {
         heroSocialProof: {
             introText: "Already using Viralis Studio?",
             linkText: "Sign In",
-            linkHref: "/auth?mode=sign-in",
+            linkHref: "/auth",
             totalUsers: 2291,
             totalUsersOverride: "10,000+",
             totalLabel: "Happy customers",
@@ -761,12 +763,12 @@ export const translations = {
         generatorTitle: "Go from Idea to Video",
         generatorSubtitle: "This is where the magic happens. Use our AI to generate your next viral video in seconds.",
         generatorSettingsTitle: "Generation Settings",
-        generatorStyleLabel: "Artistic style",
-        generatorStyleDescription: "Define the visual DNA of your video. Pick a precise art direction or let the AI improvise.",
-        generatorStyleButton: "Choose an artistic style",
+        generatorStyleLabel: "Video style",
+        generatorStyleDescription: "Pick the recording device (body cam, CCTV, smartphone, dashcam…) so the AI sticks to that POV.",
+        generatorStyleButton: "Choose a camera style",
         generatorStyleNone: "No style (let the AI decide)",
-        generatorStyleModalTitle: "Art style selection",
-        generatorStyleModalSubtitle: "Browse iconic aesthetics and choose the one that matches your vision.",
+        generatorStyleModalTitle: "Camera style selection",
+        generatorStyleModalSubtitle: "Select a realistic camera angle— the AI will enforce it inside the prompt.",
         generatorStyleCategories: [
             {
                 id: "hyper_realism",
@@ -869,6 +871,7 @@ export const translations = {
         generatorThemeLabel: "Video theme",
         generatorThemeDescription: "Fine-tune the overall mood to guide the AI and keep the result on brand.",
         generatorThemeOptions: [
+            { value: "none", label: "None (stick to the user prompt)" },
             { value: "horror", label: "Cinematic horror", color: "#FE4A49", promptInstruction: "Create a chilling, suspenseful atmosphere with dramatic pacing fit for viral thrillers." },
             { value: "joyful", label: "Joyful energy", color: "#FFD166", promptInstruction: "Deliver a bright, positive, high-energy vibe that instantly hooks the audience." },
             { value: "fantasy", label: "Immersive fantasy", color: "#9C6BFF", promptInstruction: "Build a magical or futuristic world packed with spectacular visual details." },
@@ -906,6 +909,7 @@ export const translations = {
         generatorMusicLabel: "Music vibe",
         generatorMusicDescription: "Pick a soundscape so the AI suggests the perfect audio energy.",
         generatorMusicOptions: [
+            { value: "none", label: "No music (prompt only)" },
             { value: "cinematic", label: "Epic cinematic", color: "#5D3FD3", promptInstruction: "Orchestral score with powerful drums, brass hits and dramatic crescendos." },
             { value: "synthwave", label: "Futuristic synthwave", color: "#A855F7", promptInstruction: "Retro synth leads, heavy basslines and 80s-style electronic pulse." },
             { value: "lofi", label: "Lo-fi chill", color: "#64DFDF", promptInstruction: "Soft beats, vinyl crackle and relaxed groove for study/relax moods." },
@@ -1005,7 +1009,7 @@ export const translations = {
         heroSocialProof: {
             introText: "¿Ya usas Viralis Studio?",
             linkText: "Iniciar sesión",
-            linkHref: "/auth?mode=sign-in",
+            linkHref: "/auth",
             totalUsers: 2291,
             totalUsersOverride: "10,000+",
             totalLabel: "Clientes felices",
@@ -1256,12 +1260,12 @@ export const translations = {
         generatorTitle: "Pasa de la Idea al Video",
         generatorSubtitle: "Aquí es donde ocurre la magia. Usa nuestra IA para generar tu próximo video viral en segundos.",
         generatorSettingsTitle: "Ajustes de Generación",
-        generatorStyleLabel: "Estilo artístico",
-        generatorStyleDescription: "Define el ADN visual de tu video. Elige una dirección artística precisa o deja que la IA improvise.",
-        generatorStyleButton: "Elegir estilo artístico",
+        generatorStyleLabel: "Estilo del video",
+        generatorStyleDescription: "Elige la cámara (bodycam, CCTV, smartphone, dashcam…) para que la IA mantenga exactamente ese punto de vista.",
+        generatorStyleButton: "Elegir estilo de cámara",
         generatorStyleNone: "Sin estilo (dejar que la IA decida)",
-        generatorStyleModalTitle: "Selección de estilo artístico",
-        generatorStyleModalSubtitle: "Explora estéticas icónicas y elige la que mejor se adapte a tu visión.",
+        generatorStyleModalTitle: "Selección de estilo de cámara",
+        generatorStyleModalSubtitle: "Selecciona un ángulo de cámara realista: la IA lo integrará directamente en el prompt.",
         generatorStyleCategories: [
             {
                 id: "hyper_realism",
@@ -1364,6 +1368,7 @@ export const translations = {
         generatorThemeLabel: "Tema del video",
         generatorThemeDescription: "Ajusta la atmósfera general para guiar la IA y mantener la coherencia del resultado.",
         generatorThemeOptions: [
+            { value: "none", label: "Ninguno (usar solo el prompt)" },
             { value: "horror", label: "Terror cinematográfico", color: "#FE4A49", promptInstruction: "Crear un universo inquietante y oscuro, con una tensión progresiva digna de un thriller viral." },
             { value: "joyful", label: "Energía alegre", color: "#FFD166", promptInstruction: "Transmitir una vibra luminosa, positiva y motivadora que atrape al público." },
             { value: "fantasy", label: "Fantástico inmersivo", color: "#9C6BFF", promptInstruction: "Desplegar un mundo mágico o futurista, lleno de detalles visuales espectaculares." },
@@ -1401,6 +1406,7 @@ export const translations = {
         generatorMusicLabel: "Ambiente musical",
         generatorMusicDescription: "Elige la banda sonora ideal para potenciar la emoción del video.",
         generatorMusicOptions: [
+            { value: "none", label: "Sin música (solo prompt)" },
             { value: "cinematic", label: "Épico cinematográfico", color: "#5D3FD3", promptInstruction: "Partitura orquestal con percusiones potentes y crescendos dramáticos." },
             { value: "synthwave", label: "Synthwave futurista", color: "#A855F7", promptInstruction: "Sintetizadores retro, líneas de bajo marcadas y pulso electrónico ochentero." },
             { value: "lofi", label: "Lo-fi relajado", color: "#64DFDF", promptInstruction: "Beats suaves, ruido de vinilo y ambiente chill para un mood tranquilo." },

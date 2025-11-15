@@ -3,15 +3,15 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import logoImage from '../attached_assets/LOGO.png';
 import { useAuth } from '../contexts/AuthContext';
 
-const AuthPage: React.FC = () => {
-  const { user, isLoading, signInWithPassword, sendMagicLink } = useAuth();
+const RegisterPage: React.FC = () => {
+  const { user, isLoading, signUpWithEmail } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [magicLinkMessage, setMagicLinkMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMagicLoading, setIsMagicLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -26,47 +26,39 @@ const AuthPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setMagicLinkMessage(null);
+    setSuccessMessage(null);
 
-    if (!email || !password) {
-      setError('Merci de renseigner ton email et ton mot de passe.');
+    if (!email || !password || !confirmPassword) {
+      setError('Merci de remplir tous les champs.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await signInWithPassword(email, password);
-      navigate('/dashboard');
-    } catch (authError) {
+      const data = await signUpWithEmail(email, password);
+      if (data.session) {
+        navigate('/dashboard');
+        return;
+      }
+      setSuccessMessage("Ton compte a été créé. Clique sur le lien reçu pour accéder à ton tableau de bord.");
+    } catch (signUpError) {
       const message =
-        authError && typeof authError === 'object' && 'message' in authError
-          ? (authError as { message?: string }).message
-          : "Impossible de te connecter. Vérifie tes identifiants.";
-      setError(message ?? "Impossible de te connecter. Vérifie tes identifiants.");
+        signUpError && typeof signUpError === 'object' && 'message' in signUpError
+          ? (signUpError as { message?: string }).message
+          : "Inscription impossible. Vérifie les informations saisies.";
+      setError(message ?? "Inscription impossible. Vérifie les informations saisies.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleMagicLink = async () => {
-    if (!email) {
-      setError('Entre ton email pour recevoir un lien magique.');
-      return;
-    }
-    setError(null);
-    setMagicLinkMessage(null);
-    setIsMagicLoading(true);
-    try {
-      await sendMagicLink(email);
-      setMagicLinkMessage('Lien envoyé ! Consulte ta boîte mail pour accéder au tableau de bord.');
-    } catch (linkError) {
-      const message =
-        linkError && typeof linkError === 'object' && 'message' in linkError
-          ? (linkError as { message?: string }).message
-          : 'Impossible d’envoyer le lien magique. Réessaie.';
-      setError(message ?? 'Impossible d’envoyer le lien magique. Réessaie.');
-    } finally {
-      setIsMagicLoading(false);
     }
   };
 
@@ -84,9 +76,9 @@ const AuthPage: React.FC = () => {
           </div>
 
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-3">Connexion</h2>
+            <h2 className="text-3xl font-bold text-white mb-3">Créer un compte</h2>
             <p className="text-slate-300 text-base">
-              Connecte-toi avec ton email pour générer des vidéos, suivre tes jetons et retrouver ton historique.
+              Rejoins Viralis Studio pour générer tes vidéos IA et suivre ton utilisation de jetons.
             </p>
           </div>
 
@@ -94,18 +86,18 @@ const AuthPage: React.FC = () => {
             {error && (
               <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">{error}</div>
             )}
-            {magicLinkMessage && (
+            {successMessage && (
               <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">
-                {magicLinkMessage}
+                {successMessage}
               </div>
             )}
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1">
+                <label htmlFor="signup-email" className="block text-sm font-medium text-slate-200 mb-1">
                   Email
                 </label>
                 <input
-                  id="email"
+                  id="signup-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -116,17 +108,32 @@ const AuthPage: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-1">
+                <label htmlFor="signup-password" className="block text-sm font-medium text-slate-200 mb-1">
                   Mot de passe
                 </label>
                 <input
-                  id="password"
+                  id="signup-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
                   placeholder="••••••••"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-slate-200 mb-1">
+                  Confirmer le mot de passe
+                </label>
+                <input
+                  id="signup-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
                 />
               </div>
 
@@ -135,23 +142,15 @@ const AuthPage: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full rounded-lg bg-brand-green/90 hover:bg-brand-green text-slate-950 font-semibold py-2.5 transition disabled:opacity-60"
               >
-                {isSubmitting ? 'Connexion…' : 'Se connecter'}
+                {isSubmitting ? 'Création du compte…' : 'Créer mon compte'}
               </button>
             </form>
 
-            <div className="mt-4 text-sm text-slate-300 flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={handleMagicLink}
-                className="text-brand-green hover:text-brand-green/80 transition disabled:opacity-60"
-                disabled={isMagicLoading}
-              >
-                {isMagicLoading ? 'Envoi du lien…' : 'Recevoir un lien magique'}
-              </button>
+            <div className="mt-4 text-center text-sm text-slate-300">
               <p>
-                Pas encore de compte ?{' '}
-                <Link to="/register" className="text-brand-green hover:text-brand-green/80 transition font-semibold">
-                  Créer un compte
+                Déjà membre ?{' '}
+                <Link to="/auth" className="text-brand-green hover:text-brand-green/80 transition font-semibold">
+                  Se connecter
                 </Link>
               </p>
             </div>
@@ -159,13 +158,15 @@ const AuthPage: React.FC = () => {
         </div>
 
         <div className="mt-6 text-center">
-          <a href="/" className="text-brand-green hover:text-brand-green/80 transition-colors text-sm">
+          <Link to="/" className="text-brand-green hover:text-brand-green/80 transition-colors text-sm">
             ← Retour à l'accueil
-          </a>
+          </Link>
         </div>
       </div>
     </div>
   );
 };
 
-export default AuthPage;
+export default RegisterPage;
+
+
