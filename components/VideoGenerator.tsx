@@ -254,6 +254,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
     const [isMusicDropdownOpen, setIsMusicDropdownOpen] = useState(false);
     const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
+    const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
     const selectedThemeOption = useMemo(
         () => (selectedTheme === 'none' ? null : themeOptions.find(option => option.value === selectedTheme)),
         [themeOptions, selectedTheme]
@@ -274,8 +275,13 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         }
         return null;
     }, [selectedStyle, styleCategories]);
+    const selectedModelOption = useMemo(() => {
+        if (!selectedModel) return null;
+        return AVAILABLE_MODELS.find(m => m.value === selectedModel);
+    }, [selectedModel]);
     const themeDropdownRef = useRef<HTMLDivElement | null>(null);
     const musicDropdownRef = useRef<HTMLDivElement | null>(null);
+    const modelDropdownRef = useRef<HTMLDivElement | null>(null);
     
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState(t.loadingMessages[0]);
@@ -347,6 +353,9 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             }
             if (musicDropdownRef.current && !musicDropdownRef.current.contains(target)) {
                 setIsMusicDropdownOpen(false);
+            }
+            if (modelDropdownRef.current && !modelDropdownRef.current.contains(target)) {
+                setIsModelDropdownOpen(false);
             }
         };
 
@@ -477,6 +486,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         setIsThemeDropdownOpen(false);
         setIsMusicDropdownOpen(false);
         setIsStyleModalOpen(false);
+        setIsModelDropdownOpen(false);
 
         setIsLoading(true);
         setLoadingMessage(t.enhancingPromptMessage ?? t.loadingMessages[0]);
@@ -677,6 +687,135 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                             </div>
                         </div>
                         <div className="space-y-5">
+                        <div ref={modelDropdownRef} className="relative">
+                            <label className="text-slate-300 font-medium flex items-center gap-2 mb-2">
+                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-green/10 text-brand-green font-semibold">🤖</span>
+                                AI Model
+                            </label>
+                            <p className="text-xs text-slate-400 mb-3">
+                                Choose the AI model for video generation
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsModelDropdownOpen(prev => !prev);
+                                    setIsThemeDropdownOpen(false);
+                                    setIsMusicDropdownOpen(false);
+                                    setIsStyleModalOpen(false);
+                                }}
+                                disabled={isLoading}
+                                className={`w-full flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm transition-all duration-300 ${
+                                    isLoading
+                                        ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-900/60 text-slate-400'
+                                        : 'border-slate-700/50 bg-gradient-to-r from-slate-900/60 to-slate-800/60 text-slate-200 hover:border-[#00ff9d]/50 hover:bg-gradient-to-r hover:from-[#00ff9d]/10 hover:to-[#00b3ff]/10 hover:text-white hover:shadow-[0_0_15px_rgba(0,255,153,0.2)]'
+                                }`}
+                                aria-haspopup="listbox"
+                                aria-expanded={isModelDropdownOpen}
+                            >
+                                <span className="flex items-center gap-3">
+                                    <span
+                                        className={`h-3 w-3 rounded-full flex-shrink-0 shadow-[0_0_6px_rgba(0,255,153,0.35)] ${
+                                            selectedModelOption ? 'bg-brand-green' : 'bg-slate-600/80'
+                                        }`}
+                                    />
+                                    <span className="font-medium truncate">
+                                        {selectedModelOption ? selectedModelOption.label : 'Auto (based on resolution)'}
+                                    </span>
+                                </span>
+                                <svg
+                                    className={`w-4 h-4 transition-transform ${isModelDropdownOpen ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {isModelDropdownOpen && (
+                                <div
+                                    className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-900 to-slate-800 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)] animate-fade-in"
+                                    role="listbox"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedModel(null);
+                                            setIsModelDropdownOpen(false);
+                                        }}
+                                        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
+                                            !selectedModel
+                                                ? 'bg-brand-green/15 text-white'
+                                                : 'text-slate-300 hover:bg-brand-green/10 hover:text-white'
+                                        }`}
+                                        role="option"
+                                        aria-selected={!selectedModel}
+                                    >
+                                        <span
+                                            className={`h-3 w-3 rounded-full flex-shrink-0 shadow-[0_0_6px_rgba(0,255,153,0.35)] ${
+                                                !selectedModel ? 'bg-brand-green' : 'bg-slate-600/80'
+                                            }`}
+                                        />
+                                        <span>Auto (based on resolution)</span>
+                                    </button>
+                                    {AVAILABLE_MODELS.map(model => {
+                                        const isActive = model.value === selectedModel;
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={model.value}
+                                                onClick={() => {
+                                                    setSelectedModel(model.value);
+                                                    setIsModelDropdownOpen(false);
+                                                }}
+                                                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
+                                                    isActive
+                                                        ? 'bg-brand-green/15 text-white'
+                                                        : 'text-slate-300 hover:bg-brand-green/10 hover:text-white'
+                                                }`}
+                                                role="option"
+                                                aria-selected={isActive}
+                                            >
+                                                <span
+                                                    className={`h-3 w-3 rounded-full flex-shrink-0 shadow-[0_0_6px_rgba(0,255,153,0.35)] ${
+                                                        isActive ? 'bg-brand-green' : 'bg-slate-600/80'
+                                                    }`}
+                                                />
+                                                <div className="flex flex-col">
+                                                    <span>{model.label}</span>
+                                                    {model.description && (
+                                                        <span className="text-xs text-slate-400">{model.description}</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {selectedModelOption ? (
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                    <p className="text-xs text-brand-green/90 font-semibold">
+                                        {selectedModelOption.label}
+                                    </p>
+                                    {selectedModelOption.requiresWatermarkRemoval && (
+                                        <span className="text-xs text-amber-400">⚠️ Watermark removal</span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedModel(null)}
+                                        className="text-xs text-slate-400 hover:text-brand-green transition-colors"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Auto selection based on resolution
+                                </p>
+                            )}
+                        </div>
+
                         {styleCategories.length > 0 && (
                             <div className="relative">
                                 <label className="text-slate-300 font-medium flex items-center gap-2 mb-2">
@@ -688,7 +827,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => setIsStyleModalOpen(true)}
+                                    onClick={() => {
+                                        setIsStyleModalOpen(true);
+                                        setIsModelDropdownOpen(false);
+                                        setIsThemeDropdownOpen(false);
+                                        setIsMusicDropdownOpen(false);
+                                    }}
                                     disabled={isLoading}
                                     className={`w-full flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm transition-all duration-300 ${
                                         isLoading
@@ -736,35 +880,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                             </div>
                         )}
 
-                        <div className="relative">
-                            <label className="text-slate-300 font-medium flex items-center gap-2 mb-2">
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-green/10 text-brand-green font-semibold">🤖</span>
-                                AI Model
-                            </label>
-                            <p className="text-xs text-slate-400 mb-3">
-                                Choose the AI model for video generation
-                            </p>
-                            <select
-                                value={selectedModel || ''}
-                                onChange={(e) => setSelectedModel(e.target.value as VideoModel || null)}
-                                disabled={isLoading}
-                                className="w-full rounded-xl border border-slate-700/50 bg-gradient-to-r from-slate-900/60 to-slate-800/60 px-4 py-3.5 text-sm text-slate-200 focus:border-[#00ff9d]/50 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <option value="">Auto (based on resolution)</option>
-                                {AVAILABLE_MODELS.map(model => (
-                                    <option key={model.value} value={model.value}>
-                                        {model.label} {model.description && `- ${model.description}`}
-                                    </option>
-                                ))}
-                            </select>
-                            {selectedModel && AVAILABLE_MODELS.find(m => m.value === selectedModel)?.requiresWatermarkRemoval && (
-                                <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-                                    <span>⚠️</span>
-                                    <span>Watermark will be automatically removed</span>
-                                </p>
-                            )}
-                        </div>
-
                         {themeOptions.length > 0 && (
                             <div ref={themeDropdownRef} className="relative">
                                 <label className="text-slate-300 font-medium flex items-center gap-2 mb-2">
@@ -776,7 +891,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => setIsThemeDropdownOpen(prev => !prev)}
+                                    onClick={() => {
+                                        setIsThemeDropdownOpen(prev => !prev);
+                                        setIsModelDropdownOpen(false);
+                                        setIsMusicDropdownOpen(false);
+                                        setIsStyleModalOpen(false);
+                                    }}
                                     disabled={isLoading}
                                     className={`w-full flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm transition-all duration-300 ${
                                         isLoading
@@ -850,7 +970,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => setIsMusicDropdownOpen(prev => !prev)}
+                                    onClick={() => {
+                                        setIsMusicDropdownOpen(prev => !prev);
+                                        setIsModelDropdownOpen(false);
+                                        setIsThemeDropdownOpen(false);
+                                        setIsStyleModalOpen(false);
+                                    }}
                                     disabled={isLoading}
                                     className={`w-full flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm transition-all duration-300 ${
                                         isLoading
