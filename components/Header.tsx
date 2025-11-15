@@ -7,11 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
     language: Language;
-    setLanguage: React.Dispatch<React.SetStateAction<Language>>;
+    onLanguageChange: (lang: Language) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
+const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
   const { user, isLoading, signOut } = useAuth();
+  const t = translations[language];
     
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -23,10 +24,28 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
   ];
     
       const navLinks = [
-        { name: translations[language].nav_generator, href: "#generator" },
-        { name: translations[language].nav_pricing, href: "/pricing" },
-        { name: translations[language].nav_faq, href: "#faq" },
+        { name: t.nav_generator, href: "#generator" },
+        { name: t.nav_pricing, href: "/pricing" },
+        { name: t.nav_faq, href: "#faq" },
       ];
+
+  const authCtaByLanguage: Record<Language, string> = {
+    fr: "Créer un compte",
+    en: "Sign up",
+    es: "Crear cuenta",
+  };
+
+  const dashboardLabel: Record<Language, string> = {
+    fr: "Tableau de bord",
+    en: "Dashboard",
+    es: "Panel",
+  };
+
+  const logoutLabel: Record<Language, string> = {
+    fr: "Déconnexion",
+    en: "Log out",
+    es: "Cerrar sesión",
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -71,13 +90,13 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
                           to="/auth"
                           className="rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10"
                         >
-                          {translations[language].login}
+                          {t.login}
                         </Link>
                         <Link
                           to="/register"
                           className="rounded-lg bg-brand-green px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-brand-green/80"
                         >
-                          {language === 'en' ? 'Sign up' : language === 'es' ? 'Crear cuenta' : "S'inscrire"}
+                          {authCtaByLanguage[language]}
                         </Link>
                       </>
                     )}
@@ -87,7 +106,7 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
                           to="/dashboard"
                           className="hidden sm:inline-flex rounded-lg border border-brand-green/40 px-3 py-1.5 text-sm font-medium text-brand-green transition hover:bg-brand-green/10"
                         >
-                          Tableau de bord
+                          {dashboardLabel[language]}
                         </Link>
                         <button
                           onClick={async () => {
@@ -95,7 +114,7 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
                           }}
                           className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 transition"
                         >
-                          Déconnexion
+                          {logoutLabel[language]}
                         </button>
                       </>
                     )}
@@ -122,7 +141,7 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage }) => {
                                     <li key={option.code}>
                                         <button
                                             onClick={() => {
-                                                setLanguage(option.code);
+                                                onLanguageChange(option.code);
                                                 setIsDropdownOpen(false);
                                             }}
                                             className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700/50 transition-colors"

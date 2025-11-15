@@ -3,8 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import logoImage from '../attached_assets/LOGO.png';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import type { Language } from '../App';
+import { translations } from '../translations';
 
-const PasswordResetPage: React.FC = () => {
+interface PasswordResetPageProps {
+  language: Language;
+}
+
+const PasswordResetPage: React.FC<PasswordResetPageProps> = ({ language }) => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
@@ -13,16 +19,17 @@ const PasswordResetPage: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [missingSessionNotice, setMissingSessionNotice] = useState<string | null>(null);
+  const authCopy = translations[language].auth;
+  const common = authCopy?.common;
+  const resetCopy = authCopy?.reset;
 
   useEffect(() => {
     if (!isLoading && !user) {
-      setMissingSessionNotice(
-        'Le lien n’a pas permis de récupérer ta session. Redemande un email de réinitialisation puis clique à nouveau sur le lien.',
-      );
+      setMissingSessionNotice(resetCopy?.sessionWarning ?? common?.genericError ?? null);
     } else {
       setMissingSessionNotice(null);
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, resetCopy, common]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,17 +37,17 @@ const PasswordResetPage: React.FC = () => {
     setSuccess(null);
 
     if (!password || !confirmPassword) {
-      setError('Merci de remplir et confirmer ton nouveau mot de passe.');
+      setError(resetCopy?.missingFields ?? common?.genericError ?? 'Fill the fields.');
       return;
     }
 
     if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      setError(resetCopy?.passwordTooShort ?? 'Password must contain at least 8 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(resetCopy?.passwordMismatch ?? 'Passwords do not match.');
       return;
     }
 
@@ -50,7 +57,7 @@ const PasswordResetPage: React.FC = () => {
       if (updateError) {
         throw updateError;
       }
-      setSuccess('Ton mot de passe a été mis à jour. Redirection vers le tableau de bord…');
+      setSuccess(resetCopy?.successMessage ?? 'Password updated. Redirecting…');
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
@@ -58,8 +65,8 @@ const PasswordResetPage: React.FC = () => {
       const message =
         updateErr && typeof updateErr === 'object' && 'message' in updateErr
           ? (updateErr as { message?: string }).message
-          : 'Impossible de mettre à jour le mot de passe.';
-      setError(message ?? 'Impossible de mettre à jour le mot de passe.');
+          : common?.genericError;
+      setError(message ?? common?.genericError ?? 'Unable to update password.');
     } finally {
       setIsSubmitting(false);
     }
@@ -79,9 +86,9 @@ const PasswordResetPage: React.FC = () => {
           </div>
 
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-3">Réinitialiser le mot de passe</h2>
+            <h2 className="text-3xl font-bold text-white mb-3">{resetCopy?.title ?? 'Reset password'}</h2>
             <p className="text-slate-300 text-base">
-              Choisis un nouveau mot de passe pour sécuriser ton compte Viralis Studio.
+              {resetCopy?.subtitle ?? 'Choose a new password to secure your account.'}
             </p>
           </div>
 
@@ -103,7 +110,7 @@ const PasswordResetPage: React.FC = () => {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="reset-password" className="block text-sm font-medium text-slate-200 mb-1">
-                  Nouveau mot de passe
+                  {common?.passwordLabel ?? 'Password'}
                 </label>
                 <input
                   id="reset-password"
@@ -111,14 +118,14 @@ const PasswordResetPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="••••••••"
+                  placeholder={common?.passwordPlaceholder ?? '••••••••'}
                   autoComplete="new-password"
                 />
               </div>
 
               <div>
                 <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-slate-200 mb-1">
-                  Confirmer le mot de passe
+                  {common?.confirmPasswordLabel ?? 'Confirm password'}
                 </label>
                 <input
                   id="reset-confirm-password"
@@ -126,7 +133,7 @@ const PasswordResetPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="••••••••"
+                  placeholder={common?.confirmPasswordPlaceholder ?? '••••••••'}
                   autoComplete="new-password"
                 />
               </div>
@@ -136,16 +143,16 @@ const PasswordResetPage: React.FC = () => {
                 disabled={isSubmitting || !!missingSessionNotice}
                 className="w-full rounded-lg bg-brand-green/90 hover:bg-brand-green text-slate-950 font-semibold py-2.5 transition disabled:opacity-60"
               >
-                {isSubmitting ? 'Mise à jour…' : 'Mettre à jour'}
+                {isSubmitting ? resetCopy?.submitting ?? 'Updating…' : resetCopy?.submit ?? 'Update password'}
               </button>
             </form>
 
             <div className="mt-4 flex justify-between text-sm text-slate-300">
               <Link to="/" className="text-brand-green hover:text-brand-green/80 transition">
-                ← Accueil
+                {common?.backHome ?? '← Back to home'}
               </Link>
               <Link to="/auth" className="text-brand-green hover:text-brand-green/80 transition">
-                Retour connexion
+                {common?.backToLogin ?? '← Back to login'}
               </Link>
             </div>
           </div>

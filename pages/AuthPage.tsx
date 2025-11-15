@@ -2,8 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import logoImage from '../attached_assets/LOGO.png';
 import { useAuth } from '../contexts/AuthContext';
+import type { Language } from '../App';
+import { translations } from '../translations';
 
-const AuthPage: React.FC = () => {
+interface AuthPageProps {
+  language: Language;
+}
+
+const AuthPage: React.FC<AuthPageProps> = ({ language }) => {
   const { user, isLoading, signInWithPassword, sendMagicLink } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -12,6 +18,9 @@ const AuthPage: React.FC = () => {
   const [magicLinkMessage, setMagicLinkMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const authCopy = translations[language].auth;
+  const common = authCopy?.common;
+  const loginCopy = authCopy?.login;
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -29,7 +38,7 @@ const AuthPage: React.FC = () => {
     setMagicLinkMessage(null);
 
     if (!email || !password) {
-      setError('Merci de renseigner ton email et ton mot de passe.');
+      setError(loginCopy?.missingFields ?? common?.genericError ?? 'Missing credentials.');
       return;
     }
 
@@ -41,8 +50,8 @@ const AuthPage: React.FC = () => {
       const message =
         authError && typeof authError === 'object' && 'message' in authError
           ? (authError as { message?: string }).message
-          : "Impossible de te connecter. Vérifie tes identifiants.";
-      setError(message ?? "Impossible de te connecter. Vérifie tes identifiants.");
+          : common?.genericError;
+      setError(message ?? common?.genericError ?? 'Unable to sign in.');
     } finally {
       setIsSubmitting(false);
     }
@@ -50,7 +59,7 @@ const AuthPage: React.FC = () => {
 
   const handleMagicLink = async () => {
     if (!email) {
-      setError('Entre ton email pour recevoir un lien magique.');
+      setError(loginCopy?.missingFields ?? common?.genericError ?? 'Missing email.');
       return;
     }
     setError(null);
@@ -58,13 +67,13 @@ const AuthPage: React.FC = () => {
     setIsMagicLoading(true);
     try {
       await sendMagicLink(email);
-      setMagicLinkMessage('Lien envoyé ! Consulte ta boîte mail pour accéder au tableau de bord.');
+      setMagicLinkMessage(loginCopy?.magicLinkSuccess ?? 'Magic link sent!');
     } catch (linkError) {
       const message =
         linkError && typeof linkError === 'object' && 'message' in linkError
           ? (linkError as { message?: string }).message
-          : 'Impossible d’envoyer le lien magique. Réessaie.';
-      setError(message ?? 'Impossible d’envoyer le lien magique. Réessaie.');
+          : common?.genericError;
+      setError(message ?? common?.genericError ?? 'Unable to send magic link.');
     } finally {
       setIsMagicLoading(false);
     }
@@ -84,9 +93,9 @@ const AuthPage: React.FC = () => {
           </div>
 
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-3">Connexion</h2>
+            <h2 className="text-3xl font-bold text-white mb-3">{loginCopy?.title ?? 'Sign in'}</h2>
             <p className="text-slate-300 text-base">
-              Connecte-toi avec ton email pour générer des vidéos, suivre tes jetons et retrouver ton historique.
+              {loginCopy?.subtitle ?? 'Use your email and password to continue.'}
             </p>
           </div>
 
@@ -102,7 +111,7 @@ const AuthPage: React.FC = () => {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1">
-                  Email
+                  {common?.emailLabel ?? 'Email'}
                 </label>
                 <input
                   id="email"
@@ -110,14 +119,14 @@ const AuthPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="ton@email.com"
+                  placeholder={common?.emailPlaceholder ?? 'you@email.com'}
                   autoComplete="email"
                 />
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-1">
-                  Mot de passe
+                  {common?.passwordLabel ?? 'Password'}
                 </label>
                 <input
                   id="password"
@@ -125,7 +134,7 @@ const AuthPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="••••••••"
+                  placeholder={common?.passwordPlaceholder ?? '••••••••'}
                   autoComplete="current-password"
                 />
               </div>
@@ -135,7 +144,7 @@ const AuthPage: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full rounded-lg bg-brand-green/90 hover:bg-brand-green text-slate-950 font-semibold py-2.5 transition disabled:opacity-60"
               >
-                {isSubmitting ? 'Connexion…' : 'Se connecter'}
+                {isSubmitting ? loginCopy?.submitting ?? 'Signing in…' : loginCopy?.submit ?? 'Sign in'}
               </button>
             </form>
 
@@ -146,12 +155,12 @@ const AuthPage: React.FC = () => {
                 className="text-brand-green hover:text-brand-green/80 transition disabled:opacity-60"
                 disabled={isMagicLoading}
               >
-                {isMagicLoading ? 'Envoi du lien…' : 'Recevoir un lien magique'}
+                {isMagicLoading ? loginCopy?.magicLinkSending ?? 'Sending link…' : loginCopy?.magicLinkCta ?? 'Send magic link'}
               </button>
               <p>
-                Pas encore de compte ?{' '}
+                {loginCopy?.registerPrompt ?? 'No account yet?'}{' '}
                 <Link to="/register" className="text-brand-green hover:text-brand-green/80 transition font-semibold">
-                  Créer un compte
+                  {loginCopy?.registerCta ?? 'Create an account'}
                 </Link>
               </p>
             </div>
@@ -160,7 +169,7 @@ const AuthPage: React.FC = () => {
 
         <div className="mt-6 text-center">
           <a href="/" className="text-brand-green hover:text-brand-green/80 transition-colors text-sm">
-            ← Retour à l'accueil
+            {common?.backHome ?? '← Back to home'}
           </a>
         </div>
       </div>

@@ -8,15 +8,15 @@ import { translations } from '../translations';
 
 interface PricingPageProps {
   language: Language;
-  setLanguage: React.Dispatch<React.SetStateAction<Language>>;
+  onLanguageChange: (lang: Language) => void;
 }
 
-const PricingPage: React.FC<PricingPageProps> = ({ language, setLanguage }) => {
+const PricingPage: React.FC<PricingPageProps> = ({ language, onLanguageChange }) => {
   const t = translations[language];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <Header language={language} setLanguage={setLanguage} />
+      <Header language={language} onLanguageChange={onLanguageChange} />
 
       <main className="relative pt-32 pb-16">
         <div className="absolute inset-0 pointer-events-none">
@@ -42,7 +42,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ language, setLanguage }) => {
             to="/"
             className="inline-flex items-center gap-2 rounded-full border border-brand-green/60 bg-brand-green/10 px-5 py-2.5 text-sm font-semibold text-brand-green transition hover:bg-brand-green/20 hover:text-white"
           >
-            ← Retour à l’accueil
+            {t.auth?.common.backHome ?? '← Back to home'}
           </Link>
         </div>
       </main>

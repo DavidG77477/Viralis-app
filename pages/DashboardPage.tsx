@@ -88,10 +88,10 @@ const dashboardLabels: Record<
 
 interface DashboardPageProps {
   language: Language;
-  setLanguage: React.Dispatch<React.SetStateAction<Language>>;
+  onLanguageChange: (lang: Language) => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChange }) => {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -386,7 +386,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, setLanguage }) 
                         <li key={option.code}>
                           <button
                             onClick={() => {
-                              setLanguage(option.code);
+                              onLanguageChange(option.code);
                               setIsLangDropdownOpen(false);
                             }}
                             className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/10 transition-colors"

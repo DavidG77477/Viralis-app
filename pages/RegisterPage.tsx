@@ -2,8 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import logoImage from '../attached_assets/LOGO.png';
 import { useAuth } from '../contexts/AuthContext';
+import type { Language } from '../App';
+import { translations } from '../translations';
 
-const RegisterPage: React.FC = () => {
+interface RegisterPageProps {
+  language: Language;
+}
+
+const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
   const { user, isLoading, signUpWithEmail } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -12,6 +18,9 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const authCopy = translations[language].auth;
+  const common = authCopy?.common;
+  const registerCopy = authCopy?.register;
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -29,17 +38,17 @@ const RegisterPage: React.FC = () => {
     setSuccessMessage(null);
 
     if (!email || !password || !confirmPassword) {
-      setError('Merci de remplir tous les champs.');
+      setError(registerCopy?.missingFields ?? common?.genericError ?? 'Fill all fields.');
       return;
     }
 
     if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      setError(registerCopy?.passwordTooShort ?? 'Password must contain at least 8 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(registerCopy?.passwordMismatch ?? 'Passwords do not match.');
       return;
     }
 
@@ -50,13 +59,13 @@ const RegisterPage: React.FC = () => {
         navigate('/dashboard');
         return;
       }
-      setSuccessMessage("Ton compte a été créé. Clique sur le lien reçu pour accéder à ton tableau de bord.");
+      setSuccessMessage(registerCopy?.successMessage ?? 'Account created. Check your inbox to confirm it.');
     } catch (signUpError) {
       const message =
         signUpError && typeof signUpError === 'object' && 'message' in signUpError
           ? (signUpError as { message?: string }).message
-          : "Inscription impossible. Vérifie les informations saisies.";
-      setError(message ?? "Inscription impossible. Vérifie les informations saisies.");
+          : common?.genericError;
+      setError(message ?? common?.genericError ?? 'Unable to register.');
     } finally {
       setIsSubmitting(false);
     }
@@ -76,9 +85,9 @@ const RegisterPage: React.FC = () => {
           </div>
 
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-3">Créer un compte</h2>
+            <h2 className="text-3xl font-bold text-white mb-3">{registerCopy?.title ?? 'Create an account'}</h2>
             <p className="text-slate-300 text-base">
-              Rejoins Viralis Studio pour générer tes vidéos IA et suivre ton utilisation de jetons.
+              {registerCopy?.subtitle ?? 'Join Viralis Studio to generate AI videos.'}
             </p>
           </div>
 
@@ -94,7 +103,7 @@ const RegisterPage: React.FC = () => {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="signup-email" className="block text-sm font-medium text-slate-200 mb-1">
-                  Email
+                  {common?.emailLabel ?? 'Email'}
                 </label>
                 <input
                   id="signup-email"
@@ -102,14 +111,14 @@ const RegisterPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="ton@email.com"
+                  placeholder={common?.emailPlaceholder ?? 'you@email.com'}
                   autoComplete="email"
                 />
               </div>
 
               <div>
                 <label htmlFor="signup-password" className="block text-sm font-medium text-slate-200 mb-1">
-                  Mot de passe
+                  {common?.passwordLabel ?? 'Password'}
                 </label>
                 <input
                   id="signup-password"
@@ -117,14 +126,14 @@ const RegisterPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="••••••••"
+                  placeholder={common?.passwordPlaceholder ?? '••••••••'}
                   autoComplete="new-password"
                 />
               </div>
 
               <div>
                 <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-slate-200 mb-1">
-                  Confirmer le mot de passe
+                  {common?.confirmPasswordLabel ?? 'Confirm password'}
                 </label>
                 <input
                   id="signup-confirm-password"
@@ -132,7 +141,7 @@ const RegisterPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-slate-500 focus:border-brand-green focus:outline-none"
-                  placeholder="••••••••"
+                  placeholder={common?.confirmPasswordPlaceholder ?? '••••••••'}
                   autoComplete="new-password"
                 />
               </div>
@@ -142,15 +151,15 @@ const RegisterPage: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full rounded-lg bg-brand-green/90 hover:bg-brand-green text-slate-950 font-semibold py-2.5 transition disabled:opacity-60"
               >
-                {isSubmitting ? 'Création du compte…' : 'Créer mon compte'}
+                {isSubmitting ? registerCopy?.submitting ?? 'Creating account…' : registerCopy?.submit ?? 'Create my account'}
               </button>
             </form>
 
             <div className="mt-4 text-center text-sm text-slate-300">
               <p>
-                Déjà membre ?{' '}
+                {registerCopy?.hasAccountPrompt ?? 'Already a member?'}{' '}
                 <Link to="/auth" className="text-brand-green hover:text-brand-green/80 transition font-semibold">
-                  Se connecter
+                  {registerCopy?.loginCta ?? 'Sign in'}
                 </Link>
               </p>
             </div>
@@ -159,7 +168,7 @@ const RegisterPage: React.FC = () => {
 
         <div className="mt-6 text-center">
           <Link to="/" className="text-brand-green hover:text-brand-green/80 transition-colors text-sm">
-            ← Retour à l'accueil
+            {common?.backHome ?? '← Back to home'}
           </Link>
         </div>
       </div>

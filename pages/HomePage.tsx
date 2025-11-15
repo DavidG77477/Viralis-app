@@ -132,10 +132,10 @@ const ContactSection: React.FC<{ language: Language }> = ({ language }) => {
 
 interface HomePageProps {
   language: Language;
-  setLanguage: (lang: Language) => void;
+  onLanguageChange: (lang: Language) => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ language, setLanguage }) => {
+const HomePage: React.FC<HomePageProps> = ({ language, onLanguageChange }) => {
   const [userTokens, setUserTokens] = useState(100);
   const [pricingAlert, setPricingAlert] = useState<string | null>(null);
   const location = useLocation();
@@ -169,7 +169,7 @@ const HomePage: React.FC<HomePageProps> = ({ language, setLanguage }) => {
 
   return (
     <div className="relative min-h-screen font-sans overflow-x-hidden">
-      <Header language={language} setLanguage={setLanguage} />
+      <Header language={language} onLanguageChange={onLanguageChange} />
       <main>
         <Hero language={language} />
         <section id="generator" className="pb-24 px-4 md:px-8">
