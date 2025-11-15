@@ -53,6 +53,24 @@ const getApiKey = () => {
     return apiKey;
 };
 
+const getOpenAiApiKey = (options?: { silent?: boolean }) => {
+    const runtimeWindow = typeof window !== 'undefined' ? (window as Record<string, unknown>) : undefined;
+    const apiKeyCandidate =
+        (runtimeWindow?.__OPENAI_API_KEY as string | undefined) ??
+        import.meta.env.OPENAI_API_KEY ??
+        import.meta.env.VITE_OPENAI_API_KEY ??
+        (typeof process !== 'undefined' ? process.env?.OPENAI_API_KEY : undefined) ??
+        (typeof process !== 'undefined' ? process.env?.VITE_OPENAI_API_KEY : undefined);
+
+    const apiKey = apiKeyCandidate?.trim();
+
+    if (!apiKey && !options?.silent) {
+        throw new Error('OpenAI API key is not configured. Please add it to your environment variables.');
+    }
+
+    return apiKey;
+};
+
 export const generateVideo = async ({ prompt, aspectRatio, image, resolution }: GenerateVideoParams) => {
     const apiKey = getApiKey();
     
@@ -177,8 +195,8 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
 };
 
 export const generateScript = async (prompt: string): Promise<string> => {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    
+    const apiKey = getOpenAiApiKey();
+
     if (!apiKey) {
         throw new Error('OpenAI API key is not configured. Script generation requires an OpenAI API key.');
     }
@@ -249,7 +267,7 @@ const buildInstructionSummary = (options?: PromptEnhancementOptions): string => 
 };
 
 export const enhancePromptWithTheme = async (prompt: string, options?: PromptEnhancementOptions): Promise<string> => {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    const apiKey = getOpenAiApiKey({ silent: true });
 
     const fallbackPrompt = (() => {
         if (!options) return prompt;

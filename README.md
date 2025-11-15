@@ -22,6 +22,8 @@ VITE_SUPABASE_URL=your-supabase-project-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 GEMINI_API_KEY=your-gemini-api-key
 VITE_KIE_API_KEY=optional-kie-api-key
+OPENAI_API_KEY=your-openai-api-key   # kept server-side
+# optional fallback if you still need to expose it client-side during development
 VITE_OPENAI_API_KEY=optional-openai-api-key
 ```
 

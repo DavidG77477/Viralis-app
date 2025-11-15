@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:emails": "node scripts/sync-email-templates.mjs"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",
