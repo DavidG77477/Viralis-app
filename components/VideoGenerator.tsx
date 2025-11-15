@@ -655,26 +655,30 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                     type="button"
                                     onClick={() => setGenerationMode('text-to-video')}
                                     disabled={isLoading}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 ${
+                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 flex items-center gap-1 ${
                                         generationMode === 'text-to-video'
                                             ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_10px_rgba(0,255,153,0.4)]'
                                             : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                                     } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    Text
+                                    <span>Text</span>
+                                    <span>→</span>
+                                    <span>Video</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setGenerationMode('photo-to-video')}
                                     disabled={isLoading}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 relative ${
+                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 relative flex items-center gap-1 ${
                                         generationMode === 'photo-to-video'
                                             ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_10px_rgba(0,255,153,0.4)]'
                                             : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                                     } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${!isPro ? 'opacity-60' : ''}`}
                                     title={!isPro ? 'Pro subscription required' : ''}
                                 >
-                                    Photo
+                                    <span>Photo</span>
+                                    <span>→</span>
+                                    <span>Video</span>
                                     {!isPro && (
                                         <span className="absolute -top-1 -right-1 text-[8px] bg-amber-500 text-slate-950 rounded-full px-1 font-bold">PRO</span>
                                     )}
