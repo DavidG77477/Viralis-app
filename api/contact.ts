@@ -38,9 +38,7 @@ async function sendWithResend(
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #05161a, #0f2a2f); padding: 40px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
           <div style="text-align: center; margin-bottom: 32px;">
-            <div style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #00ff9d, #00b3ff); border-radius: 12px; margin-bottom: 16px;">
-              <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #0d0f12; letter-spacing: 0.5px;">VIRALIS STUDIO</h1>
-            </div>
+            <img src="https://nxbnmcwvjudgcsdhhaug.supabase.co/storage/v1/object/public/pics/LOGO.png" alt="Viralis Studio" style="width: 120px; margin: 0 auto 16px; display: block;" />
             <h2 style="color: #00ff9d; margin: 16px 0 8px; font-size: 20px; font-weight: 600;">Nouveau message de contact</h2>
             <p style="color: rgba(247, 253, 249, 0.6); font-size: 14px; margin: 0;">Vous avez reçu un nouveau message depuis le formulaire de contact</p>
           </div>
@@ -149,9 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <div style="background: linear-gradient(135deg, #05161a, #0f2a2f); padding: 40px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
             <!-- Header avec logo -->
             <div style="text-align: center; margin-bottom: 32px;">
-              <div style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #00ff9d, #00b3ff); border-radius: 12px; margin-bottom: 16px;">
-                <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #0d0f12; letter-spacing: 0.5px;">VIRALIS STUDIO</h1>
-              </div>
+              <img src="https://nxbnmcwvjudgcsdhhaug.supabase.co/storage/v1/object/public/pics/LOGO.png" alt="Viralis Studio" style="width: 120px; margin: 0 auto 16px; display: block;" />
               <h2 style="color: #00ff9d; margin: 16px 0 8px; font-size: 20px; font-weight: 600;">Nouveau message de contact</h2>
               <p style="color: rgba(247, 253, 249, 0.6); font-size: 14px; margin: 0;">Vous avez reçu un nouveau message depuis le formulaire de contact</p>
             </div>
