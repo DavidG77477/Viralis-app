@@ -8,6 +8,8 @@ export const translations = {
         login: "Se connecter",
 
         auth: {
+            brandTitle: "VIRALIS STUDIO",
+            brandSubtitle: "Générateur vidéo IA",
             common: {
                 emailLabel: "Email",
                 passwordLabel: "Mot de passe",
@@ -559,6 +561,8 @@ export const translations = {
         login: "Log in",
 
         auth: {
+            brandTitle: "VIRALIS STUDIO",
+            brandSubtitle: "AI Video Generator",
             common: {
                 emailLabel: "Email",
                 passwordLabel: "Password",
@@ -1109,6 +1113,8 @@ export const translations = {
         login: "Iniciar sesión",
 
         auth: {
+            brandTitle: "VIRALIS STUDIO",
+            brandSubtitle: "Generador de video IA",
             common: {
                 emailLabel: "Email",
                 passwordLabel: "Contraseña",

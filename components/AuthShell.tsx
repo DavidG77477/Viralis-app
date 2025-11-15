@@ -1,6 +1,8 @@
 import React from 'react';
 
 interface AuthShellProps {
+  brandTitle?: string;
+  brandSubtitle?: string;
   heroTitle: string;
   heroSubtitle: string;
   badge?: string;
@@ -10,6 +12,8 @@ interface AuthShellProps {
 }
 
 const AuthShell: React.FC<AuthShellProps> = ({
+  brandTitle = 'Viralis Studio',
+  brandSubtitle = 'Générateur vidéo IA',
   heroTitle,
   heroSubtitle,
   badge,
@@ -32,8 +36,8 @@ const AuthShell: React.FC<AuthShellProps> = ({
               ⚡
             </div>
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/70">Viralis Studio</p>
-              <p className="text-slate-400 text-sm">Générateur vidéo IA</p>
+              <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/70">{brandTitle}</p>
+              <p className="text-slate-400 text-sm">{brandSubtitle}</p>
             </div>
           </div>
           {badge && (

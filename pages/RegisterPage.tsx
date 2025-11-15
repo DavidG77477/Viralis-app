@@ -89,6 +89,8 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
 
   return (
     <AuthShell
+      brandTitle={authCopy?.brandTitle}
+      brandSubtitle={authCopy?.brandSubtitle}
       badge="Create account"
       heroTitle={registerCopy?.title ?? 'Create an account'}
       heroSubtitle={registerCopy?.subtitle ?? 'Join Viralis Studio to generate AI videos.'}
@@ -97,7 +99,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
     >
       <div className="flex flex-col gap-6">
         <div className="text-center">
-          <img src={logoImage} alt="Viralis Studio" className="h-16 w-auto mx-auto mb-4" />
+          <img src={logoImage} alt="Viralis Studio" className="h-20 w-auto md:h-24 mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-white mb-2">{registerCopy?.title ?? 'Create an account'}</h2>
           <p className="text-slate-400 text-sm">{registerCopy?.subtitle ?? 'Join Viralis Studio to generate AI videos.'}</p>
         </div>
