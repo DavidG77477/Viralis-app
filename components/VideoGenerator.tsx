@@ -434,6 +434,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         }
         if (generationMode === 'photo-to-video') {
             if (!isPro) {
+                // Rediriger vers la page de pricing si l'utilisateur n'est pas Pro
                 navigate('/pricing?reason=pro-required');
                 return;
             }
@@ -664,13 +665,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        if (!isPro) {
-                                            navigate('/pricing?reason=pro-required');
-                                            return;
-                                        }
-                                        setGenerationMode('photo-to-video');
-                                    }}
+                                    onClick={() => setGenerationMode('photo-to-video')}
                                     disabled={isLoading}
                                     className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 relative ${
                                         generationMode === 'photo-to-video'
@@ -1106,47 +1101,58 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                             </label>
                         </div>
 
-                        <button
-                            onClick={handleGenerate}
-                            disabled={isLoading || (generationMode === 'text-to-video' && !prompt) || (generationMode === 'photo-to-video' && !imageFile)}
-                            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 shadow-[0_0_25px_rgba(0,255,153,0.3)] hover:shadow-[0_0_40px_rgba(0,255,153,0.5)] relative overflow-hidden group"
-                        >
-                            <style>
-                                {`
-                                    @keyframes sparkle {
-                                        0%, 100% {
-                                            opacity: 0;
-                                            transform: scale(0) rotate(0deg);
+                        {generationMode === 'photo-to-video' && !isPro ? (
+                            <button
+                                onClick={() => navigate('/pricing?reason=pro-required')}
+                                className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-[0_0_25px_rgba(251,191,36,0.3)] hover:shadow-[0_0_40px_rgba(251,191,36,0.5)] relative overflow-hidden group"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                                <span className="relative z-10 text-2xl">🚀</span>
+                                <span className="relative z-10">Upgrade to Pro</span>
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleGenerate}
+                                disabled={isLoading || (generationMode === 'text-to-video' && !prompt) || (generationMode === 'photo-to-video' && !imageFile)}
+                                className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 shadow-[0_0_25px_rgba(0,255,153,0.3)] hover:shadow-[0_0_40px_rgba(0,255,153,0.5)] relative overflow-hidden group"
+                            >
+                                <style>
+                                    {`
+                                        @keyframes sparkle {
+                                            0%, 100% {
+                                                opacity: 0;
+                                                transform: scale(0) rotate(0deg);
+                                            }
+                                            50% {
+                                                opacity: 1;
+                                                transform: scale(1) rotate(180deg);
+                                            }
                                         }
-                                        50% {
-                                            opacity: 1;
-                                            transform: scale(1) rotate(180deg);
+                                        .sparkle {
+                                            animation: sparkle 1.5s ease-in-out infinite;
                                         }
-                                    }
-                                    .sparkle {
-                                        animation: sparkle 1.5s ease-in-out infinite;
-                                    }
-                                    .sparkle:nth-child(1) { animation-delay: 0s; }
-                                    .sparkle:nth-child(2) { animation-delay: 0.3s; }
-                                    .sparkle:nth-child(3) { animation-delay: 0.6s; }
-                                    .sparkle:nth-child(4) { animation-delay: 0.9s; }
-                                `}
-                            </style>
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                            {isLoading ? (
-                                <span>{loadingMessage}</span>
-                            ) : (
-                                <>
-                                    <div className="relative z-10 flex items-center justify-center w-6 h-6">
-                                        <span className="absolute sparkle text-lg">✨</span>
-                                        <span className="absolute sparkle text-sm" style={{transform: 'translate(-8px, -4px)'}}>⭐</span>
-                                        <span className="absolute sparkle text-xs" style={{transform: 'translate(8px, 4px)'}}>✨</span>
-                                        <span className="absolute sparkle text-sm" style={{transform: 'translate(0px, -8px)'}}>⭐</span>
-                                    </div>
-                                    <span className="relative z-10">{useThinkingMode ? `${t.generateScriptButton} (${SCRIPT_GENERATION_COST} ${t.tokens})` : `${t.generateVideoButton} (${videoCost} ${t.tokens})`}</span>
-                                </>
-                            )}
-                        </button>
+                                        .sparkle:nth-child(1) { animation-delay: 0s; }
+                                        .sparkle:nth-child(2) { animation-delay: 0.3s; }
+                                        .sparkle:nth-child(3) { animation-delay: 0.6s; }
+                                        .sparkle:nth-child(4) { animation-delay: 0.9s; }
+                                    `}
+                                </style>
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                                {isLoading ? (
+                                    <span>{loadingMessage}</span>
+                                ) : (
+                                    <>
+                                        <div className="relative z-10 flex items-center justify-center w-6 h-6">
+                                            <span className="absolute sparkle text-lg">✨</span>
+                                            <span className="absolute sparkle text-sm" style={{transform: 'translate(-8px, -4px)'}}>⭐</span>
+                                            <span className="absolute sparkle text-xs" style={{transform: 'translate(8px, 4px)'}}>✨</span>
+                                            <span className="absolute sparkle text-sm" style={{transform: 'translate(0px, -8px)'}}>⭐</span>
+                                        </div>
+                                        <span className="relative z-10">{useThinkingMode ? `${t.generateScriptButton} (${SCRIPT_GENERATION_COST} ${t.tokens})` : `${t.generateVideoButton} (${videoCost} ${t.tokens})`}</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
                         {error && <p className="text-red-400 text-center">{error}</p>}
                         </div>
                     </div>
