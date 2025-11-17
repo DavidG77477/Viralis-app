@@ -366,17 +366,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   </div>
                 </button>
 
-                  {/* Buy Tokens Button */}
-                  <Link
-                    to="/pricing"
-                    className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 text-slate-950 font-semibold rounded-lg transition-all duration-200 text-sm"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    {language === 'fr' ? 'Acheter des tokens' : language === 'es' ? 'Comprar tokens' : 'Buy Tokens'}
-                  </Link>
-                </div>
+                {/* Buy Tokens Button */}
+                <Link
+                  to="/pricing"
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 text-slate-950 font-semibold rounded-lg transition-all duration-200 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {language === 'fr' ? 'Acheter des tokens' : language === 'es' ? 'Comprar tokens' : 'Buy Tokens'}
+                </Link>
 
                 {/* Language Dropdown */}
                 <div className="relative" ref={langDropdownRef}>
