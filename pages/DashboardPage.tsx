@@ -102,6 +102,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const navigate = useNavigate();
   const inferredProfile = (profile ?? null) as (UserProfile & {
     plan?: string | null;
@@ -446,7 +448,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
             )}
           </section>
 
-          {/* Subscription Section - Only for Pro users */}
+          {/* Subscription Management Section - Only for Pro users */}
           {isUserPro(profile) && (
             <section className="relative max-w-5xl mx-auto">
               <div className="bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-6 md:p-8">
@@ -456,14 +458,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       className="text-2xl md:text-3xl font-bold mb-2"
                       style={{ background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent' }}
                     >
-                      {language === 'fr' ? 'Mon Abonnement Pro' : language === 'es' ? 'Mi Suscripción Pro' : 'My Pro Subscription'}
+                      {language === 'fr' ? 'Gestion de mon Abonnement' : language === 'es' ? 'Gestión de mi Suscripción' : 'Subscription Management'}
                     </h2>
                     <p className="text-slate-400 text-sm">
                       {language === 'fr' 
-                        ? `Statut: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Mensuel' : 'Pro Annuel'}`
+                        ? `Plan actuel: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Mensuel' : 'Pro Annuel'}`
                         : language === 'es'
-                        ? `Estado: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Mensual' : 'Pro Anual'}`
-                        : `Status: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Monthly' : 'Pro Annual'}`}
+                        ? `Plan actual: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Mensual' : 'Pro Anual'}`
+                        : `Current plan: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Monthly' : 'Pro Annual'}`}
                     </p>
                   </div>
                   <div className="px-4 py-2 bg-gradient-to-r from-[#00ff9d]/20 to-[#00b3ff]/20 border border-[#00ff9d]/30 rounded-lg">
@@ -473,59 +475,156 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                {/* Subscription Details */}
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
                   <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                    <p className="text-slate-400 text-sm mb-1">
+                    <p className="text-slate-400 text-xs mb-1">
                       {language === 'fr' ? 'Plan' : language === 'es' ? 'Plan' : 'Plan'}
                     </p>
-                    <p className="text-white font-semibold">
+                    <p className="text-white font-semibold text-lg">
                       {profile?.subscription_status === 'pro_monthly' 
                         ? (language === 'fr' ? 'Pro Mensuel' : language === 'es' ? 'Pro Mensual' : 'Pro Monthly')
                         : (language === 'fr' ? 'Pro Annuel' : language === 'es' ? 'Pro Anual' : 'Pro Annual')}
                     </p>
                   </div>
                   <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                    <p className="text-slate-400 text-sm mb-1">
+                    <p className="text-slate-400 text-xs mb-1">
+                      {language === 'fr' ? 'Prix' : language === 'es' ? 'Precio' : 'Price'}
+                    </p>
+                    <p className="text-white font-semibold text-lg">
+                      {profile?.subscription_status === 'pro_monthly' ? '$19.99' : '$199.99'}
+                      <span className="text-xs text-slate-400 ml-1">
+                        {profile?.subscription_status === 'pro_monthly' 
+                          ? (language === 'fr' ? '/mois' : language === 'es' ? '/mes' : '/month')
+                          : (language === 'fr' ? '/an' : language === 'es' ? '/año' : '/year')}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                    <p className="text-slate-400 text-xs mb-1">
                       {language === 'fr' ? 'Tokens mensuels' : language === 'es' ? 'Tokens mensuales' : 'Monthly tokens'}
                     </p>
-                    <p className="text-white font-semibold">300</p>
+                    <p className="text-white font-semibold text-lg">300</p>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!user || !profile) return;
+                        try {
+                          // TODO Phase 2: Replace with actual portal session
+                          // const url = await createPortalSession(user.id);
+                          // window.location.href = url;
+                          alert(language === 'fr' 
+                            ? 'Configuration Stripe en cours. Cette fonctionnalité sera bientôt disponible.'
+                            : language === 'es'
+                            ? 'Configuración de Stripe en curso. Esta funcionalidad estará disponible pronto.'
+                            : 'Stripe configuration in progress. This feature will be available soon.');
+                        } catch (error) {
+                          console.error('Error opening portal:', error);
+                        }
+                      }}
+                      disabled={true}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {language === 'fr' ? 'Modifier mon abonnement' : language === 'es' ? 'Modificar mi suscripción' : 'Modify Subscription'}
+                    </button>
+                    <Link
+                      to="/pricing"
+                      className="px-6 py-3 border border-slate-700 hover:border-slate-600 hover:bg-slate-800/50 text-slate-300 font-medium rounded-lg transition-all duration-200 text-center flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      {language === 'fr' ? 'Voir tous les plans' : language === 'es' ? 'Ver todos los planes' : 'View All Plans'}
+                    </Link>
+                  </div>
+
                   <button
-                    onClick={async () => {
-                      if (!user || !profile) return;
-                      try {
-                        // TODO Phase 2: Replace with actual portal session
-                        // const url = await createPortalSession(user.id);
-                        // window.location.href = url;
-                        alert(language === 'fr' 
-                          ? 'Configuration Stripe en cours. Cette fonctionnalité sera bientôt disponible.'
-                          : language === 'es'
-                          ? 'Configuración de Stripe en curso. Esta funcionalidad estará disponible pronto.'
-                          : 'Stripe configuration in progress. This feature will be available soon.');
-                      } catch (error) {
-                        console.error('Error opening portal:', error);
-                      }
-                    }}
-                    disabled={true}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                    onClick={() => setShowCancelModal(true)}
+                    className="w-full px-6 py-3 border border-red-500/50 hover:border-red-500 hover:bg-red-500/10 text-red-400 font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    {language === 'fr' ? 'Gérer mon abonnement' : language === 'es' ? 'Gestionar mi suscripción' : 'Manage Subscription'}
+                    {language === 'fr' ? 'Annuler mon abonnement' : language === 'es' ? 'Cancelar mi suscripción' : 'Cancel Subscription'}
                   </button>
-                  <Link
-                    to="/pricing"
-                    className="px-6 py-3 border border-slate-700 hover:border-slate-600 hover:bg-slate-800/50 text-slate-300 font-medium rounded-lg transition-all duration-200 text-center"
-                  >
-                    {language === 'fr' ? 'Voir les plans' : language === 'es' ? 'Ver planes' : 'View Plans'}
-                  </Link>
                 </div>
               </div>
+
+              {/* Cancel Subscription Modal */}
+              {showCancelModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                  <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-md w-full p-6 md:p-8">
+                    <div className="mb-6">
+                      <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+                        <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-white text-center mb-2">
+                        {language === 'fr' ? 'Annuler l\'abonnement ?' : language === 'es' ? '¿Cancelar suscripción?' : 'Cancel Subscription?'}
+                      </h3>
+                      <p className="text-slate-400 text-sm text-center">
+                        {language === 'fr'
+                          ? 'Êtes-vous sûr de vouloir annuler votre abonnement Pro ? Vous perdrez l\'accès aux fonctionnalités premium à la fin de la période de facturation.'
+                          : language === 'es'
+                          ? '¿Estás seguro de que deseas cancelar tu suscripción Pro? Perderás el acceso a las funciones premium al final del período de facturación.'
+                          : 'Are you sure you want to cancel your Pro subscription? You will lose access to premium features at the end of the billing period.'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={() => setShowCancelModal(false)}
+                        className="flex-1 px-6 py-3 border border-slate-700 hover:border-slate-600 hover:bg-slate-800/50 text-slate-300 font-medium rounded-lg transition-all duration-200"
+                      >
+                        {language === 'fr' ? 'Conserver mon abonnement' : language === 'es' ? 'Mantener mi suscripción' : 'Keep Subscription'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!user || !profile) return;
+                          setIsCancelling(true);
+                          try {
+                            // TODO Phase 2: Replace with actual cancellation API call
+                            // await cancelSubscription(user.id);
+                            // await updateSubscriptionStatus(profile.id, 'free');
+                            // Refresh profile
+                            alert(language === 'fr'
+                              ? 'Configuration Stripe en cours. Cette fonctionnalité sera bientôt disponible.'
+                              : language === 'es'
+                              ? 'Configuración de Stripe en curso. Esta funcionalidad estará disponible pronto.'
+                              : 'Stripe configuration in progress. This feature will be available soon.');
+                            setShowCancelModal(false);
+                          } catch (error) {
+                            console.error('Error cancelling subscription:', error);
+                            alert(language === 'fr'
+                              ? 'Une erreur est survenue lors de l\'annulation.'
+                              : language === 'es'
+                              ? 'Ocurrió un error al cancelar.'
+                              : 'An error occurred while cancelling.');
+                          } finally {
+                            setIsCancelling(false);
+                          }
+                        }}
+                        disabled={isCancelling}
+                        className="flex-1 px-6 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-400 font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isCancelling
+                          ? (language === 'fr' ? 'Annulation...' : language === 'es' ? 'Cancelando...' : 'Cancelling...')
+                          : (language === 'fr' ? 'Oui, annuler' : language === 'es' ? 'Sí, cancelar' : 'Yes, Cancel')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
