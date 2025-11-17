@@ -337,32 +337,34 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               </a>
 
               <div className="flex items-center gap-4">
-                {/* User Info */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-                    {profile?.avatar_url || userAvatarFromMetadata ? (
-                      <img
-                        src={profile?.avatar_url || userAvatarFromMetadata}
-                        alt={profile?.name || userNameFromMetadata || 'Utilisateur'}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-green to-blue-400 flex items-center justify-center text-white font-bold">
-                        {(profile?.name || userNameFromMetadata || 'U')[0]?.toUpperCase() || 'U'}
-                      </div>
-                    )}
-                    <div className="hidden md:block">
-                      <p className="text-sm font-medium text-white">
-                        {profile?.name || userNameFromMetadata}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-brand-green font-semibold">
-                        <img src={tokenIcon} alt="Jetons" className="w-4 h-4" />
-                        <span>
-                          {userTokens} {t.tokens.toLowerCase()}
-                        </span>
-                      </div>
+                {/* User Info - Clickable to open profile modal */}
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2 hover:bg-white/10 transition-all duration-200 cursor-pointer"
+                >
+                  {profile?.avatar_url || userAvatarFromMetadata ? (
+                    <img
+                      src={profile?.avatar_url || userAvatarFromMetadata}
+                      alt={profile?.name || userNameFromMetadata || 'Utilisateur'}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-green to-blue-400 flex items-center justify-center text-white font-bold">
+                      {(profile?.name || userNameFromMetadata || 'U')[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <div className="hidden md:block text-left">
+                    <p className="text-sm font-medium text-white">
+                      {profile?.name || userNameFromMetadata}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-brand-green font-semibold">
+                      <img src={tokenIcon} alt="Jetons" className="w-4 h-4" />
+                      <span>
+                        {userTokens} {t.tokens.toLowerCase()}
+                      </span>
                     </div>
                   </div>
+                </button>
 
                   {/* Buy Tokens Button */}
                   <Link
@@ -418,14 +420,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     </ul>
                   )}
                 </div>
-
-                {/* Manage Profile Button */}
-                <button
-                  onClick={() => setShowProfileModal(true)}
-                  className="hidden sm:flex items-center px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-all duration-200 text-xs"
-                >
-                  {language === 'fr' ? 'Gérer mon profil' : language === 'es' ? 'Gestionar mi perfil' : 'Manage Profile'}
-                </button>
 
                 {/* Logout Button */}
                 <button
