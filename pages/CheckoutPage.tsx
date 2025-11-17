@@ -101,7 +101,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ language, onLanguageChange 
                     <p className="text-xl font-bold text-white">{plan.price}</p>
                     {isSubscription && (
                       <p className="text-xs text-slate-400 mt-1">
-                        {language === 'fr' ? '/mois' : language === 'es' ? '/mes' : '/month'}
+                        {planId === 'pro-annual'
+                          ? (language === 'fr' ? '/an' : language === 'es' ? '/año' : '/year')
+                          : (language === 'fr' ? '/mois' : language === 'es' ? '/mes' : '/month')}
                       </p>
                     )}
                   </div>
@@ -133,11 +135,17 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ language, onLanguageChange 
                 </div>
                 {isSubscription && (
                   <p className="text-xs text-slate-500 text-right">
-                    {language === 'fr'
-                      ? 'Facturé mensuellement'
-                      : language === 'es'
-                      ? 'Facturado mensualmente'
-                      : 'Billed monthly'}
+                    {planId === 'pro-annual'
+                      ? (language === 'fr'
+                          ? 'Facturé annuellement'
+                          : language === 'es'
+                          ? 'Facturado anualmente'
+                          : 'Billed annually')
+                      : (language === 'fr'
+                          ? 'Facturé mensuellement'
+                          : language === 'es'
+                          ? 'Facturado mensualmente'
+                          : 'Billed monthly')}
                   </p>
                 )}
               </div>
