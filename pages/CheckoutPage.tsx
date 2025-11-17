@@ -38,7 +38,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ language, onLanguageChange 
 
   useEffect(() => {
     if (!user) {
-      navigate('/auth?redirect=/checkout' + (planId ? `?plan=${planId}` : ''));
+      const checkoutUrl = `/checkout${planId ? `?plan=${planId}` : ''}`;
+      navigate(`/auth?redirect=${encodeURIComponent(checkoutUrl)}`);
       return;
     }
 

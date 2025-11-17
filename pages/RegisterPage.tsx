@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import logoImage from '../attached_assets/LOGO.png';
 import { useAuth } from '../contexts/AuthContext';
 import type { Language } from '../App';
@@ -13,6 +13,7 @@ interface RegisterPageProps {
 const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
   const { user, isLoading, signUpWithEmail } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,6 +24,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
   const authCopy = t.auth;
   const common = authCopy?.common;
   const registerCopy = authCopy?.register;
+  
+  // Get redirect URL from query params
+  const redirectUrl = searchParams.get('redirect') || '/dashboard';
   const heroBullets = [
     {
       title: t.features?.[0]?.title ?? 'Styles réalistes',
@@ -40,12 +44,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
 
   useEffect(() => {
     if (!isLoading && user) {
-      navigate('/dashboard', { replace: true });
+      navigate(redirectUrl, { replace: true });
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, redirectUrl]);
 
   if (!isLoading && user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={redirectUrl} replace />;
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -72,8 +76,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ language }) => {
     try {
       const data = await signUpWithEmail(email, password);
       if (data.session) {
-        navigate('/dashboard');
+        navigate(redirectUrl);
         return;
+      }
+      // Store redirect URL in localStorage for after email confirmation
+      if (redirectUrl !== '/dashboard') {
+        localStorage.setItem('pendingRedirect', redirectUrl);
       }
       setSuccessMessage(registerCopy?.successMessage ?? 'Account created. Check your inbox to confirm it.');
     } catch (signUpError) {

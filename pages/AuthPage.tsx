@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import logoImage from '../attached_assets/LOGO.png';
 import { useAuth } from '../contexts/AuthContext';
 import type { Language } from '../App';
@@ -13,6 +13,7 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ language }) => {
   const { user, isLoading, signInWithPassword, sendMagicLink, sendPasswordReset } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ language }) => {
   const authCopy = t.auth;
   const common = authCopy?.common;
   const loginCopy = authCopy?.login;
+  
+  // Get redirect URL from query params
+  const redirectUrl = searchParams.get('redirect') || '/dashboard';
   const heroBullets = [
     {
       title: t.heroTrust1,
@@ -45,12 +49,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ language }) => {
 
   useEffect(() => {
     if (!isLoading && user) {
-      navigate('/dashboard', { replace: true });
+      navigate(redirectUrl, { replace: true });
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, redirectUrl]);
 
   if (!isLoading && user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={redirectUrl} replace />;
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -67,7 +71,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ language }) => {
     setIsSubmitting(true);
     try {
       await signInWithPassword(email, password);
-      navigate('/dashboard');
+      navigate(redirectUrl);
     } catch (authError) {
       const message =
         authError && typeof authError === 'object' && 'message' in authError
