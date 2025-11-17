@@ -58,17 +58,48 @@ const ContactSection: React.FC<{ language: Language }> = ({ language }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
+    setSubmitMessage('');
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          message,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+
       setSubmitMessage(t[language].contactSuccess);
-      setIsSubmitting(false);
       setName('');
       setEmail('');
       setMessage('');
       setTimeout(() => setSubmitMessage(''), 5000);
-    }, 1000);
+    } catch (error) {
+      console.error('Error sending contact form:', error);
+      setSubmitMessage(
+        language === 'fr' 
+          ? 'Erreur lors de l\'envoi du message. Veuillez réessayer.'
+          : language === 'es'
+          ? 'Error al enviar el mensaje. Por favor, inténtalo de nuevo.'
+          : 'Error sending message. Please try again.'
+      );
+      setTimeout(() => setSubmitMessage(''), 5000);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputStyle = "w-full bg-white/5 border border-white/10 text-white px-[18px] py-3.5 rounded-[10px] text-[15px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#52FFCB] transition-all duration-200 disabled:opacity-60";

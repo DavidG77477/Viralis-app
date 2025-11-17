@@ -7,6 +7,9 @@ import PasswordResetPage from './pages/PasswordResetPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminAuthReady from './pages/AdminAuthReady';
 import PricingPage from './pages/PricingPage';
+import CheckoutPage from './pages/CheckoutPage';
+import SuccessPage from './pages/SuccessPage';
+import CancelPage from './pages/CancelPage';
 import DynamicBackground from './components/DynamicBackground';
 import { useAuth } from './contexts/AuthContext';
 
@@ -121,6 +124,9 @@ export default function App() {
               }
             />
             <Route path="/pricing" element={<PricingPage language={language} onLanguageChange={handleLanguageChange} />} />
+            <Route path="/checkout" element={<CheckoutPage language={language} onLanguageChange={handleLanguageChange} />} />
+            <Route path="/success" element={<SuccessPage language={language} onLanguageChange={handleLanguageChange} />} />
+            <Route path="/cancel" element={<CancelPage language={language} onLanguageChange={handleLanguageChange} />} />
             <Route path="/admin/auth_ready" element={<AdminAuthReady />} />
           </Routes>
         </main>

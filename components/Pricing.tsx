@@ -1,9 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircleIcon } from './icons/Icons';
 import type { Language } from '../App';
 import { translations } from '../translations';
 import tokenIcon from '../attached_assets/token.png';
 
+const PLAN_IDS = ['token-pack', 'premium-tokens', 'pro-monthly', 'pro-annual'];
 
 const Pricing: React.FC<{ language: Language }> = ({ language }) => {
     const t = translations[language];
@@ -45,9 +47,12 @@ const Pricing: React.FC<{ language: Language }> = ({ language }) => {
                                             <span>{plan.priceSubtitle}</span>
                                         </div>
                                         
-                                        <a href={plan.href} className="w-full mt-auto bg-gradient-to-r from-[#3DFF8C] to-[#5AC8FF] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300">
+                                        <Link 
+                                            to={`/checkout?plan=${PLAN_IDS[pricingPlans.indexOf(plan)]}`}
+                                            className="w-full mt-auto bg-gradient-to-r from-[#3DFF8C] to-[#5AC8FF] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 block text-center"
+                                        >
                                             {plan.ctaText}
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

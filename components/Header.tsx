@@ -16,6 +16,7 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
     
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   const languageOptions: { code: Language; name: string }[] = [
     { code: 'fr', name: 'Français' },
@@ -48,16 +49,26 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      const isClickInsideDropdown = dropdownRef.current?.contains(target);
+      const isClickOnButton = dropdownButtonRef.current?.contains(target);
+      
+      if (!isClickInsideDropdown && !isClickOnButton) {
         setIsDropdownOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [dropdownRef]);
+  }, [isDropdownOpen]);
 
   return (
     <header className="relative top-4 mx-4 mb-4 z-50 animate-fade-in">
@@ -153,6 +164,7 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                         {/* Language Dropdown */}
                         <div className="relative" ref={dropdownRef}>
                             <button
+                                ref={dropdownButtonRef}
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className="flex items-center justify-center gap-1.5 border border-slate-700/50 rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-600 hover:bg-slate-800/50 transition-all duration-200 backdrop-blur-sm min-w-[60px]"
                                 aria-haspopup="true"

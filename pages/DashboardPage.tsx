@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getUserProfileById,
@@ -10,7 +10,9 @@ import {
   deleteVideo,
   IS_SUPABASE_CONFIGURED,
   SupabaseCredentialsError,
+  isUserPro,
 } from '../services/supabaseClient';
+import { createPortalSession } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -430,6 +432,89 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               />
             )}
           </section>
+
+          {/* Subscription Section - Only for Pro users */}
+          {isUserPro(profile) && (
+            <section className="relative max-w-5xl mx-auto">
+              <div className="bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 
+                      className="text-2xl md:text-3xl font-bold mb-2"
+                      style={{ background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent' }}
+                    >
+                      {language === 'fr' ? 'Mon Abonnement Pro' : language === 'es' ? 'Mi Suscripción Pro' : 'My Pro Subscription'}
+                    </h2>
+                    <p className="text-slate-400 text-sm">
+                      {language === 'fr' 
+                        ? `Statut: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Mensuel' : 'Pro Annuel'}`
+                        : language === 'es'
+                        ? `Estado: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Mensual' : 'Pro Anual'}`
+                        : `Status: ${profile?.subscription_status === 'pro_monthly' ? 'Pro Monthly' : 'Pro Annual'}`}
+                    </p>
+                  </div>
+                  <div className="px-4 py-2 bg-gradient-to-r from-[#00ff9d]/20 to-[#00b3ff]/20 border border-[#00ff9d]/30 rounded-lg">
+                    <span className="text-[#00ff9d] font-semibold text-sm">
+                      {language === 'fr' ? 'ACTIF' : language === 'es' ? 'ACTIVO' : 'ACTIVE'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                    <p className="text-slate-400 text-sm mb-1">
+                      {language === 'fr' ? 'Plan' : language === 'es' ? 'Plan' : 'Plan'}
+                    </p>
+                    <p className="text-white font-semibold">
+                      {profile?.subscription_status === 'pro_monthly' 
+                        ? (language === 'fr' ? 'Pro Mensuel' : language === 'es' ? 'Pro Mensual' : 'Pro Monthly')
+                        : (language === 'fr' ? 'Pro Annuel' : language === 'es' ? 'Pro Anual' : 'Pro Annual')}
+                    </p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                    <p className="text-slate-400 text-sm mb-1">
+                      {language === 'fr' ? 'Tokens mensuels' : language === 'es' ? 'Tokens mensuales' : 'Monthly tokens'}
+                    </p>
+                    <p className="text-white font-semibold">300</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={async () => {
+                      if (!user || !profile) return;
+                      try {
+                        // TODO Phase 2: Replace with actual portal session
+                        // const url = await createPortalSession(user.id);
+                        // window.location.href = url;
+                        alert(language === 'fr' 
+                          ? 'Configuration Stripe en cours. Cette fonctionnalité sera bientôt disponible.'
+                          : language === 'es'
+                          ? 'Configuración de Stripe en curso. Esta funcionalidad estará disponible pronto.'
+                          : 'Stripe configuration in progress. This feature will be available soon.');
+                      } catch (error) {
+                        console.error('Error opening portal:', error);
+                      }
+                    }}
+                    disabled={true}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {language === 'fr' ? 'Gérer mon abonnement' : language === 'es' ? 'Gestionar mi suscripción' : 'Manage Subscription'}
+                  </button>
+                  <Link
+                    to="/pricing"
+                    className="px-6 py-3 border border-slate-700 hover:border-slate-600 hover:bg-slate-800/50 text-slate-300 font-medium rounded-lg transition-all duration-200 text-center"
+                  >
+                    {language === 'fr' ? 'Voir les plans' : language === 'es' ? 'Ver planes' : 'View Plans'}
+                  </Link>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* My Videos Section */}
           <section className="relative">
