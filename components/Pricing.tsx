@@ -87,9 +87,12 @@ const Pricing: React.FC<{ language: Language }> = ({ language }) => {
                                         </ul>
                                     )}
                                     
-                                    <a href={plan.href} className="w-full mt-auto bg-gradient-to-r from-[#3DFF8C] to-[#5AC8FF] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300">
+                                    <Link 
+                                        to={`/checkout?plan=${PLAN_IDS[pricingPlans.indexOf(plan)]}`}
+                                        className="w-full mt-auto bg-gradient-to-r from-[#3DFF8C] to-[#5AC8FF] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 block text-center"
+                                    >
                                         {plan.ctaText}
-                                    </a>
+                                    </Link>
                                 </div>
                             </div>
                         </div>
