@@ -408,7 +408,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         }
     };
 
-    const videoCost = resolution === '1080p' ? VIDEO_GENERATION_COST_1080P : VIDEO_GENERATION_COST_720P;
+    // Calculer le coût en tokens selon le modèle et la résolution
+    // Sora 2 Pro et Veo 3.1 utilisent 20 tokens
+    let videoCost: number;
+    if (selectedModel === 'sora-2-pro' || selectedModel === 'veo-3-1-api') {
+        videoCost = 20;
+    } else {
+        videoCost = resolution === '1080p' ? VIDEO_GENERATION_COST_1080P : VIDEO_GENERATION_COST_720P;
+    }
 
     const handleGenerate = async () => {
         if (!supabaseUserId) {
