@@ -397,11 +397,17 @@ export const generateVideo = async (params: GenerateVideoParams) => {
         try {
             // Import dynamique pour éviter les dépendances circulaires
             const { savePendingVideoTask } = await import('./supabaseClient');
+            // Pour Sora, convertir aspectRatio en landscape/portrait
+            // Pour Veo3 et Wan, garder le format original 16:9/9:16
+            const aspectRatioForStorage = isSoraModel 
+                ? convertAspectRatio(aspectRatio) 
+                : aspectRatio;
+            
             await savePendingVideoTask({
                 task_id: taskId,
                 user_id: params.userId,
                 prompt: prompt,
-                aspect_ratio: convertAspectRatio(aspectRatio),
+                aspect_ratio: aspectRatioForStorage,
                 resolution: resolution,
                 tokens_used: params.videoCost,
                 model: kieApiModel,
