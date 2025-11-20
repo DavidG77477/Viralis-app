@@ -319,15 +319,16 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
     const maxDelay = 10000;
     const maxAttemptsEstimate = Math.ceil(maxDurationMs / baseDelay);
     
-    // Essayer d'abord avec /jobs/task-info (pour Sora), puis /veo/record-info (pour Veo)
+    // Pour Sora, utiliser /common-api/get-task-status (endpoint standard KIE)
+    // Pour Veo, utiliser /veo/record-info
     let useSoraEndpoint = true;
     
     while (Date.now() - start < maxDurationMs) {
         const delay = Math.min(baseDelay + attempts * 500, maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
         
-        // Essayer l'endpoint Sora d'abord, puis Veo si ça échoue
-        const endpoint = useSoraEndpoint ? '/jobs/task-info' : '/veo/record-info';
+        // Utiliser l'endpoint standard KIE pour Sora, Veo pour les autres
+        const endpoint = useSoraEndpoint ? '/common-api/get-task-status' : '/veo/record-info';
         const url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
         console.log(`[KIE] Polling ${useSoraEndpoint ? 'Sora' : 'Veo'} endpoint:`, url);
         
@@ -341,7 +342,7 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         if (!response.ok) {
             // Si c'est une erreur 404 avec l'endpoint Sora, essayer Veo
             if (useSoraEndpoint && response.status === 404) {
-                console.log('[KIE] Sora endpoint failed, trying Veo endpoint...');
+                console.log('[KIE] Common API endpoint failed, trying Veo endpoint...');
                 useSoraEndpoint = false;
                 continue;
             }
@@ -479,7 +480,7 @@ export const pollWatermarkRemoval = async (taskId: string): Promise<string> => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         await new Promise(resolve => setTimeout(resolve, delay));
         
-        const response = await fetch(`${KIE_API_BASE}/jobs/task-info?taskId=${taskId}`, {
+        const response = await fetch(`${KIE_API_BASE}/common-api/get-task-status?taskId=${taskId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
