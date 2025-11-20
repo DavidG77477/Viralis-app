@@ -235,11 +235,15 @@ export const getPendingVideoTask = async (taskId: string, userId: string): Promi
     .select('*')
     .eq('task_id', taskId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle(); // Utiliser maybeSingle() au lieu de single() pour éviter les erreurs 404
 
   if (error) {
     if (isInvalidApiKeyError(error)) {
       throw new SupabaseCredentialsError();
+    }
+    // Ne pas logger les erreurs 404 (tâche pas encore créée ou permissions)
+    if (error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.warn('[Supabase] Error fetching pending task:', error.message);
     }
     return null;
   }

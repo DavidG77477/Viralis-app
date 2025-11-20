@@ -546,24 +546,38 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 // Pour Sora, Wan et Veo, attendre le webhook en vérifiant périodiquement la table pending_video_tasks
                 setLoadingMessage('Waiting for video generation (this may take a few minutes)...');
                 const maxWaitTime = 10 * 60 * 1000; // 10 minutes
-                const checkInterval = 5000; // Vérifier toutes les 5 secondes
+                const checkInterval = 10000; // Vérifier toutes les 10 secondes (réduit de 5s pour moins de requêtes)
                 const startTime = Date.now();
+                let consecutiveErrors = 0;
+                const maxConsecutiveErrors = 3; // Arrêter après 3 erreurs consécutives
                 
                 while (Date.now() - startTime < maxWaitTime) {
                     await new Promise(resolve => setTimeout(resolve, checkInterval));
                     
-                    const pendingTask = await getPendingVideoTask(initialOperation.taskId, supabaseUserId);
-                    
-                    if (pendingTask?.status === 'completed' && pendingTask.video_url) {
-                        downloadLink = pendingTask.video_url;
-                        break;
-                    } else if (pendingTask?.status === 'failed') {
-                        throw new Error('La génération de vidéo a échoué');
+                    try {
+                        const pendingTask = await getPendingVideoTask(initialOperation.taskId, supabaseUserId);
+                        
+                        if (pendingTask?.status === 'completed' && pendingTask.video_url) {
+                            downloadLink = pendingTask.video_url;
+                            break;
+                        } else if (pendingTask?.status === 'failed') {
+                            throw new Error('La génération de vidéo a échoué');
+                        }
+                        
+                        // Réinitialiser le compteur d'erreurs si on a une réponse valide
+                        consecutiveErrors = 0;
+                    } catch (error) {
+                        consecutiveErrors++;
+                        // Si trop d'erreurs consécutives, arrêter le polling
+                        if (consecutiveErrors >= maxConsecutiveErrors) {
+                            console.warn('[VideoGenerator] Too many consecutive errors, stopping polling');
+                            break;
+                        }
                     }
                 }
                 
                 if (!downloadLink) {
-                    throw new Error('La génération de vidéo a expiré. Vérifiez votre dashboard plus tard.');
+                    throw new Error('La génération de vidéo est en cours. Vérifiez votre dashboard dans quelques instants.');
                 }
             } else {
                 // Pour les autres modèles, utiliser le polling classique
