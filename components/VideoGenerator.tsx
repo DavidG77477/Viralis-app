@@ -536,14 +536,13 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 videoCost: videoCost
             });
             
-            // Pour les modèles Sora, Wan et Veo, utiliser les webhooks au lieu du polling
+            // Pour les modèles Sora et Veo, utiliser les webhooks au lieu du polling
             const isSoraModel = selectedModel?.startsWith('sora-');
-            const isWanModel = selectedModel?.startsWith('wan-');
             const isVeoModel = selectedModel?.startsWith('veo-') || selectedModel?.startsWith('veo3');
             let downloadLink: string;
             
-            if ((isSoraModel || isWanModel || isVeoModel) && supabaseUserId && IS_SUPABASE_CONFIGURED) {
-                // Pour Sora, Wan et Veo, attendre le webhook en vérifiant périodiquement la table pending_video_tasks
+            if ((isSoraModel || isVeoModel) && supabaseUserId && IS_SUPABASE_CONFIGURED) {
+                // Pour Sora et Veo, attendre le webhook en vérifiant périodiquement la table pending_video_tasks
                 setLoadingMessage('Waiting for video generation (this may take a few minutes)...');
                 const maxWaitTime = 10 * 60 * 1000; // 10 minutes
                 const checkInterval = 10000; // Vérifier toutes les 10 secondes (réduit de 5s pour moins de requêtes)
@@ -607,11 +606,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             setLoadingMessage(t.loadingMessages[1] ?? t.loadingMessages[0]);
             const finalPersistedUrl = downloadLink;
 
-            // Pour Sora, Wan et Veo, la vidéo est déjà sauvegardée par le webhook, donc on ne la sauvegarde pas à nouveau
+            // Pour Sora et Veo, la vidéo est déjà sauvegardée par le webhook, donc on ne la sauvegarde pas à nouveau
             // Mais on doit récupérer la vidéo sauvegardée pour le callback
             if (shouldPersist && supabaseUserId) {
-                if (isSoraModel || isWanModel || isVeoModel) {
-                    // Pour Sora, Wan et Veo, récupérer la vidéo sauvegardée par le webhook
+                if (isSoraModel || isVeoModel) {
+                    // Pour Sora et Veo, récupérer la vidéo sauvegardée par le webhook
                     try {
                         const { getUserVideos } = await import('../services/supabaseClient');
                         const videos = await getUserVideos(supabaseUserId, 1);
@@ -632,7 +631,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                             setUserTokens(profile.tokens);
                         }
                     } catch (error) {
-                        console.error('Error fetching saved video for Sora/Wan/Veo:', error);
+                        console.error('Error fetching saved video for Sora/Veo:', error);
                     }
                 } else {
                     // Pour les autres modèles, sauvegarder normalement

@@ -4,8 +4,7 @@ export type VideoModel =
   | 'sora-2'
   | 'sora-2-pro'
   | 'veo-3-api'
-  | 'veo-3-1-api'
-  | 'wan-2-5';
+  | 'veo-3-1-api';
 
 export interface VideoModelInfo {
   value: VideoModel;
@@ -37,11 +36,6 @@ export const AVAILABLE_MODELS: VideoModelInfo[] = [
     value: 'veo-3-1-api',
     label: 'Veo 3.1',
     description: 'Google Veo 3.1 - Enhanced quality',
-  },
-  {
-    value: 'wan-2-5',
-    label: 'Wan 2.5',
-    description: 'Wan Video 2.5 - Latest',
   },
 ];
 
@@ -97,10 +91,6 @@ const mapModelToKieApiModel = (internalModel: string): string => {
         // veo3 = Quality, veo3_fast = Fast (selon la documentation)
         'veo-3-api': 'veo3_fast', // Fast par défaut
         'veo-3-1-api': 'veo3', // Quality pour la version 3.1
-        // Wan models - use /jobs/createTask endpoint (like Sora)
-        // Format: wan/{version}-{type} (text-to-video or image-to-video)
-        // Le type sera déterminé dynamiquement selon si une image est fournie
-        'wan-2-5': 'wan/2-5', // Base name, type ajouté dynamiquement
         // Fallback pour les anciens modèles
         'veo3_quality': 'veo3',
         'veo3_fast': 'veo3',
@@ -166,8 +156,6 @@ export const generateVideo = async (params: GenerateVideoParams) => {
     
     // Vérifier si c'est un modèle Sora (utilise /jobs/createTask)
     const isSoraModel = internalModel.startsWith('sora-');
-    // Vérifier si c'est un modèle Wan (utilise /jobs/createTask comme Sora)
-    const isWanModel = internalModel.startsWith('wan-');
     // Vérifier si c'est un modèle Veo (peut aussi utiliser les webhooks)
     const isVeoModel = internalModel.startsWith('veo-') || internalModel.startsWith('veo3');
     
@@ -211,73 +199,6 @@ export const generateVideo = async (params: GenerateVideoParams) => {
         };
         
         console.log('[KIE] Using webhook callback URL:', callBackUrl);
-    } else if (isWanModel) {
-        // Wan utilise /jobs/createTask avec une structure similaire à Sora
-        endpoint = '/jobs/createTask';
-        
-        // Construire l'URL du webhook d'abord
-        const baseUrl = typeof window !== 'undefined' 
-            ? window.location.origin 
-            : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5000');
-        const callBackUrl = `${baseUrl}/api/kie-webhook`;
-        
-        // Déterminer le type (text-to-video ou image-to-video) selon si une image est fournie
-        const wanType = image ? 'image-to-video' : 'text-to-video';
-        // Construire le nom du modèle avec le type (format: wan/2-5-text-to-video ou wan/2-5-image-to-video)
-        const wanModelWithType = `${kieApiModel}-${wanType}`;
-        
-        // Structure input pour Wan
-        const input: any = {
-            prompt: prompt,
-            duration: '5', // Durée en secondes (peut être ajustée selon les besoins)
-            resolution: resolution, // "1080p" ou "720p"
-            enable_prompt_expansion: true,
-        };
-        
-        // Si image fournie, uploader vers Supabase Storage et ajouter image_url
-        if (image && userId) {
-            try {
-                const { uploadImageToStorage } = await import('./supabaseClient');
-                const imageUrl = await uploadImageToStorage(image.base64, image.mimeType, userId);
-                
-                if (imageUrl) {
-                    input.image_url = imageUrl;
-                    console.log('[KIE] Image uploaded to Supabase Storage for Wan:', imageUrl);
-                } else {
-                    console.warn('[KIE] Failed to upload image for Wan, falling back to text-to-video');
-                    // Changer le type du modèle si l'upload échoue
-                    const fallbackModel = `${kieApiModel}-text-to-video`;
-                    requestBody = {
-                        model: fallbackModel,
-                        input: { ...input, image_url: undefined },
-                        callBackUrl: callBackUrl,
-                    };
-                }
-            } catch (error) {
-                console.error('[KIE] Error uploading image for Wan:', error);
-                // Fallback to text-to-video
-                const fallbackModel = `${kieApiModel}-text-to-video`;
-                requestBody = {
-                    model: fallbackModel,
-                    input: { ...input, image_url: undefined },
-                    callBackUrl: callBackUrl,
-                };
-            }
-        }
-        
-        // Si requestBody n'a pas été défini dans le bloc image (erreur), le définir maintenant
-        if (!requestBody) {
-            requestBody = {
-                model: wanModelWithType,
-                input: input,
-                callBackUrl: callBackUrl,
-            };
-        } else {
-            // Si requestBody existe déjà (fallback), s'assurer que callBackUrl est défini
-            requestBody.callBackUrl = callBackUrl;
-        }
-        
-        console.log('[KIE] Using webhook callback URL for Wan:', callBackUrl);
     } else if (isVeoModel) {
         // Veo utilise /veo/generate avec support optionnel des webhooks
         endpoint = '/veo/generate';
@@ -392,13 +313,13 @@ export const generateVideo = async (params: GenerateVideoParams) => {
         throw new Error('Réponse invalide de l\'API KIE : taskId manquant. Réponse: ' + JSON.stringify(data));
     }
     
-    // Pour les modèles Sora, Wan et Veo, sauvegarder la tâche en attente si userId et tokens sont fournis
-    if ((isSoraModel || isWanModel || isVeoModel) && params.userId && params.videoCost) {
+    // Pour les modèles Sora et Veo, sauvegarder la tâche en attente si userId et tokens sont fournis
+    if ((isSoraModel || isVeoModel) && params.userId && params.videoCost) {
         try {
             // Import dynamique pour éviter les dépendances circulaires
             const { savePendingVideoTask } = await import('./supabaseClient');
             // Pour Sora, convertir aspectRatio en landscape/portrait
-            // Pour Veo3 et Wan, garder le format original 16:9/9:16
+            // Pour Veo3, garder le format original 16:9/9:16
             const aspectRatioForStorage = isSoraModel 
                 ? convertAspectRatio(aspectRatio) 
                 : aspectRatio;

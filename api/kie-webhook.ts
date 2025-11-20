@@ -84,9 +84,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Invalid resultJson format' });
       }
 
-      // Sora et Wan utilisent resultJson.resultUrls, Veo3 utilise response.resultUrls
+      // Sora utilise resultJson.resultUrls, Veo3 utilise response.resultUrls
       if (resultData.resultUrls) {
-        // Structure Sora et Wan
+        // Structure Sora
         videoUrls = resultData.resultUrls;
       } else if (resultData.response?.resultUrls) {
         // Structure Veo3
