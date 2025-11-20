@@ -330,27 +330,10 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         const delay = Math.min(baseDelay + attempts * 500, maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
         
-        // Essayer différents endpoints pour Sora
-        let endpoint: string;
-        let url: string;
-        
-        if (useSoraEndpoint) {
-            // Essayer plusieurs endpoints possibles pour Sora
-            const soraEndpoints = [
-                '/jobs/getTask',
-                '/jobs/status',
-                '/common-api/get-task-status',
-                '/jobs/task-info'
-            ];
-            
-            // Pour l'instant, essayer le premier endpoint
-            endpoint = soraEndpoints[0];
-            url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
-        } else {
-            endpoint = '/veo/record-info';
-            url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
-        }
-        
+            // Pour Sora, utiliser /jobs/recordInfo (endpoint correct selon la doc KIE)
+        // Pour Veo, utiliser /veo/record-info
+        const endpoint = useSoraEndpoint ? '/jobs/recordInfo' : '/veo/record-info';
+        const url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
         console.log(`[KIE] Polling ${useSoraEndpoint ? 'Sora' : 'Veo'} endpoint:`, url);
         
         const response = await fetch(url, {
@@ -363,8 +346,7 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         if (!response.ok) {
             // Si c'est une erreur 404 avec l'endpoint Sora, essayer Veo
             if (useSoraEndpoint && response.status === 404) {
-                console.log(`[KIE] Endpoint ${endpoint} returned 404, trying Veo endpoint...`);
-                console.log('[KIE] Note: Sora tasks might require webhooks (callBackUrl) instead of polling.');
+                console.log('[KIE] Sora endpoint /jobs/recordInfo returned 404, trying Veo endpoint...');
                 useSoraEndpoint = false;
                 continue;
             }
@@ -381,24 +363,27 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         
         const data = result.data;
         
-        // Gestion pour Sora (/jobs/task-info)
+        // Gestion pour Sora (/jobs/recordInfo)
         if (useSoraEndpoint) {
             const state = data.state;
+            console.log('[KIE] Sora task state:', state);
             
             if (state === 'success') {
                 // Pour Sora, les URLs sont dans resultJson (string JSON)
+                // Structure: { "resultUrls": [...], "resultWaterMarkUrls": [...] }
                 let resultJson;
                 try {
                     resultJson = typeof data.resultJson === 'string' 
                         ? JSON.parse(data.resultJson) 
                         : data.resultJson;
                 } catch (e) {
-                    console.error('Error parsing resultJson:', e);
+                    console.error('[KIE] Error parsing resultJson:', e, 'Raw resultJson:', data.resultJson);
                     resultJson = data.resultJson;
                 }
                 
+                // Utiliser resultUrls (sans watermark car remove_watermark=true)
                 const videoUrls = resultJson?.resultUrls || [];
-                console.log('Sora video generation completed:', videoUrls);
+                console.log('[KIE] Sora video generation completed. URLs:', videoUrls);
                 
                 if (!videoUrls || videoUrls.length === 0) {
                     throw new Error('Génération terminée mais aucune URL de vidéo fournie');
@@ -417,8 +402,13 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
             }
             
             if (state === 'fail') {
-                throw new Error(data.failMsg || result.msg || 'La génération de vidéo a échoué');
+                const errorMsg = data.failMsg || result.msg || 'La génération de vidéo a échoué';
+                console.error('[KIE] Sora task failed:', errorMsg, 'Fail code:', data.failCode);
+                throw new Error(errorMsg);
             }
+            
+            // Si state est 'pending' ou autre, continuer le polling
+            console.log(`[KIE] Sora task still processing... (state: ${state})`);
         } else {
             // Gestion pour Veo (/veo/record-info)
             const successFlag = data.successFlag;
