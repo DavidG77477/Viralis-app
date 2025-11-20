@@ -183,7 +183,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
         if (!IS_SUPABASE_CONFIGURED) {
           setProfile(null);
           setUserTokens(DEFAULT_FREE_TOKENS);
-          setSupabaseError('Supabase n'est pas configuré. Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.');
+          setSupabaseError("Supabase n'est pas configuré. Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.");
           setIsLoading(false);
           hasLoadedRef.current = true;
           return;
