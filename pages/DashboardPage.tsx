@@ -116,6 +116,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const d = dashboardLabels[language];
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
+  const previousUserIdRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef<boolean>(false);
 
   const languageOptions: { code: Language; name: string }[] = [
     { code: 'fr', name: 'Français' },
@@ -151,7 +153,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       return;
     }
 
+    const currentUserId = user?.id ?? null;
+
+    // Si l'utilisateur se déconnecte, réinitialiser l'état
     if (!user) {
+      previousUserIdRef.current = null;
+      hasLoadedRef.current = false;
       setProfile(null);
       setVideos([]);
       setIsLoading(false);
@@ -159,13 +166,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       return;
     }
 
+    // Si c'est le même utilisateur et que les données sont déjà chargées, ne pas recharger
+    if (hasLoadedRef.current && previousUserIdRef.current === currentUserId) {
+      return;
+    }
+
+    // Marquer que nous allons charger les données pour cet utilisateur
+    previousUserIdRef.current = currentUserId;
+
     const bootstrap = async () => {
       try {
         if (!IS_SUPABASE_CONFIGURED) {
           setProfile(null);
           setUserTokens(DEFAULT_FREE_TOKENS);
-          setSupabaseError('Supabase n’est pas configuré. Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.');
+          setSupabaseError('Supabase n'est pas configuré. Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.');
           setIsLoading(false);
+          hasLoadedRef.current = true;
           return;
         }
 
@@ -180,6 +196,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           await loadUserVideos(supabaseProfile.id);
         }
         setIsLoading(false);
+        hasLoadedRef.current = true;
       } catch (error) {
         if (error instanceof SupabaseCredentialsError) {
           setSupabaseError(error.message);
@@ -187,6 +204,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           console.error('Erreur inattendue Dashboard:', error);
         }
         setIsLoading(false);
+        hasLoadedRef.current = true;
       }
     };
 
