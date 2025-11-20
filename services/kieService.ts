@@ -5,9 +5,6 @@ export type VideoModel =
   | 'sora-2-pro'
   | 'veo-3-api'
   | 'veo-3-1-api'
-  | 'kling-api'
-  | 'kling-2-1'
-  | 'kling-2-5'
   | 'wan-video-api'
   | 'wan-2-2'
   | 'wan-2-5';
@@ -42,21 +39,6 @@ export const AVAILABLE_MODELS: VideoModelInfo[] = [
     value: 'veo-3-1-api',
     label: 'Veo 3.1',
     description: 'Google Veo 3.1 - Enhanced quality',
-  },
-  {
-    value: 'kling-api',
-    label: 'KLING API',
-    description: 'Kling AI - Standard',
-  },
-  {
-    value: 'kling-2-1',
-    label: 'Kling 2.1',
-    description: 'Kling AI 2.1',
-  },
-  {
-    value: 'kling-2-5',
-    label: 'Kling 2.5',
-    description: 'Kling AI 2.5 - Latest',
   },
   {
     value: 'wan-video-api',
@@ -127,10 +109,6 @@ const mapModelToKieApiModel = (internalModel: string): string => {
         // veo3 = Quality, veo3_fast = Fast (selon la documentation)
         'veo-3-api': 'veo3_fast', // Fast par défaut
         'veo-3-1-api': 'veo3', // Quality pour la version 3.1
-        // Kling models
-        'kling-api': 'kling-api',
-        'kling-2-1': 'kling-2-1',
-        'kling-2-5': 'kling-2-5',
         // Wan models - use /jobs/createTask endpoint (like Sora)
         // Format: wan/{version}-{type} (text-to-video or image-to-video)
         // Le type sera déterminé dynamiquement selon si une image est fournie
@@ -360,7 +338,7 @@ export const generateVideo = async (params: GenerateVideoParams) => {
             console.log('[KIE] Using webhook callback URL for Veo:', callBackUrl);
         }
     } else {
-        // Autres modèles (Kling, Wan, etc.) utilisent /veo/generate sans webhooks
+        // Autres modèles utilisent /veo/generate sans webhooks
         endpoint = '/veo/generate';
         requestBody = {
             prompt: prompt,
