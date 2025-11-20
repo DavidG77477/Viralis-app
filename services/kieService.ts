@@ -5,8 +5,6 @@ export type VideoModel =
   | 'sora-2-pro'
   | 'veo-3-api'
   | 'veo-3-1-api'
-  | 'wan-video-api'
-  | 'wan-2-2'
   | 'wan-2-5';
 
 export interface VideoModelInfo {
@@ -39,16 +37,6 @@ export const AVAILABLE_MODELS: VideoModelInfo[] = [
     value: 'veo-3-1-api',
     label: 'Veo 3.1',
     description: 'Google Veo 3.1 - Enhanced quality',
-  },
-  {
-    value: 'wan-video-api',
-    label: 'WAN VIDEO API',
-    description: 'Wan Video - Standard',
-  },
-  {
-    value: 'wan-2-2',
-    label: 'Wan 2.2',
-    description: 'Wan Video 2.2',
   },
   {
     value: 'wan-2-5',
@@ -112,8 +100,6 @@ const mapModelToKieApiModel = (internalModel: string): string => {
         // Wan models - use /jobs/createTask endpoint (like Sora)
         // Format: wan/{version}-{type} (text-to-video or image-to-video)
         // Le type sera déterminé dynamiquement selon si une image est fournie
-        'wan-video-api': 'wan/2-5', // Base name, type ajouté dynamiquement
-        'wan-2-2': 'wan/2-2', // Base name, type ajouté dynamiquement
         'wan-2-5': 'wan/2-5', // Base name, type ajouté dynamiquement
         // Fallback pour les anciens modèles
         'veo3_quality': 'veo3',
