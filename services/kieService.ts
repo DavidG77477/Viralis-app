@@ -209,14 +209,23 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
     if (isSoraModel) {
         // Sora utilise /jobs/createTask avec une structure différente
         endpoint = '/jobs/createTask';
+        
+        // Structure de base pour tous les modèles Sora
+        const input: any = {
+            prompt: prompt,
+            aspect_ratio: convertAspectRatio(aspectRatio),
+            n_frames: '10', // 10 secondes par défaut (peut être "10" ou "15")
+            remove_watermark: true, // Retirer le watermark directement dans la requête
+        };
+        
+        // Sora 2 Pro a un paramètre supplémentaire "size"
+        if (kieApiModel === 'sora-2-pro-text-to-video') {
+            input.size = 'high'; // 'standard' ou 'high'
+        }
+        
         requestBody = {
             model: kieApiModel,
-            input: {
-                prompt: prompt,
-                aspect_ratio: convertAspectRatio(aspectRatio),
-                n_frames: '10', // 10 secondes par défaut
-                remove_watermark: true, // Retirer le watermark directement dans la requête
-            },
+            input: input,
         };
     } else {
         // Veo et autres modèles utilisent /veo/generate
@@ -251,27 +260,40 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
     }
 
     const data = await response.json();
-    console.log('KIE API Response:', data);
+    console.log('[KIE] Full API Response:', JSON.stringify(data, null, 2));
+    
+    // Selon la doc KIE, la réponse a cette structure :
+    // { "code": 200, "message": "success", "data": { "taskId": "task_12345678" } }
+    // ou en cas d'erreur : { "code": 422, "message": "error message", "data": null }
     
     if (data.code && data.code !== 200) {
+        console.error('[KIE] API Error:', data);
         if (data.code === 402) {
             throw new Error('Crédits insuffisants sur votre compte KIE. Veuillez recharger votre compte sur https://kie.ai');
         }
-        if (data.code === 422 && data.msg?.includes('Invalid model')) {
-            throw new Error(`Modèle invalide: "${kieApiModel}". Veuillez vérifier que ce modèle est disponible dans votre compte KIE.`);
+        if (data.code === 422) {
+            const errorMsg = data.message || data.msg || 'Invalid request';
+            throw new Error(`Erreur API KIE (422): ${errorMsg}. Modèle utilisé: "${kieApiModel}"`);
         }
-        throw new Error(data.msg || `Erreur API KIE (code ${data.code})`);
+        throw new Error(data.message || data.msg || `Erreur API KIE (code ${data.code})`);
     }
     
-    // Pour Sora, le taskId est dans data.data.taskId
-    // Pour Veo, le taskId est dans data.taskId ou data.data?.taskId
-    const taskId = isSoraModel 
-        ? (data.data?.taskId || data.taskId)
-        : (data.taskId || data.data?.taskId);
+    // Pour Sora (/jobs/createTask), le taskId est dans data.data.taskId selon la doc
+    // Pour Veo (/veo/generate), le taskId peut être dans data.taskId ou data.data?.taskId
+    let taskId: string | undefined;
+    if (isSoraModel) {
+        // Structure attendue pour Sora: { code: 200, message: "success", data: { taskId: "..." } }
+        taskId = data.data?.taskId;
+        console.log('[KIE] Sora response structure:', { code: data.code, message: data.message, taskId });
+    } else {
+        // Structure pour Veo peut varier
+        taskId = data.taskId || data.data?.taskId;
+        console.log('[KIE] Veo taskId from response:', taskId);
+    }
     
     if (!taskId) {
-        console.error('Invalid API response:', data);
-        throw new Error('Réponse invalide de l\'API KIE : taskId manquant');
+        console.error('[KIE] Invalid API response - no taskId found:', JSON.stringify(data, null, 2));
+        throw new Error('Réponse invalide de l\'API KIE : taskId manquant. Réponse: ' + JSON.stringify(data));
     }
     
     return {
@@ -306,7 +328,10 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         
         // Essayer l'endpoint Sora d'abord, puis Veo si ça échoue
         const endpoint = useSoraEndpoint ? '/jobs/task-info' : '/veo/record-info';
-        const response = await fetch(`${KIE_API_BASE}${endpoint}?taskId=${taskId}`, {
+        const url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        console.log(`[KIE] Polling ${useSoraEndpoint ? 'Sora' : 'Veo'} endpoint:`, url);
+        
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
