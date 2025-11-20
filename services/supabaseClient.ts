@@ -185,6 +185,68 @@ export const getUserVideos = async (userId: string, limit: number = 10): Promise
   return data || [];
 };
 
+export interface PendingVideoTask {
+  task_id: string;
+  user_id: string;
+  prompt: string;
+  aspect_ratio: string;
+  resolution: string;
+  tokens_used: number;
+  model?: string;
+  status: 'pending' | 'completed' | 'failed';
+  video_url?: string;
+  created_at?: string;
+  completed_at?: string;
+}
+
+export const savePendingVideoTask = async (task: Omit<PendingVideoTask, 'created_at' | 'status'>): Promise<PendingVideoTask | null> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    console.warn('Supabase credentials not configured. Pending task save skipped.');
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('pending_video_tasks')
+    .insert([{
+      ...task,
+      status: 'pending',
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
+    console.error('Error saving pending task:', error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const getPendingVideoTask = async (taskId: string, userId: string): Promise<PendingVideoTask | null> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('pending_video_tasks')
+    .select('*')
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
+    return null;
+  }
+
+  return data;
+};
+
 export const deleteVideo = async (videoId: string): Promise<void> => {
   if (!IS_SUPABASE_CONFIGURED) {
     console.warn('Supabase credentials not configured. Video delete skipped.');
@@ -206,6 +268,7 @@ export const deleteVideo = async (videoId: string): Promise<void> => {
 };
 
 const PROCESSED_VIDEO_BUCKET = 'processed-videos';
+const INPUT_IMAGES_BUCKET = 'input-images';
 
 export const uploadProcessedVideo = async (file: File, storagePath: string): Promise<string | null> => {
   if (!IS_SUPABASE_CONFIGURED) {
@@ -230,4 +293,60 @@ export const uploadProcessedVideo = async (file: File, storagePath: string): Pro
   const { data: publicData } = supabase.storage.from(PROCESSED_VIDEO_BUCKET).getPublicUrl(storagePath);
 
   return publicData?.publicUrl ?? null;
+};
+
+/**
+ * Upload an image to Supabase Storage and return its public URL
+ * Used for Veo3 image-to-video generation which requires public image URLs
+ */
+export const uploadImageToStorage = async (
+  imageBase64: string,
+  mimeType: string,
+  userId: string
+): Promise<string | null> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    console.warn('Supabase credentials not configured. Image upload skipped.');
+    return null;
+  }
+
+  try {
+    // Convert base64 to Blob
+    const base64Data = imageBase64.split(',')[1] || imageBase64;
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: mimeType });
+
+    // Determine file extension from mime type
+    const extension = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
+    const fileName = `${userId}/${Date.now()}.${extension}`;
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from(INPUT_IMAGES_BUCKET)
+      .upload(fileName, blob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: mimeType,
+      });
+
+    if (uploadError) {
+      if (isInvalidApiKeyError(uploadError)) {
+        throw new SupabaseCredentialsError();
+      }
+      console.error('Error uploading image:', uploadError);
+      return null;
+    }
+
+    // Get public URL
+    const { data: publicData } = supabase.storage.from(INPUT_IMAGES_BUCKET).getPublicUrl(fileName);
+
+    return publicData?.publicUrl ?? null;
+  } catch (error) {
+    console.error('Error converting or uploading image:', error);
+    return null;
+  }
 };

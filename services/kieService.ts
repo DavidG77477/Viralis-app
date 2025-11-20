@@ -84,6 +84,8 @@ interface GenerateVideoParams {
         base64: string;
         mimeType: string;
     };
+    userId?: string; // Pour stocker le taskId avec l'utilisateur pour le webhook
+    videoCost?: number; // Coût en tokens pour sauvegarder dans le webhook
 }
 
 interface KieVideoResponse {
@@ -122,16 +124,19 @@ const mapModelToKieApiModel = (internalModel: string): string => {
         'sora-2': 'sora-2-text-to-video',
         'sora-2-pro': 'sora-2-pro-text-to-video',
         // Veo models - use /veo/generate endpoint
-        'veo-3-api': 'veo3',
-        'veo-3-1-api': 'veo3_1',
+        // veo3 = Quality, veo3_fast = Fast (selon la documentation)
+        'veo-3-api': 'veo3_fast', // Fast par défaut
+        'veo-3-1-api': 'veo3', // Quality pour la version 3.1
         // Kling models
         'kling-api': 'kling-api',
         'kling-2-1': 'kling-2-1',
         'kling-2-5': 'kling-2-5',
-        // Wan models
-        'wan-video-api': 'wan-video-api',
-        'wan-2-2': 'wan-2-2',
-        'wan-2-5': 'wan-2-5',
+        // Wan models - use /jobs/createTask endpoint (like Sora)
+        // Format: wan/{version}-{type} (text-to-video or image-to-video)
+        // Le type sera déterminé dynamiquement selon si une image est fournie
+        'wan-video-api': 'wan/2-5', // Base name, type ajouté dynamiquement
+        'wan-2-2': 'wan/2-2', // Base name, type ajouté dynamiquement
+        'wan-2-5': 'wan/2-5', // Base name, type ajouté dynamiquement
         // Fallback pour les anciens modèles
         'veo3_quality': 'veo3',
         'veo3_fast': 'veo3',
@@ -182,8 +187,9 @@ const getOpenAiApiKey = (options?: { silent?: boolean }) => {
     return apiKey;
 };
 
-export const generateVideo = async ({ prompt, aspectRatio, image, resolution, model }: GenerateVideoParams) => {
+export const generateVideo = async (params: GenerateVideoParams) => {
     const apiKey = getApiKey();
+    const { prompt, aspectRatio, resolution, model, image, userId, videoCost } = params;
     
     // Si aucun modèle n'est spécifié, utiliser la logique actuelle (rétrocompatibilité)
     let internalModel: string;
@@ -196,6 +202,10 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
     
     // Vérifier si c'est un modèle Sora (utilise /jobs/createTask)
     const isSoraModel = internalModel.startsWith('sora-');
+    // Vérifier si c'est un modèle Wan (utilise /jobs/createTask comme Sora)
+    const isWanModel = internalModel.startsWith('wan-');
+    // Vérifier si c'est un modèle Veo (peut aussi utiliser les webhooks)
+    const isVeoModel = internalModel.startsWith('veo-') || internalModel.startsWith('veo3');
     
     // Convertir le nom de modèle interne vers le nom attendu par l'API KIE
     const kieApiModel = mapModelToKieApiModel(internalModel);
@@ -223,15 +233,134 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
             input.size = 'high'; // 'standard' ou 'high'
         }
         
+        // Construire l'URL du webhook
+        // En production, utiliser l'URL Vercel, en dev utiliser ngrok ou similaire
+        const baseUrl = typeof window !== 'undefined' 
+            ? window.location.origin 
+            : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5000');
+        const callBackUrl = `${baseUrl}/api/kie-webhook`;
+        
         requestBody = {
             model: kieApiModel,
             input: input,
-            // Optionnel: callBackUrl pour recevoir les notifications via webhook
-            // Si non fourni, il faut utiliser le polling
-            // callBackUrl: window.location.origin + '/api/kie-callback',
+            callBackUrl: callBackUrl, // Webhook pour recevoir les notifications
         };
+        
+        console.log('[KIE] Using webhook callback URL:', callBackUrl);
+    } else if (isWanModel) {
+        // Wan utilise /jobs/createTask avec une structure similaire à Sora
+        endpoint = '/jobs/createTask';
+        
+        // Construire l'URL du webhook d'abord
+        const baseUrl = typeof window !== 'undefined' 
+            ? window.location.origin 
+            : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5000');
+        const callBackUrl = `${baseUrl}/api/kie-webhook`;
+        
+        // Déterminer le type (text-to-video ou image-to-video) selon si une image est fournie
+        const wanType = image ? 'image-to-video' : 'text-to-video';
+        // Construire le nom du modèle avec le type (format: wan/2-5-text-to-video ou wan/2-5-image-to-video)
+        const wanModelWithType = `${kieApiModel}-${wanType}`;
+        
+        // Structure input pour Wan
+        const input: any = {
+            prompt: prompt,
+            duration: '5', // Durée en secondes (peut être ajustée selon les besoins)
+            resolution: resolution, // "1080p" ou "720p"
+            enable_prompt_expansion: true,
+        };
+        
+        // Si image fournie, uploader vers Supabase Storage et ajouter image_url
+        if (image && userId) {
+            try {
+                const { uploadImageToStorage } = await import('./supabaseClient');
+                const imageUrl = await uploadImageToStorage(image.base64, image.mimeType, userId);
+                
+                if (imageUrl) {
+                    input.image_url = imageUrl;
+                    console.log('[KIE] Image uploaded to Supabase Storage for Wan:', imageUrl);
+                } else {
+                    console.warn('[KIE] Failed to upload image for Wan, falling back to text-to-video');
+                    // Changer le type du modèle si l'upload échoue
+                    const fallbackModel = `${kieApiModel}-text-to-video`;
+                    requestBody = {
+                        model: fallbackModel,
+                        input: { ...input, image_url: undefined },
+                        callBackUrl: callBackUrl,
+                    };
+                }
+            } catch (error) {
+                console.error('[KIE] Error uploading image for Wan:', error);
+                // Fallback to text-to-video
+                const fallbackModel = `${kieApiModel}-text-to-video`;
+                requestBody = {
+                    model: fallbackModel,
+                    input: { ...input, image_url: undefined },
+                    callBackUrl: callBackUrl,
+                };
+            }
+        }
+        
+        // Si requestBody n'a pas été défini dans le bloc image (erreur), le définir maintenant
+        if (!requestBody) {
+            requestBody = {
+                model: wanModelWithType,
+                input: input,
+                callBackUrl: callBackUrl,
+            };
+        } else {
+            // Si requestBody existe déjà (fallback), s'assurer que callBackUrl est défini
+            requestBody.callBackUrl = callBackUrl;
+        }
+        
+        console.log('[KIE] Using webhook callback URL for Wan:', callBackUrl);
+    } else if (isVeoModel) {
+        // Veo utilise /veo/generate avec support optionnel des webhooks
+        endpoint = '/veo/generate';
+        
+        // Construire l'URL du webhook si userId et videoCost sont fournis
+        const baseUrl = typeof window !== 'undefined' 
+            ? window.location.origin 
+            : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5000');
+        const callBackUrl = `${baseUrl}/api/kie-webhook`;
+        
+        // Pour Veo3, aspectRatio doit être "16:9" ou "9:16" (pas "landscape"/"portrait")
+        const veoAspectRatio = aspectRatio; // Garder le format original "16:9" ou "9:16"
+        
+        requestBody = {
+            prompt: prompt,
+            model: kieApiModel,
+            aspectRatio: veoAspectRatio,
+            enableTranslation: true,
+            generationType: image ? 'REFERENCE_2_VIDEO' : 'TEXT_2_VIDEO',
+        };
+
+        // Pour Veo3, uploader l'image vers Supabase Storage et utiliser imageUrls (array)
+        if (image && userId) {
+            try {
+                const { uploadImageToStorage } = await import('./supabaseClient');
+                const imageUrl = await uploadImageToStorage(image.base64, image.mimeType, userId);
+                
+                if (imageUrl) {
+                    requestBody.imageUrls = [imageUrl];
+                    console.log('[KIE] Image uploaded to Supabase Storage:', imageUrl);
+                } else {
+                    console.warn('[KIE] Failed to upload image, falling back to text-to-video');
+                    requestBody.generationType = 'TEXT_2_VIDEO';
+                }
+            } catch (error) {
+                console.error('[KIE] Error uploading image for Veo3:', error);
+                requestBody.generationType = 'TEXT_2_VIDEO';
+            }
+        }
+        
+        // Ajouter callBackUrl si userId et videoCost sont fournis (pour webhooks)
+        if (userId && videoCost) {
+            requestBody.callBackUrl = callBackUrl;
+            console.log('[KIE] Using webhook callback URL for Veo:', callBackUrl);
+        }
     } else {
-        // Veo et autres modèles utilisent /veo/generate
+        // Autres modèles (Kling, Wan, etc.) utilisent /veo/generate sans webhooks
         endpoint = '/veo/generate';
         requestBody = {
             prompt: prompt,
@@ -299,6 +428,27 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
         throw new Error('Réponse invalide de l\'API KIE : taskId manquant. Réponse: ' + JSON.stringify(data));
     }
     
+    // Pour les modèles Sora, Wan et Veo, sauvegarder la tâche en attente si userId et tokens sont fournis
+    if ((isSoraModel || isWanModel || isVeoModel) && params.userId && params.videoCost) {
+        try {
+            // Import dynamique pour éviter les dépendances circulaires
+            const { savePendingVideoTask } = await import('./supabaseClient');
+            await savePendingVideoTask({
+                task_id: taskId,
+                user_id: params.userId,
+                prompt: prompt,
+                aspect_ratio: convertAspectRatio(aspectRatio),
+                resolution: resolution,
+                tokens_used: params.videoCost,
+                model: kieApiModel,
+            });
+            console.log('[KIE] Pending task saved for webhook:', taskId);
+        } catch (error) {
+            console.error('[KIE] Error saving pending task:', error);
+            // Ne pas faire échouer la génération si la sauvegarde échoue
+        }
+    }
+    
     return {
         taskId: taskId,
         status: data.status || 'pending'
@@ -330,10 +480,28 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         const delay = Math.min(baseDelay + attempts * 500, maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
         
-            // Pour Sora, utiliser /jobs/recordInfo (endpoint correct selon la doc KIE)
+            // Pour Sora, essayer différents endpoints possibles
         // Pour Veo, utiliser /veo/record-info
-        const endpoint = useSoraEndpoint ? '/jobs/recordInfo' : '/veo/record-info';
-        const url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        let endpoint: string;
+        let url: string;
+        
+        if (useSoraEndpoint) {
+            // Essayer différentes variantes de l'endpoint pour Sora
+            const soraEndpoints = [
+                '/jobs/recordInfo',  // Selon la doc
+                '/jobs/record-info', // Variante avec tiret
+                '/jobs/getTask',     // Autre possibilité
+                '/common-api/get-task-status' // Endpoint commun
+            ];
+            
+            // Essayer le premier endpoint d'abord
+            endpoint = soraEndpoints[0];
+            url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        } else {
+            endpoint = '/veo/record-info';
+            url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        }
+        
         console.log(`[KIE] Polling ${useSoraEndpoint ? 'Sora' : 'Veo'} endpoint:`, url);
         
         const response = await fetch(url, {
@@ -346,7 +514,8 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         if (!response.ok) {
             // Si c'est une erreur 404 avec l'endpoint Sora, essayer Veo
             if (useSoraEndpoint && response.status === 404) {
-                console.log('[KIE] Sora endpoint /jobs/recordInfo returned 404, trying Veo endpoint...');
+                console.log(`[KIE] Sora endpoint ${endpoint} returned 404, trying Veo endpoint...`);
+                console.log('[KIE] Note: If videos are successful in KIE dashboard but polling fails, you may need to use webhooks (callBackUrl) instead.');
                 useSoraEndpoint = false;
                 continue;
             }

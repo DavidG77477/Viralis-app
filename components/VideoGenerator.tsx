@@ -6,7 +6,7 @@ import { VIDEO_GENERATION_COST_720P, VIDEO_GENERATION_COST_1080P, SCRIPT_GENERAT
 import type { AspectRatio, Resolution } from '../types';
 import type { Language } from '../App';
 import { translations } from '../translations';
-import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED, isUserPro, type UserProfile } from '../services/supabaseClient';
+import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED, isUserPro, type UserProfile, getPendingVideoTask } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
 import SocialProofStats from './SocialProofStats';
 
@@ -524,19 +524,54 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 aspectRatio, 
                 resolution, 
                 model: selectedModel || undefined,
-                image: imagePayload 
+                image: imagePayload,
+                userId: supabaseUserId || undefined,
+                videoCost: videoCost
             });
-            const finalOperation = await pollVideoOperation(initialOperation);
-
-            let downloadLink = finalOperation.response?.generatedVideos?.[0]?.video?.uri;
-            if (!downloadLink) {
-                throw new Error(t.errorRetrieveVideo);
+            
+            // Pour les modèles Sora, Wan et Veo, utiliser les webhooks au lieu du polling
+            const isSoraModel = selectedModel?.startsWith('sora-');
+            const isWanModel = selectedModel?.startsWith('wan-');
+            const isVeoModel = selectedModel?.startsWith('veo-') || selectedModel?.startsWith('veo3');
+            let downloadLink: string;
+            
+            if ((isSoraModel || isWanModel || isVeoModel) && supabaseUserId && IS_SUPABASE_CONFIGURED) {
+                // Pour Sora, Wan et Veo, attendre le webhook en vérifiant périodiquement la table pending_video_tasks
+                setLoadingMessage('Waiting for video generation (this may take a few minutes)...');
+                const maxWaitTime = 10 * 60 * 1000; // 10 minutes
+                const checkInterval = 5000; // Vérifier toutes les 5 secondes
+                const startTime = Date.now();
+                
+                while (Date.now() - startTime < maxWaitTime) {
+                    await new Promise(resolve => setTimeout(resolve, checkInterval));
+                    
+                    const pendingTask = await getPendingVideoTask(initialOperation.taskId, supabaseUserId);
+                    
+                    if (pendingTask?.status === 'completed' && pendingTask.video_url) {
+                        downloadLink = pendingTask.video_url;
+                        break;
+                    } else if (pendingTask?.status === 'failed') {
+                        throw new Error('La génération de vidéo a échoué');
+                    }
+                }
+                
+                if (!downloadLink) {
+                    throw new Error('La génération de vidéo a expiré. Vérifiez votre dashboard plus tard.');
+                }
+            } else {
+                // Pour les autres modèles, utiliser le polling classique
+                const finalOperation = await pollVideoOperation(initialOperation);
+                downloadLink = finalOperation.response?.generatedVideos?.[0]?.video?.uri;
+                if (!downloadLink) {
+                    throw new Error(t.errorRetrieveVideo);
+                }
             }
 
             // Vérifier si le modèle nécessite la suppression du watermark
             const modelInfo = selectedModel ? AVAILABLE_MODELS.find(m => m.value === selectedModel) : null;
             
-            if (modelInfo?.requiresWatermarkRemoval) {
+            if (modelInfo?.requiresWatermarkRemoval && !isSoraModel) {
+                // Note: Sora a déjà remove_watermark: true dans la requête, donc pas besoin de post-traitement
                 setLoadingMessage('Removing watermark...');
                 try {
                     const watermarkRemovalTask = await removeSoraWatermark(downloadLink);
@@ -551,34 +586,63 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             setLoadingMessage(t.loadingMessages[1] ?? t.loadingMessages[0]);
             const finalPersistedUrl = downloadLink;
 
+            // Pour Sora, Wan et Veo, la vidéo est déjà sauvegardée par le webhook, donc on ne la sauvegarde pas à nouveau
+            // Mais on doit récupérer la vidéo sauvegardée pour le callback
             if (shouldPersist && supabaseUserId) {
-                try {
-                    const savedVideo = await saveVideo({
-                        user_id: supabaseUserId,
-                        prompt: enhancedPrompt,
-                        video_url: finalPersistedUrl,
-                        aspect_ratio: aspectRatio,
-                        resolution,
-                        tokens_used: videoCost,
-                    });
-
-                    if (!savedVideo) {
-                        throw new Error('Impossible de sauvegarder la vidéo générée.');
+                if (isSoraModel || isWanModel || isVeoModel) {
+                    // Pour Sora, Wan et Veo, récupérer la vidéo sauvegardée par le webhook
+                    try {
+                        const { getUserVideos } = await import('../services/supabaseClient');
+                        const videos = await getUserVideos(supabaseUserId, 1);
+                        const savedVideo = videos.find(v => v.video_url === finalPersistedUrl) || videos[0];
+                        
+                        if (savedVideo && onVideoGenerated) {
+                            onVideoGenerated(savedVideo);
+                        }
+                        
+                        // Mettre à jour les tokens (déjà décrémentés par le webhook, mais on met à jour l'UI)
+                        const { loadUserProfile } = await import('../services/supabaseClient');
+                        const profile = await loadUserProfile(supabaseUserId, {
+                            email: userProfile?.email || null,
+                            name: userProfile?.name || null,
+                            avatarUrl: userProfile?.avatar_url || null,
+                        });
+                        if (profile) {
+                            setUserTokens(profile.tokens);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching saved video for Sora/Wan/Veo:', error);
                     }
+                } else {
+                    // Pour les autres modèles, sauvegarder normalement
+                    try {
+                        const savedVideo = await saveVideo({
+                            user_id: supabaseUserId,
+                            prompt: enhancedPrompt,
+                            video_url: finalPersistedUrl,
+                            aspect_ratio: aspectRatio,
+                            resolution,
+                            tokens_used: videoCost,
+                        });
 
-                    const updatedTokenBalance = await updateUserTokens(supabaseUserId, videoCost);
-                    if (updatedTokenBalance === null) {
-                        setUserTokens(prev => prev + videoCost);
-                        setError('Impossible de mettre à jour tes jetons. Réessaie plus tard.');
-                        return;
-                    }
-                    setUserTokens(updatedTokenBalance);
+                        if (!savedVideo) {
+                            throw new Error('Impossible de sauvegarder la vidéo générée.');
+                        }
 
-                    if (onVideoGenerated) {
-                        onVideoGenerated(savedVideo);
+                        const updatedTokenBalance = await updateUserTokens(supabaseUserId, videoCost);
+                        if (updatedTokenBalance === null) {
+                            setUserTokens(prev => prev + videoCost);
+                            setError('Impossible de mettre à jour tes jetons. Réessaie plus tard.');
+                            return;
+                        }
+                        setUserTokens(updatedTokenBalance);
+
+                        if (onVideoGenerated) {
+                            onVideoGenerated(savedVideo);
+                        }
+                    } catch (saveError) {
+                        console.error('Error saving video to database:', saveError);
                     }
-                } catch (saveError) {
-                    console.error('Error saving video to database:', saveError);
                 }
             } else {
                 // Mode invité : on décrémente localement mais on ne persiste pas
