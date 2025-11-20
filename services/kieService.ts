@@ -112,6 +112,41 @@ interface VideoOperationResult {
 
 const KIE_API_BASE = 'https://api.kie.ai/api/v1';
 
+/**
+ * Map internal model names to KIE API model identifiers
+ * Sora models use /jobs/createTask endpoint with different model names
+ */
+const mapModelToKieApiModel = (internalModel: string): string => {
+    const modelMapping: Record<string, string> = {
+        // Sora models - use text-to-video suffix for /jobs/createTask endpoint
+        'sora-2': 'sora-2-text-to-video',
+        'sora-2-pro': 'sora-2-pro-text-to-video',
+        // Veo models - use /veo/generate endpoint
+        'veo-3-api': 'veo3',
+        'veo-3-1-api': 'veo3_1',
+        // Kling models
+        'kling-api': 'kling-api',
+        'kling-2-1': 'kling-2-1',
+        'kling-2-5': 'kling-2-5',
+        // Wan models
+        'wan-video-api': 'wan-video-api',
+        'wan-2-2': 'wan-2-2',
+        'wan-2-5': 'wan-2-5',
+        // Fallback pour les anciens modèles
+        'veo3_quality': 'veo3',
+        'veo3_fast': 'veo3',
+    };
+    
+    return modelMapping[internalModel] || internalModel;
+};
+
+/**
+ * Convert aspect ratio from "16:9" or "9:16" to "landscape" or "portrait"
+ */
+const convertAspectRatio = (aspectRatio: AspectRatio): string => {
+    return aspectRatio === '16:9' ? 'landscape' : 'portrait';
+};
+
 const getApiKey = () => {
     const runtimeWindow = typeof window !== 'undefined' ? (window as Record<string, unknown>) : undefined;
     const apiKeyCandidate =
@@ -151,40 +186,55 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
     const apiKey = getApiKey();
     
     // Si aucun modèle n'est spécifié, utiliser la logique actuelle (rétrocompatibilité)
-    let selectedModel: string;
+    let internalModel: string;
     if (model) {
-        selectedModel = model;
+        internalModel = model;
     } else {
         // Fallback sur l'ancienne logique
-        selectedModel = resolution === '1080p' ? 'veo3_quality' : 'veo3_fast';
+        internalModel = resolution === '1080p' ? 'veo3_quality' : 'veo3_fast';
     }
+    
+    // Vérifier si c'est un modèle Sora (utilise /jobs/createTask)
+    const isSoraModel = internalModel.startsWith('sora-');
+    
+    // Convertir le nom de modèle interne vers le nom attendu par l'API KIE
+    const kieApiModel = mapModelToKieApiModel(internalModel);
+    
+    console.log(`[KIE] Using model: ${internalModel} -> ${kieApiModel}`);
     
     // Déterminer l'endpoint selon le modèle
-    // Par défaut, on utilise /veo/generate pour Veo et les anciens modèles
-    // Pour les autres modèles, on peut utiliser le même endpoint ou un endpoint spécifique
-    let endpoint = '/veo/generate';
+    let endpoint: string;
+    let requestBody: any;
     
-    // Si le modèle est spécifié explicitement, on peut ajuster l'endpoint
-    // Note: KIE peut utiliser le même endpoint pour tous les modèles, le paramètre model détermine le modèle réel
-    if (selectedModel.startsWith('sora-')) {
-        endpoint = '/veo/generate'; // À ajuster selon la doc KIE
-    } else if (selectedModel.startsWith('kling-')) {
-        endpoint = '/veo/generate'; // À ajuster selon la doc KIE
-    } else if (selectedModel.startsWith('wan-')) {
-        endpoint = '/veo/generate'; // À ajuster selon la doc KIE
-    }
-    
-    const requestBody: any = {
-        prompt: prompt,
-        model: selectedModel,
-        aspectRatio: aspectRatio,
-        enableTranslation: true,
-        generationType: 'TEXT_2_VIDEO',
-    };
+    if (isSoraModel) {
+        // Sora utilise /jobs/createTask avec une structure différente
+        endpoint = '/jobs/createTask';
+        requestBody = {
+            model: kieApiModel,
+            input: {
+                prompt: prompt,
+                aspect_ratio: convertAspectRatio(aspectRatio),
+                n_frames: '10', // 10 secondes par défaut
+                remove_watermark: true, // Retirer le watermark directement dans la requête
+            },
+        };
+    } else {
+        // Veo et autres modèles utilisent /veo/generate
+        endpoint = '/veo/generate';
+        requestBody = {
+            prompt: prompt,
+            model: kieApiModel,
+            aspectRatio: aspectRatio,
+            enableTranslation: true,
+            generationType: 'TEXT_2_VIDEO',
+        };
 
-    if (image) {
-        requestBody.imageUrl = `data:${image.mimeType};base64,${image.base64}`;
+        if (image) {
+            requestBody.imageUrl = `data:${image.mimeType};base64,${image.base64}`;
+        }
     }
+
+    console.log(`[KIE] Request body:`, JSON.stringify(requestBody, null, 2));
 
     const response = await fetch(`${KIE_API_BASE}${endpoint}`, {
         method: 'POST',
@@ -207,10 +257,18 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
         if (data.code === 402) {
             throw new Error('Crédits insuffisants sur votre compte KIE. Veuillez recharger votre compte sur https://kie.ai');
         }
+        if (data.code === 422 && data.msg?.includes('Invalid model')) {
+            throw new Error(`Modèle invalide: "${kieApiModel}". Veuillez vérifier que ce modèle est disponible dans votre compte KIE.`);
+        }
         throw new Error(data.msg || `Erreur API KIE (code ${data.code})`);
     }
     
-    const taskId = data.taskId || data.data?.taskId;
+    // Pour Sora, le taskId est dans data.data.taskId
+    // Pour Veo, le taskId est dans data.taskId ou data.data?.taskId
+    const taskId = isSoraModel 
+        ? (data.data?.taskId || data.taskId)
+        : (data.taskId || data.data?.taskId);
+    
     if (!taskId) {
         console.error('Invalid API response:', data);
         throw new Error('Réponse invalide de l\'API KIE : taskId manquant');
@@ -233,17 +291,22 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
     }
     
     const start = Date.now();
-    const maxDurationMs = 2 * 60 * 1000;
+    const maxDurationMs = 5 * 60 * 1000; // 5 minutes pour Sora (génération plus longue)
     let attempts = 0;
     const baseDelay = 4000;
     const maxDelay = 10000;
     const maxAttemptsEstimate = Math.ceil(maxDurationMs / baseDelay);
     
+    // Essayer d'abord avec /jobs/task-info (pour Sora), puis /veo/record-info (pour Veo)
+    let useSoraEndpoint = true;
+    
     while (Date.now() - start < maxDurationMs) {
         const delay = Math.min(baseDelay + attempts * 500, maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
         
-        const response = await fetch(`${KIE_API_BASE}/veo/record-info?taskId=${taskId}`, {
+        // Essayer l'endpoint Sora d'abord, puis Veo si ça échoue
+        const endpoint = useSoraEndpoint ? '/jobs/task-info' : '/veo/record-info';
+        const response = await fetch(`${KIE_API_BASE}${endpoint}?taskId=${taskId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -251,6 +314,12 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         });
 
         if (!response.ok) {
+            // Si c'est une erreur 404 avec l'endpoint Sora, essayer Veo
+            if (useSoraEndpoint && response.status === 404) {
+                console.log('[KIE] Sora endpoint failed, trying Veo endpoint...');
+                useSoraEndpoint = false;
+                continue;
+            }
             const errorText = await response.text();
             throw new Error(`Erreur de polling API KIE: ${response.status} - ${errorText}`);
         }
@@ -263,37 +332,79 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         }
         
         const data = result.data;
-        const successFlag = data.successFlag;
         
-        if (successFlag === 1) {
-            const videoUrls = data.response?.resultUrls;
-            console.log('Video generation completed:', videoUrls);
+        // Gestion pour Sora (/jobs/task-info)
+        if (useSoraEndpoint) {
+            const state = data.state;
             
-            if (!videoUrls || videoUrls.length === 0) {
-                throw new Error('Génération terminée mais aucune URL de vidéo fournie');
+            if (state === 'success') {
+                // Pour Sora, les URLs sont dans resultJson (string JSON)
+                let resultJson;
+                try {
+                    resultJson = typeof data.resultJson === 'string' 
+                        ? JSON.parse(data.resultJson) 
+                        : data.resultJson;
+                } catch (e) {
+                    console.error('Error parsing resultJson:', e);
+                    resultJson = data.resultJson;
+                }
+                
+                const videoUrls = resultJson?.resultUrls || [];
+                console.log('Sora video generation completed:', videoUrls);
+                
+                if (!videoUrls || videoUrls.length === 0) {
+                    throw new Error('Génération terminée mais aucune URL de vidéo fournie');
+                }
+                
+                return {
+                    done: true,
+                    response: {
+                        generatedVideos: [{
+                            video: {
+                                uri: videoUrls[0]
+                            }
+                        }]
+                    }
+                };
             }
             
-            return {
-                done: true,
-                response: {
-                    generatedVideos: [{
-                        video: {
-                            uri: videoUrls[0]
-                        }
-                    }]
+            if (state === 'fail') {
+                throw new Error(data.failMsg || result.msg || 'La génération de vidéo a échoué');
+            }
+        } else {
+            // Gestion pour Veo (/veo/record-info)
+            const successFlag = data.successFlag;
+            
+            if (successFlag === 1) {
+                const videoUrls = data.response?.resultUrls;
+                console.log('Veo video generation completed:', videoUrls);
+                
+                if (!videoUrls || videoUrls.length === 0) {
+                    throw new Error('Génération terminée mais aucune URL de vidéo fournie');
                 }
-            };
-        }
-        
-        if (successFlag === 2 || successFlag === 3) {
-            throw new Error(result.msg || 'La génération de vidéo a échoué');
+                
+                return {
+                    done: true,
+                    response: {
+                        generatedVideos: [{
+                            video: {
+                                uri: videoUrls[0]
+                            }
+                        }]
+                    }
+                };
+            }
+            
+            if (successFlag === 2 || successFlag === 3) {
+                throw new Error(result.msg || 'La génération de vidéo a échoué');
+            }
         }
         
         console.log(`Génération en cours... (tentative ${attempts + 1}/${maxAttemptsEstimate})`);
         attempts++;
     }
     
-    throw new Error('La génération de vidéo a expiré (plus de 2 minutes sans réponse).');
+    throw new Error('La génération de vidéo a expiré (plus de 5 minutes sans réponse).');
 };
 
 interface WatermarkRemovalResult {
