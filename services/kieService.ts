@@ -316,7 +316,7 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
     }
     
     const start = Date.now();
-    const maxDurationMs = 5 * 60 * 1000; // 5 minutes pour Sora (génération plus longue)
+    const maxDurationMs = 10 * 60 * 1000; // 10 minutes pour Sora (génération peut prendre du temps)
     let attempts = 0;
     const baseDelay = 4000;
     const maxDelay = 10000;
@@ -367,8 +367,10 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         if (useSoraEndpoint) {
             const state = data.state;
             console.log('[KIE] Sora task state:', state);
+            console.log('[KIE] Full Sora response data:', JSON.stringify(data, null, 2));
             
-            if (state === 'success') {
+            // Vérifier différents états possibles
+            if (state === 'success' || state === 'completed' || data.state === 'success') {
                 // Pour Sora, les URLs sont dans resultJson (string JSON)
                 // Structure: { "resultUrls": [...], "resultWaterMarkUrls": [...] }
                 let resultJson;
@@ -376,6 +378,7 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
                     resultJson = typeof data.resultJson === 'string' 
                         ? JSON.parse(data.resultJson) 
                         : data.resultJson;
+                    console.log('[KIE] Parsed resultJson:', resultJson);
                 } catch (e) {
                     console.error('[KIE] Error parsing resultJson:', e, 'Raw resultJson:', data.resultJson);
                     resultJson = data.resultJson;
@@ -386,6 +389,21 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
                 console.log('[KIE] Sora video generation completed. URLs:', videoUrls);
                 
                 if (!videoUrls || videoUrls.length === 0) {
+                    // Essayer aussi resultWaterMarkUrls si resultUrls est vide
+                    const watermarkUrls = resultJson?.resultWaterMarkUrls || [];
+                    if (watermarkUrls.length > 0) {
+                        console.log('[KIE] Using watermark URLs as fallback:', watermarkUrls);
+                        return {
+                            done: true,
+                            response: {
+                                generatedVideos: [{
+                                    video: {
+                                        uri: watermarkUrls[0]
+                                    }
+                                }]
+                            }
+                        };
+                    }
                     throw new Error('Génération terminée mais aucune URL de vidéo fournie');
                 }
                 
@@ -401,14 +419,14 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
                 };
             }
             
-            if (state === 'fail') {
+            if (state === 'fail' || state === 'failed' || data.state === 'fail') {
                 const errorMsg = data.failMsg || result.msg || 'La génération de vidéo a échoué';
                 console.error('[KIE] Sora task failed:', errorMsg, 'Fail code:', data.failCode);
                 throw new Error(errorMsg);
             }
             
-            // Si state est 'pending' ou autre, continuer le polling
-            console.log(`[KIE] Sora task still processing... (state: ${state})`);
+            // Si state est 'pending', 'processing', 'in_progress' ou autre, continuer le polling
+            console.log(`[KIE] Sora task still processing... (state: ${state}, attempt: ${attempts + 1}/${maxAttemptsEstimate})`);
         } else {
             // Gestion pour Veo (/veo/record-info)
             const successFlag = data.successFlag;
