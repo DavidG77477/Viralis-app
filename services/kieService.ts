@@ -226,6 +226,9 @@ export const generateVideo = async ({ prompt, aspectRatio, image, resolution, mo
         requestBody = {
             model: kieApiModel,
             input: input,
+            // Optionnel: callBackUrl pour recevoir les notifications via webhook
+            // Si non fourni, il faut utiliser le polling
+            // callBackUrl: window.location.origin + '/api/kie-callback',
         };
     } else {
         // Veo et autres modèles utilisent /veo/generate
@@ -327,9 +330,27 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         const delay = Math.min(baseDelay + attempts * 500, maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
         
-        // Utiliser l'endpoint standard KIE pour Sora, Veo pour les autres
-        const endpoint = useSoraEndpoint ? '/common-api/get-task-status' : '/veo/record-info';
-        const url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        // Essayer différents endpoints pour Sora
+        let endpoint: string;
+        let url: string;
+        
+        if (useSoraEndpoint) {
+            // Essayer plusieurs endpoints possibles pour Sora
+            const soraEndpoints = [
+                '/jobs/getTask',
+                '/jobs/status',
+                '/common-api/get-task-status',
+                '/jobs/task-info'
+            ];
+            
+            // Pour l'instant, essayer le premier endpoint
+            endpoint = soraEndpoints[0];
+            url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        } else {
+            endpoint = '/veo/record-info';
+            url = `${KIE_API_BASE}${endpoint}?taskId=${taskId}`;
+        }
+        
         console.log(`[KIE] Polling ${useSoraEndpoint ? 'Sora' : 'Veo'} endpoint:`, url);
         
         const response = await fetch(url, {
@@ -342,7 +363,8 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         if (!response.ok) {
             // Si c'est une erreur 404 avec l'endpoint Sora, essayer Veo
             if (useSoraEndpoint && response.status === 404) {
-                console.log('[KIE] Common API endpoint failed, trying Veo endpoint...');
+                console.log(`[KIE] Endpoint ${endpoint} returned 404, trying Veo endpoint...`);
+                console.log('[KIE] Note: Sora tasks might require webhooks (callBackUrl) instead of polling.');
                 useSoraEndpoint = false;
                 continue;
             }
