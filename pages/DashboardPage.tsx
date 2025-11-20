@@ -157,17 +157,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
 
     // Si l'utilisateur se déconnecte, réinitialiser l'état
     if (!user) {
-      previousUserIdRef.current = null;
-      hasLoadedRef.current = false;
-      setProfile(null);
-      setVideos([]);
-      setIsLoading(false);
-      setSupabaseError(null);
+      // Seulement réinitialiser si on avait un utilisateur avant
+      if (previousUserIdRef.current !== null) {
+        previousUserIdRef.current = null;
+        hasLoadedRef.current = false;
+        setProfile(null);
+        setVideos([]);
+        setIsLoading(false);
+        setSupabaseError(null);
+      }
       return;
     }
 
     // Si c'est le même utilisateur et que les données sont déjà chargées, ne pas recharger
-    if (hasLoadedRef.current && previousUserIdRef.current === currentUserId) {
+    // On compare strictement l'ID pour éviter les rechargements inutiles
+    if (hasLoadedRef.current && previousUserIdRef.current === currentUserId && currentUserId !== null) {
       return;
     }
 
@@ -209,7 +213,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
     };
 
     bootstrap();
-  }, [authLoading, user]);
+  }, [authLoading, user?.id]); // Dépendre uniquement de user.id au lieu de l'objet user entier
 
   const loadUserProfile = async (
     userId: string,
