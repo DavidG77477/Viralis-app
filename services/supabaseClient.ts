@@ -205,24 +205,52 @@ export const savePendingVideoTask = async (task: Omit<PendingVideoTask, 'created
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('pending_video_tasks')
-    .insert([{
-      ...task,
-      status: 'pending',
-    }])
-    .select()
-    .single();
+  // Retry logic pour gérer les erreurs de cache PostgREST
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await supabase
+      .from('pending_video_tasks')
+      .insert([{
+        ...task,
+        status: 'pending',
+      }])
+      .select()
+      .single();
 
-  if (error) {
+    if (!error) {
+      return data;
+    }
+
+    lastError = error;
+
+    // Si c'est une erreur de cache PostgREST (PGRST205), attendre un peu et réessayer
+    if (error.code === 'PGRST205') {
+      console.warn(`[Supabase] Table not found in cache (attempt ${attempt + 1}/3), retrying...`);
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // 1s, 2s, 3s
+        continue;
+      }
+    }
+
+    // Pour les autres erreurs, arrêter immédiatement
     if (isInvalidApiKeyError(error)) {
       throw new SupabaseCredentialsError();
     }
-    console.error('Error saving pending task:', error);
-    throw error;
+    
+    // Si ce n'est pas une erreur de cache, arrêter
+    break;
   }
 
-  return data;
+  // Si toutes les tentatives ont échoué
+  console.error('Error saving pending task after retries:', lastError);
+  
+  // Ne pas faire échouer la génération si c'est juste un problème de cache
+  if (lastError?.code === 'PGRST205') {
+    console.warn('[Supabase] Table pending_video_tasks not available in PostgREST cache. The webhook may still work, but task tracking is disabled.');
+    return null;
+  }
+  
+  throw lastError;
 };
 
 export const getPendingVideoTask = async (taskId: string, userId: string): Promise<PendingVideoTask | null> => {
