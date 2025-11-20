@@ -550,25 +550,47 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 let consecutiveErrors = 0;
                 const maxConsecutiveErrors = 3; // Arrêter après 3 erreurs consécutives
                 
+                let tableNotFound = false;
+                
                 while (Date.now() - startTime < maxWaitTime) {
                     await new Promise(resolve => setTimeout(resolve, checkInterval));
                     
                     try {
                         const pendingTask = await getPendingVideoTask(initialOperation.taskId, supabaseUserId);
                         
-                        if (pendingTask?.status === 'completed' && pendingTask.video_url) {
+                        // Si null est retourné, cela peut signifier que la table n'existe pas
+                        // On continue à essayer mais on compte les erreurs
+                        if (pendingTask === null) {
+                            consecutiveErrors++;
+                            // Si trop d'erreurs consécutives, arrêter le polling
+                            if (consecutiveErrors >= maxConsecutiveErrors) {
+                                tableNotFound = true;
+                                console.warn('[VideoGenerator] Table pending_video_tasks not available. Video generation may still be in progress. Check your dashboard later.');
+                                break;
+                            }
+                            continue; // Continuer à essayer
+                        }
+                        
+                        // Si on a une tâche, vérifier son statut
+                        if (pendingTask.status === 'completed' && pendingTask.video_url) {
                             downloadLink = pendingTask.video_url;
                             break;
-                        } else if (pendingTask?.status === 'failed') {
-                            throw new Error('La génération de vidéo a échoué');
+                        } else if (pendingTask.status === 'failed') {
+                            const errorMsg = pendingTask.fail_msg || 'La génération de vidéo a échoué';
+                            throw new Error(errorMsg);
                         }
                         
                         // Réinitialiser le compteur d'erreurs si on a une réponse valide
                         consecutiveErrors = 0;
-                    } catch (error) {
+                    } catch (error: any) {
                         consecutiveErrors++;
+                        // Si c'est une erreur de génération (pas de cache), arrêter immédiatement
+                        if (error?.message && !error.message.includes('cache')) {
+                            throw error;
+                        }
                         // Si trop d'erreurs consécutives, arrêter le polling
                         if (consecutiveErrors >= maxConsecutiveErrors) {
+                            tableNotFound = true;
                             console.warn('[VideoGenerator] Too many consecutive errors, stopping polling');
                             break;
                         }
@@ -576,7 +598,12 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 }
                 
                 if (!downloadLink) {
-                    throw new Error('La génération de vidéo est en cours. Vérifiez votre dashboard dans quelques instants.');
+                    if (tableNotFound) {
+                        // Si la table n'existe pas, informer l'utilisateur mais ne pas faire échouer
+                        throw new Error('La table de suivi n\'est pas disponible. La génération de vidéo est peut-être en cours. Vérifiez votre dashboard dans quelques instants.');
+                    } else {
+                        throw new Error('La génération de vidéo est en cours. Vérifiez votre dashboard dans quelques instants.');
+                    }
                 }
             } else {
                 // Pour les autres modèles, utiliser le polling classique

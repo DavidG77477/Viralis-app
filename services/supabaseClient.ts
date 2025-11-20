@@ -253,6 +253,9 @@ export const savePendingVideoTask = async (task: Omit<PendingVideoTask, 'created
   throw lastError;
 };
 
+// Variable globale pour tracker si la table n'existe pas (évite les logs répétés)
+let tableNotFoundLogged = false;
+
 export const getPendingVideoTask = async (taskId: string, userId: string): Promise<PendingVideoTask | null> => {
   if (!IS_SUPABASE_CONFIGURED) {
     return null;
@@ -269,11 +272,30 @@ export const getPendingVideoTask = async (taskId: string, userId: string): Promi
     if (isInvalidApiKeyError(error)) {
       throw new SupabaseCredentialsError();
     }
-    // Ne pas logger les erreurs 404 (tâche pas encore créée ou permissions)
-    if (error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.warn('[Supabase] Error fetching pending task:', error.message);
+    
+    // Erreur PGRST205 = table not found in schema cache
+    if (error.code === 'PGRST205') {
+      if (!tableNotFoundLogged) {
+        console.warn('[Supabase] Table pending_video_tasks not found in PostgREST cache. This may indicate the table needs to be created or the cache needs to refresh.');
+        tableNotFoundLogged = true; // Ne logger qu'une seule fois
+      }
+      // Retourner null silencieusement pour éviter les logs répétés
+      return null;
     }
+    
+    // PGRST116 = no rows returned (normal si la tâche n'existe pas encore)
+    if (error.code === 'PGRST116') {
+      return null; // Pas d'erreur, juste pas de résultat
+    }
+    
+    // Autres erreurs : logger seulement si ce n'est pas une erreur de cache
+    console.warn('[Supabase] Error fetching pending task:', error.message);
     return null;
+  }
+
+  // Si on a des données, réinitialiser le flag (la table existe maintenant)
+  if (data) {
+    tableNotFoundLogged = false;
   }
 
   return data;
