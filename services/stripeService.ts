@@ -35,7 +35,7 @@ export const createCheckoutSession = async (
   planId: PlanId,
   userId: string
 ): Promise<CheckoutSessionResponse> => {
-  const response = await fetch('/api/create-checkout-session', {
+  const response = await fetch('/api/stripe?action=create-checkout-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ planId, userId }),
@@ -58,7 +58,7 @@ export const createCheckoutSession = async (
  * @returns Promise with portal session URL
  */
 export const createPortalSession = async (userId: string): Promise<string> => {
-  const response = await fetch('/api/create-portal-session', {
+  const response = await fetch('/api/stripe?action=create-portal-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId }),
@@ -82,7 +82,7 @@ export const createPortalSession = async (userId: string): Promise<string> => {
  * @returns Promise with subscription status
  */
 export const getSubscriptionStatus = async (userId: string): Promise<SubscriptionStatus> => {
-  const response = await fetch(`/api/get-subscription-status?userId=${userId}`);
+  const response = await fetch(`/api/stripe?action=get-subscription-status&userId=${userId}`);
   
   if (!response.ok) {
     // If error, return null status (user might not have subscription)
