@@ -3,7 +3,16 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 // Plan ID to Stripe Price ID mapping (no external dependencies)
-const PLAN_TO_PRICE_ID: Record<string, string> = {
+// TEST MODE Price IDs - Replace these with your actual test mode Price IDs from Stripe Dashboard
+const PLAN_TO_PRICE_ID_TEST: Record<string, string> = {
+  'token-pack': process.env.STRIPE_PRICE_ID_TOKEN_PACK_TEST || 'price_test_token_pack',
+  'premium-tokens': process.env.STRIPE_PRICE_ID_PREMIUM_TOKENS_TEST || 'price_test_premium_tokens',
+  'pro-monthly': process.env.STRIPE_PRICE_ID_PRO_MONTHLY_TEST || 'price_test_pro_monthly',
+  'pro-annual': process.env.STRIPE_PRICE_ID_PRO_ANNUAL_TEST || 'price_test_pro_annual',
+};
+
+// LIVE MODE Price IDs
+const PLAN_TO_PRICE_ID_LIVE: Record<string, string> = {
   'token-pack': 'price_1STdsSQ95ijGuOd86o9Kz6Xn',
   'premium-tokens': 'price_1STdtvQ95ijGuOd8hnKkQEE5',
   'pro-monthly': 'price_1STdvsQ95ijGuOd8DTnBtkkE',
@@ -16,6 +25,9 @@ const isSubscriptionPlan = (planId: string): boolean => {
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 const isTestMode = stripeSecretKey.startsWith('sk_test_');
+
+// Select the correct Price ID mapping based on mode
+const PLAN_TO_PRICE_ID = isTestMode ? PLAN_TO_PRICE_ID_TEST : PLAN_TO_PRICE_ID_LIVE;
 
 // Initialize Stripe only if key is present
 let stripe: Stripe | null = null;
