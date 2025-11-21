@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// Plan ID to Stripe Price ID mapping
+// Plan ID to Stripe Price ID mapping (no external dependencies)
 const PLAN_TO_PRICE_ID: Record<string, string> = {
   'token-pack': 'price_1STdsSQ95ijGuOd86o9Kz6Xn',
   'premium-tokens': 'price_1STdtvQ95ijGuOd8hnKkQEE5',
