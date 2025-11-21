@@ -141,6 +141,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } else {
             console.log(`[Stripe Webhook] Updated subscription status to ${subscriptionStatus} for user ${userId}`);
           }
+
+          // Add 300 tokens for Pro subscription (first payment)
+          // Both Pro Monthly and Pro Annual users get 300 tokens per month
+          const { error: tokenError } = await supabase.rpc('increment_tokens', {
+            user_id: userId,
+            tokens_to_add: 300,
+          });
+
+          if (tokenError) {
+            console.error('[Stripe Webhook] Error adding tokens on subscription creation:', tokenError);
+          } else {
+            console.log(`[Stripe Webhook] Added 300 tokens on subscription creation for user ${userId} (${subscriptionStatus})`);
+          }
         }
 
         break;
@@ -252,6 +265,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (priceId && PRICE_TO_SUBSCRIPTION_STATUS[priceId]) {
           const subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId];
           
+          // Update subscription status
           const { error: subError } = await supabase
             .from('users')
             .update({ subscription_status: subscriptionStatus })
@@ -259,6 +273,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           if (subError) {
             console.error('[Stripe Webhook] Error updating subscription after payment:', subError);
+          }
+
+          // Add 300 tokens for Pro subscription (monthly or annual renewal)
+          // Both Pro Monthly and Pro Annual users get 300 tokens per month
+          const { error: tokenError } = await supabase.rpc('increment_tokens', {
+            user_id: userData.id,
+            tokens_to_add: 300,
+          });
+
+          if (tokenError) {
+            console.error('[Stripe Webhook] Error adding tokens on subscription renewal:', tokenError);
+          } else {
+            console.log(`[Stripe Webhook] Added 300 tokens on subscription payment for user ${userData.id} (${subscriptionStatus})`);
           }
         }
 
