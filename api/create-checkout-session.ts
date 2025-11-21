@@ -1,14 +1,33 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { PLAN_TO_PRICE_ID, isSubscriptionPlan, type PlanId } from '../services/stripeService';
+
+// Plan ID to Stripe Price ID mapping
+const PLAN_TO_PRICE_ID: Record<string, string> = {
+  'token-pack': 'price_1STdsSQ95ijGuOd86o9Kz6Xn',
+  'premium-tokens': 'price_1STdtvQ95ijGuOd8hnKkQEE5',
+  'pro-monthly': 'price_1STdvsQ95ijGuOd8DTnBtkkE',
+  'pro-annual': 'price_1STdyaQ95ijGuOd8OjQauruf',
+};
+
+const isSubscriptionPlan = (planId: string): boolean => {
+  return planId === 'pro-monthly' || planId === 'pro-annual';
+};
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 const isTestMode = stripeSecretKey.startsWith('sk_test_');
 
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2024-12-18.acacia',
-});
+// Initialize Stripe only if key is present
+let stripe: Stripe | null = null;
+if (stripeSecretKey && stripeSecretKey.length > 10) {
+  try {
+    stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-12-18.acacia',
+    });
+  } catch (error) {
+    console.error('[Stripe] Failed to initialize Stripe:', error);
+  }
+}
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -25,18 +44,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing planId or userId' });
     }
 
-    if (!PLAN_TO_PRICE_ID[planId as PlanId]) {
-      return res.status(400).json({ error: 'Invalid planId' });
+    if (!PLAN_TO_PRICE_ID[planId]) {
+      console.error('[Stripe] Invalid planId:', planId);
+      return res.status(400).json({ error: `Invalid planId: ${planId}` });
     }
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('[Stripe] STRIPE_SECRET_KEY is missing');
-      return res.status(500).json({ error: 'Stripe secret key not configured' });
-    }
-
-    if (!stripeSecretKey || stripeSecretKey.length < 10) {
-      console.error('[Stripe] STRIPE_SECRET_KEY appears to be invalid');
-      return res.status(500).json({ error: 'Stripe secret key appears to be invalid' });
+    if (!stripe) {
+      console.error('[Stripe] STRIPE_SECRET_KEY is missing or invalid');
+      return res.status(500).json({ 
+        error: 'Stripe secret key not configured',
+        details: 'Please configure STRIPE_SECRET_KEY in Vercel environment variables'
+      });
     }
 
     // Log mode for debugging
@@ -63,13 +81,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const priceId = PLAN_TO_PRICE_ID[planId as PlanId];
+    const priceId = PLAN_TO_PRICE_ID[planId];
     if (!priceId) {
       console.error('[Stripe] Invalid planId:', planId);
       return res.status(400).json({ error: `Invalid planId: ${planId}` });
     }
 
-    const isSubscription = isSubscriptionPlan(planId as PlanId);
+    const isSubscription = isSubscriptionPlan(planId);
 
     // Get base URL for success/cancel URLs
     const baseUrl = req.headers.origin || 
