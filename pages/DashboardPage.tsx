@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { createPortalSession } from '../services/stripeService';
+import { createPortalSession, getSubscriptionStatus } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -196,9 +196,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
           avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
         });
-        if (supabaseProfile) {
-          await loadUserVideos(supabaseProfile.id);
+      if (supabaseProfile) {
+        await loadUserVideos(supabaseProfile.id);
+        // Load subscription status from Stripe if user has a Stripe customer ID
+        if (supabaseProfile.stripe_customer_id) {
+          try {
+            const subscriptionStatus = await getSubscriptionStatus(supabaseProfile.id);
+            // Update profile with subscription status if it differs
+            if (subscriptionStatus.status && subscriptionStatus.planType) {
+              const currentStatus = supabaseProfile.subscription_status;
+              const expectedStatus = subscriptionStatus.planType;
+              if (currentStatus !== expectedStatus) {
+                // Update in Supabase to keep in sync
+                const { updateUserSubscriptionStatus } = await import('../services/supabaseClient');
+                await updateUserSubscriptionStatus(supabaseProfile.id, expectedStatus);
+                // Update local profile
+                setProfile({ ...supabaseProfile, subscription_status: expectedStatus });
+              }
+            }
+          } catch (error) {
+            console.error('Error loading subscription status:', error);
+            // Don't fail the whole page load if subscription status fails
+          }
         }
+      }
         setIsLoading(false);
         hasLoadedRef.current = true;
       } catch (error) {
@@ -689,17 +710,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       onClick={async () => {
                         if (!user || !profile) return;
                         try {
-                          // TODO Phase 2: Replace with actual portal session
-                          alert(language === 'fr' 
-                            ? 'Configuration Stripe en cours. Cette fonctionnalité sera bientôt disponible.'
-                            : language === 'es'
-                            ? 'Configuración de Stripe en curso. Esta funcionalidad estará disponible pronto.'
-                            : 'Stripe configuration in progress. This feature will be available soon.');
-                        } catch (error) {
+                          const portalUrl = await createPortalSession(user.id);
+                          window.location.href = portalUrl;
+                        } catch (error: any) {
                           console.error('Error opening portal:', error);
+                          alert(
+                            language === 'fr'
+                              ? `Erreur lors de l'ouverture du portail: ${error.message || 'Erreur inconnue'}`
+                              : language === 'es'
+                              ? `Error al abrir el portal: ${error.message || 'Error desconocido'}`
+                              : `Error opening portal: ${error.message || 'Unknown error'}`
+                          );
                         }
                       }}
-                      disabled={true}
                       className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 text-sm"
                     >
                       {language === 'fr' ? 'Modifier' : language === 'es' ? 'Modificar' : 'Modify'}

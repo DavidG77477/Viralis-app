@@ -163,19 +163,10 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ language, onLanguageChange 
                 </div>
               )}
 
-              <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/50 rounded-lg">
-                <p className="text-amber-400 text-sm">
-                  {language === 'fr'
-                    ? '⚠️ Configuration Stripe en cours. Le paiement sera bientôt disponible.'
-                    : language === 'es'
-                    ? '⚠️ Configuración de Stripe en curso. El pago estará disponible pronto.'
-                    : '⚠️ Stripe configuration in progress. Payment will be available soon.'}
-                </p>
-              </div>
 
               <button
                 onClick={handleCheckout}
-                disabled={isLoading || true} // Disabled until Stripe is configured
+                disabled={isLoading}
                 className="w-full py-4 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 mb-4"
               >
                 {isLoading

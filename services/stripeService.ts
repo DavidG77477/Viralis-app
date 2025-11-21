@@ -35,17 +35,18 @@ export const createCheckoutSession = async (
   planId: PlanId,
   userId: string
 ): Promise<CheckoutSessionResponse> => {
-  // TODO Phase 2: Replace with actual API call
-  // const response = await fetch('/api/create-checkout-session', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ planId, userId }),
-  // });
-  // if (!response.ok) throw new Error('Failed to create checkout session');
-  // return response.json();
-
-  // Placeholder for now
-  throw new Error('Stripe integration not yet configured. Please wait for Phase 2 setup.');
+  const response = await fetch('/api/create-checkout-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId, userId }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to create checkout session' }));
+    throw new Error(error.error || 'Failed to create checkout session');
+  }
+  
+  return response.json();
 };
 
 /**
@@ -57,18 +58,19 @@ export const createCheckoutSession = async (
  * @returns Promise with portal session URL
  */
 export const createPortalSession = async (userId: string): Promise<string> => {
-  // TODO Phase 2: Replace with actual API call
-  // const response = await fetch('/api/create-portal-session', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ userId }),
-  // });
-  // if (!response.ok) throw new Error('Failed to create portal session');
-  // const data = await response.json();
-  // return data.url;
-
-  // Placeholder for now
-  throw new Error('Stripe integration not yet configured. Please wait for Phase 2 setup.');
+  const response = await fetch('/api/create-portal-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to create portal session' }));
+    throw new Error(error.error || 'Failed to create portal session');
+  }
+  
+  const data = await response.json();
+  return data.url;
 };
 
 /**
@@ -80,18 +82,19 @@ export const createPortalSession = async (userId: string): Promise<string> => {
  * @returns Promise with subscription status
  */
 export const getSubscriptionStatus = async (userId: string): Promise<SubscriptionStatus> => {
-  // TODO Phase 2: Replace with actual API call
-  // const response = await fetch(`/api/get-subscription-status?userId=${userId}`);
-  // if (!response.ok) throw new Error('Failed to get subscription status');
-  // return response.json();
-
-  // Placeholder for now - return null status
-  return {
-    status: null,
-    planType: null,
-    currentPeriodEnd: null,
-    cancelAtPeriodEnd: false,
-  };
+  const response = await fetch(`/api/get-subscription-status?userId=${userId}`);
+  
+  if (!response.ok) {
+    // If error, return null status (user might not have subscription)
+    return {
+      status: null,
+      planType: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    };
+  }
+  
+  return response.json();
 };
 
 /**

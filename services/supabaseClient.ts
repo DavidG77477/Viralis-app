@@ -39,6 +39,8 @@ export interface UserProfile {
   updated_at?: string;
   clerk_id?: string | null;
   subscription_status?: 'free' | 'pro_monthly' | 'pro_annual' | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
 }
 
 export const isUserPro = (profile: UserProfile | null): boolean => {
@@ -123,6 +125,42 @@ export const updateUserTokens = async (userId: string, tokensUsed: number): Prom
   }
   
   return data;
+};
+
+export const updateUserSubscriptionStatus = async (
+  userId: string,
+  subscriptionStatus: 'free' | 'pro_monthly' | 'pro_annual' | null,
+  stripeCustomerId?: string | null,
+  stripeSubscriptionId?: string | null
+): Promise<void> => {
+  if (!IS_SUPABASE_CONFIGURED) {
+    return;
+  }
+
+  const updateData: any = {
+    subscription_status: subscriptionStatus,
+  };
+
+  if (stripeCustomerId !== undefined) {
+    updateData.stripe_customer_id = stripeCustomerId;
+  }
+
+  if (stripeSubscriptionId !== undefined) {
+    updateData.stripe_subscription_id = stripeSubscriptionId;
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', userId);
+
+  if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
+    console.error('Error updating subscription status:', error);
+    throw error;
+  }
 };
 
 export interface Video {
