@@ -38,7 +38,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Get raw body for webhook signature verification
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    // In Vercel with bodyParser: false, req.body is a Buffer
+    const rawBody = Buffer.isBuffer(req.body) 
+      ? req.body.toString('utf8')
+      : typeof req.body === 'string' 
+      ? req.body 
+      : JSON.stringify(req.body);
+    
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
     console.error('[Stripe Webhook] Webhook signature verification failed:', err.message);
