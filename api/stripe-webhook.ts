@@ -12,25 +12,16 @@ const stripe = new Stripe(stripeSecretKey, {
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
-// Token amounts for each pack (works with both test and live Price IDs)
-// Add your test Price IDs here when you create them in Stripe
+// Token amounts for each pack (LIVE MODE)
 const TOKEN_AMOUNTS: Record<string, number> = {
-  // LIVE Price IDs
-  'price_1STdsSQ95ijGuOd86o9Kz6Xn': 100, // Token Pack (Live)
-  'price_1STdtvQ95ijGuOd8hnKkQEE5': 1200, // Premium Token Pack (Live)
-  // TEST Price IDs - Add these when you create test prices in Stripe
-  // Example: 'price_test_token_pack': 100,
-  // Example: 'price_test_premium_tokens': 1200,
+  'price_1STdsSQ95ijGuOd86o9Kz6Xn': 100, // Token Pack
+  'price_1STdtvQ95ijGuOd8hnKkQEE5': 1200, // Premium Token Pack
 };
 
-// Plan ID to subscription status mapping (works with both test and live Price IDs)
+// Plan ID to subscription status mapping (LIVE MODE)
 const PRICE_TO_SUBSCRIPTION_STATUS: Record<string, 'pro_monthly' | 'pro_annual'> = {
-  // LIVE Price IDs
   'price_1STdvsQ95ijGuOd8DTnBtkkE': 'pro_monthly',
   'price_1STdyaQ95ijGuOd8OjQauruf': 'pro_annual',
-  // TEST Price IDs - Add these when you create test prices in Stripe
-  // Example: 'price_test_pro_monthly': 'pro_monthly',
-  // Example: 'price_test_pro_annual': 'pro_annual',
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
