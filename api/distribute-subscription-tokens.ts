@@ -28,22 +28,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: distributions, error: fetchError } = await supabase
       .from('subscription_token_distributions')
       .select('*')
-      .lte('next_distribution_date', now.toISOString())
-      .lt('months_distributed', supabase.raw('total_months'));
+      .lte('next_distribution_date', now.toISOString());
+    
+    // Filter in JavaScript to avoid using raw SQL
+    const eligibleDistributions = distributions?.filter(
+      (dist) => dist.months_distributed < dist.total_months
+    ) || [];
 
     if (fetchError) {
       console.error('[Token Distribution] Error fetching distributions:', fetchError);
       return res.status(500).json({ error: 'Failed to fetch distributions', details: fetchError.message });
     }
 
-    if (!distributions || distributions.length === 0) {
+    if (!eligibleDistributions || eligibleDistributions.length === 0) {
       return res.status(200).json({ 
         message: 'No distributions due',
         count: 0 
       });
     }
 
-    console.log(`[Token Distribution] Found ${distributions.length} distributions due`);
+    console.log(`[Token Distribution] Found ${eligibleDistributions.length} distributions due`);
 
     const results = {
       success: 0,
@@ -52,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // Process each distribution
-    for (const distribution of distributions) {
+    for (const distribution of eligibleDistributions) {
       try {
         // Add tokens to user
         const { error: tokenError } = await supabase.rpc('increment_tokens', {
@@ -116,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       message: 'Distribution completed',
-      total: distributions.length,
+      total: eligibleDistributions.length,
       success: results.success,
       failed: results.failed,
       details: results.details

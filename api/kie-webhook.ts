@@ -88,12 +88,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (resultData.resultUrls) {
         // Structure Sora
         videoUrls = resultData.resultUrls;
-      } else if (resultData.response?.resultUrls) {
+      } else if ((resultData as any).response?.resultUrls) {
         // Structure Veo3
-        videoUrls = resultData.response.resultUrls;
-      } else if (payload.data.response?.resultUrls) {
+        videoUrls = (resultData as any).response.resultUrls;
+      } else if ((payload.data as any).response?.resultUrls) {
         // Structure Veo3 alternative (directement dans payload.data)
-        videoUrls = payload.data.response.resultUrls;
+        videoUrls = (payload.data as any).response.resultUrls;
       }
       
       if (videoUrls.length === 0) {
