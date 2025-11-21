@@ -142,17 +142,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log(`[Stripe Webhook] Updated subscription status to ${subscriptionStatus} for user ${userId}`);
           }
 
-          // Add 300 tokens for Pro subscription (first payment)
-          // Both Pro Monthly and Pro Annual users get 300 tokens per month
+          // Add tokens for Pro subscription (first payment)
+          // Pro Monthly: 300 tokens per month
+          // Pro Annual: 4200 tokens (14 months × 300 tokens, including 2 free months)
+          const tokensToAdd = subscriptionStatus === 'pro_annual' ? 4200 : 300;
+          
           const { error: tokenError } = await supabase.rpc('increment_tokens', {
             user_id: userId,
-            tokens_to_add: 300,
+            tokens_to_add: tokensToAdd,
           });
 
           if (tokenError) {
             console.error('[Stripe Webhook] Error adding tokens on subscription creation:', tokenError);
           } else {
-            console.log(`[Stripe Webhook] Added 300 tokens on subscription creation for user ${userId} (${subscriptionStatus})`);
+            console.log(`[Stripe Webhook] Added ${tokensToAdd} tokens on subscription creation for user ${userId} (${subscriptionStatus})`);
           }
         }
 
@@ -275,17 +278,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.error('[Stripe Webhook] Error updating subscription after payment:', subError);
           }
 
-          // Add 300 tokens for Pro subscription (monthly or annual renewal)
-          // Both Pro Monthly and Pro Annual users get 300 tokens per month
+          // Add tokens for Pro subscription renewal
+          // Pro Monthly: 300 tokens per month (monthly renewal)
+          // Pro Annual: 4200 tokens (14 months × 300 tokens, including 2 free months, annual renewal)
+          const tokensToAdd = subscriptionStatus === 'pro_annual' ? 4200 : 300;
+          
           const { error: tokenError } = await supabase.rpc('increment_tokens', {
             user_id: userData.id,
-            tokens_to_add: 300,
+            tokens_to_add: tokensToAdd,
           });
 
           if (tokenError) {
             console.error('[Stripe Webhook] Error adding tokens on subscription renewal:', tokenError);
           } else {
-            console.log(`[Stripe Webhook] Added 300 tokens on subscription payment for user ${userData.id} (${subscriptionStatus})`);
+            console.log(`[Stripe Webhook] Added ${tokensToAdd} tokens on subscription payment for user ${userData.id} (${subscriptionStatus})`);
           }
         }
 
