@@ -30,14 +30,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('[Stripe] STRIPE_SECRET_KEY is missing');
       return res.status(500).json({ error: 'Stripe secret key not configured' });
+    }
+
+    if (!stripeSecretKey || stripeSecretKey.length < 10) {
+      console.error('[Stripe] STRIPE_SECRET_KEY appears to be invalid');
+      return res.status(500).json({ error: 'Stripe secret key appears to be invalid' });
     }
 
     // Log mode for debugging
     if (isTestMode) {
       console.log('[Stripe] Running in TEST mode');
-    } else {
+    } else if (stripeSecretKey.startsWith('sk_live_')) {
       console.log('[Stripe] Running in LIVE mode');
+    } else {
+      console.warn('[Stripe] Unknown key format, may cause errors');
     }
 
     // Get user email from Supabase
@@ -56,11 +64,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const priceId = PLAN_TO_PRICE_ID[planId as PlanId];
+    if (!priceId) {
+      console.error('[Stripe] Invalid planId:', planId);
+      return res.status(400).json({ error: `Invalid planId: ${planId}` });
+    }
+
     const isSubscription = isSubscriptionPlan(planId as PlanId);
 
     // Get base URL for success/cancel URLs
     const baseUrl = req.headers.origin || 
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5000');
+    
+    console.log('[Stripe] Creating checkout session:', {
+      planId,
+      priceId,
+      isSubscription,
+      baseUrl,
+      userId,
+    });
 
     // Create Stripe Checkout Session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -96,9 +117,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error: any) {
     console.error('[Stripe] Error creating checkout session:', error);
+    console.error('[Stripe] Error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      raw: error.raw,
+    });
     return res.status(500).json({ 
       error: 'Failed to create checkout session',
-      message: error.message 
+      message: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
