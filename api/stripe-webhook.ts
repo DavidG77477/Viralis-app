@@ -258,6 +258,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
+        const subscriptionId = subscription.id;
 
         // Find user by Stripe customer ID
         const { data: userData, error: userError } = await supabase
@@ -271,6 +272,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         }
 
+        // Delete token distribution schedule if it exists (Pro Annual)
+        await supabase
+          .from('subscription_token_distributions')
+          .delete()
+          .eq('user_id', userData.id)
+          .eq('subscription_id', subscriptionId);
+
         // Set subscription status to free
         const { error: subError } = await supabase
           .from('users')
@@ -283,7 +291,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (subError) {
           console.error('[Stripe Webhook] Error canceling subscription:', subError);
         } else {
-          console.log(`[Stripe Webhook] Canceled subscription for user ${userData.id}`);
+          console.log(`[Stripe Webhook] Canceled subscription for user ${userData.id} and removed token distribution schedule`);
         }
 
         break;
