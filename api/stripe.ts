@@ -104,6 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           userId,
         });
 
+        // Get language preference from request (if provided)
+        const language = req.body.language || req.query.language || 'en';
+        // Map app language to Stripe locale
+        const stripeLocale: Stripe.Checkout.SessionCreateParams.Locale = 
+          language === 'fr' ? 'fr' : 
+          language === 'es' ? 'es' : 
+          'en';
+
         // Create Stripe Checkout Session
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: isSubscription ? 'subscription' : 'payment',
@@ -122,6 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             userId: userId,
           },
           expand: ['line_items'],
+          locale: stripeLocale, // Set Stripe Checkout language
         };
 
         if (customerEmail) {

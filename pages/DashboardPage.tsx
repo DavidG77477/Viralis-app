@@ -710,7 +710,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       onClick={async () => {
                         if (!user || !profile) return;
                         try {
-                          const portalUrl = await createPortalSession(user.id);
+                          const portalUrl = await createPortalSession(user.id, language);
                           window.location.href = portalUrl;
                         } catch (error: any) {
                           console.error('Error opening portal:', error);

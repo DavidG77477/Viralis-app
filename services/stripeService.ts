@@ -33,12 +33,13 @@ export interface SubscriptionStatus {
  */
 export const createCheckoutSession = async (
   planId: PlanId,
-  userId: string
+  userId: string,
+  language?: 'fr' | 'en' | 'es'
 ): Promise<CheckoutSessionResponse> => {
   const response = await fetch('/api/stripe?action=create-checkout-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ planId, userId }),
+    body: JSON.stringify({ planId, userId, language: language || 'en' }),
   });
   
   if (!response.ok) {
@@ -57,11 +58,14 @@ export const createCheckoutSession = async (
  * @param userId - The user's ID from Supabase
  * @returns Promise with portal session URL
  */
-export const createPortalSession = async (userId: string): Promise<string> => {
+export const createPortalSession = async (
+  userId: string,
+  language?: 'fr' | 'en' | 'es'
+): Promise<string> => {
   const response = await fetch('/api/stripe?action=create-portal-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({ userId, language: language || 'en' }),
   });
   
   if (!response.ok) {

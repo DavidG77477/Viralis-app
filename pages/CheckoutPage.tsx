@@ -55,7 +55,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ language, onLanguageChange 
     setError(null);
 
     try {
-      const { url } = await createCheckoutSession(planId, user.id);
+      const { url } = await createCheckoutSession(planId, user.id, language);
       // Redirect to Stripe Checkout
       window.location.href = url;
     } catch (err: any) {
