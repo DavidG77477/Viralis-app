@@ -107,10 +107,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Get language preference from request (if provided)
         const language = req.body.language || req.query.language || 'en';
         // Map app language to Stripe locale
+        // Stripe supports: 'auto', 'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'es-419', 'et', 'fi', 'fr', 'fr-CA', 'he', 'hu', 'id', 'it', 'ja', 'lt', 'lv', 'ms', 'mt', 'nb', 'nl', 'pl', 'pt', 'pt-BR', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'zh', 'zh-HK', 'zh-TW'
         const stripeLocale: Stripe.Checkout.SessionCreateParams.Locale = 
           language === 'fr' ? 'fr' : 
           language === 'es' ? 'es' : 
           'en';
+
+        console.log('[Stripe] Language preference:', { language, stripeLocale });
 
         // Create Stripe Checkout Session
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -130,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             userId: userId,
           },
           expand: ['line_items'],
-          locale: stripeLocale, // Set Stripe Checkout language
+          locale: stripeLocale, // Force Stripe Checkout language (overrides browser language)
         };
 
         if (customerEmail) {
