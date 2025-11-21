@@ -341,7 +341,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-200">
-        <img src={logoImage} alt="Viralis Studio" className="h-24 w-auto md:h-28" />
+        <img src={logoImage} alt="Viralis Studio" className="h-32 w-auto md:h-40" />
         <p className="text-lg text-center px-6">{d.signInMessage}</p>
         <button
           onClick={() => navigate('/')}
@@ -376,7 +376,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           <div className="container mx-auto px-4 md:px-8 py-4">
             <div className="flex items-center justify-between">
               <a href="/" className="flex items-center">
-                <img src={logoImage} alt="Viralis Studio" className="h-20 w-auto md:h-24" />
+                <img src={logoImage} alt="Viralis Studio" className="h-28 w-auto md:h-32" />
               </a>
 
               <div className="flex items-center gap-4">

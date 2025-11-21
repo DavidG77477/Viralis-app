@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                             <img 
                                 src={logoImage} 
                                 alt="Viralis Studio" 
-                                className="relative h-12 w-auto md:h-14 lg:h-16 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110" 
+                                className="relative h-16 w-auto md:h-20 lg:h-24 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110" 
                             />
                         </div>
                     </Link>
