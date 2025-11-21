@@ -806,8 +806,7 @@ export const translations = {
                     "Priority generation",
                     "Priority access to new features",
                     "Photo → Video Mode",
-                    "Priority support",
-                    "Watermark-free videos"
+                    "Priority support"
                 ],
                 ctaText: "Choose Pro Monthly",
                 badge: null,
@@ -823,8 +822,7 @@ export const translations = {
                     "Priority access to new features",
                     "Photo → Video Mode",
                     "Priority support",
-                    "2 months free",
-                    "Watermark-free videos"
+                    "2 months free"
                 ],
                 ctaText: "Choose Pro Annual",
                 badge: "Most Popular",
