@@ -2,7 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+const isTestMode = stripeSecretKey.startsWith('sk_test_');
+
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2024-12-18.acacia',
 });
 
@@ -57,6 +60,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Log mode for debugging
+  if (isTestMode) {
+    console.log('[Stripe Webhook] Running in TEST mode');
+  } else {
+    console.log('[Stripe Webhook] Running in LIVE mode');
+  }
 
   try {
     switch (event.type) {

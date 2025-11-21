@@ -3,7 +3,10 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { PLAN_TO_PRICE_ID, isSubscriptionPlan, type PlanId } from '../services/stripeService';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+const isTestMode = stripeSecretKey.startsWith('sk_test_');
+
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2024-12-18.acacia',
 });
 
@@ -28,6 +31,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!process.env.STRIPE_SECRET_KEY) {
       return res.status(500).json({ error: 'Stripe secret key not configured' });
+    }
+
+    // Log mode for debugging
+    if (isTestMode) {
+      console.log('[Stripe] Running in TEST mode');
+    } else {
+      console.log('[Stripe] Running in LIVE mode');
     }
 
     // Get user email from Supabase
