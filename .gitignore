@@ -26,13 +26,3 @@ dist-ssr
 *.sln
 *.sw?
 stripe-cli.tar.gz
-
-# Stripe integration files (sensitive)
-api/create-checkout-session.ts
-api/create-checkout-session.config.ts
-api/create-portal-session.ts
-api/create-portal-session.config.ts
-api/stripe-webhook.ts
-api/stripe-webhook.config.ts
-api/get-subscription-status.ts
-services/stripeService.ts
