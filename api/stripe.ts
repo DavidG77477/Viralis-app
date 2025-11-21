@@ -167,6 +167,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'User not found or no Stripe customer ID' });
         }
 
+        // Get language preference from request (if provided)
+        const language = req.body.language || req.query.language || 'en';
+        const stripeLocale: Stripe.BillingPortal.SessionCreateParams.Locale = 
+          language === 'fr' ? 'fr' : 
+          language === 'es' ? 'es' : 
+          'en';
+
         // Get base URL for return URL
         const baseUrl = req.headers.origin || 
           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5000');
@@ -175,6 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const portalSession = await stripe.billingPortal.sessions.create({
           customer: userData.stripe_customer_id,
           return_url: `${baseUrl}/dashboard`,
+          locale: stripeLocale, // Set Stripe Portal language
         });
 
         return res.status(200).json({
