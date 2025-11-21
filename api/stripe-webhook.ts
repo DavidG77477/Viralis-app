@@ -142,20 +142,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log(`[Stripe Webhook] Updated subscription status to ${subscriptionStatus} for user ${userId}`);
           }
 
-          // Add tokens for Pro subscription (first payment)
-          // Pro Monthly: 300 tokens per month
-          // Pro Annual: 4200 tokens (14 months × 300 tokens, including 2 free months)
-          const tokensToAdd = subscriptionStatus === 'pro_annual' ? 4200 : 300;
-          
-          const { error: tokenError } = await supabase.rpc('increment_tokens', {
-            user_id: userId,
-            tokens_to_add: tokensToAdd,
-          });
+          // Handle token distribution based on subscription type
+          if (subscriptionStatus === 'pro_annual') {
+            // Pro Annual: Create monthly distribution schedule (14 months, 300 tokens/month)
+            // Get subscription ID from session
+            const subscriptionId = session.subscription as string;
+            
+            if (subscriptionId) {
+              // Calculate first distribution date (now) and next distribution (1 month from now)
+              const now = new Date();
+              const nextMonth = new Date(now);
+              nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-          if (tokenError) {
-            console.error('[Stripe Webhook] Error adding tokens on subscription creation:', tokenError);
+              // Create or update distribution record
+              const { error: distError } = await supabase
+                .from('subscription_token_distributions')
+                .upsert({
+                  user_id: userId,
+                  subscription_id: subscriptionId,
+                  subscription_status: 'pro_annual',
+                  total_months: 14,
+                  months_distributed: 0,
+                  tokens_per_month: 300,
+                  next_distribution_date: nextMonth.toISOString(),
+                }, {
+                  onConflict: 'user_id,subscription_id'
+                });
+
+              if (distError) {
+                console.error('[Stripe Webhook] Error creating distribution schedule:', distError);
+              } else {
+                // Give first month's tokens immediately
+                const { error: tokenError } = await supabase.rpc('increment_tokens', {
+                  user_id: userId,
+                  tokens_to_add: 300,
+                });
+
+                if (tokenError) {
+                  console.error('[Stripe Webhook] Error adding first month tokens:', tokenError);
+                } else {
+                  // Update distribution to reflect first month
+                  await supabase
+                    .from('subscription_token_distributions')
+                    .update({
+                      months_distributed: 1,
+                      last_distribution_date: now.toISOString(),
+                    })
+                    .eq('user_id', userId)
+                    .eq('subscription_id', subscriptionId);
+
+                  console.log(`[Stripe Webhook] Created Pro Annual distribution schedule for user ${userId} (14 months, 300 tokens/month)`);
+                }
+              }
+            }
           } else {
-            console.log(`[Stripe Webhook] Added ${tokensToAdd} tokens on subscription creation for user ${userId} (${subscriptionStatus})`);
+            // Pro Monthly: Give 300 tokens directly
+            const { error: tokenError } = await supabase.rpc('increment_tokens', {
+              user_id: userId,
+              tokens_to_add: 300,
+            });
+
+            if (tokenError) {
+              console.error('[Stripe Webhook] Error adding tokens on subscription creation:', tokenError);
+            } else {
+              console.log(`[Stripe Webhook] Added 300 tokens on subscription creation for user ${userId} (${subscriptionStatus})`);
+            }
           }
         }
 
@@ -278,20 +329,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.error('[Stripe Webhook] Error updating subscription after payment:', subError);
           }
 
-          // Add tokens for Pro subscription renewal
-          // Pro Monthly: 300 tokens per month (monthly renewal)
-          // Pro Annual: 4200 tokens (14 months × 300 tokens, including 2 free months, annual renewal)
-          const tokensToAdd = subscriptionStatus === 'pro_annual' ? 4200 : 300;
-          
-          const { error: tokenError } = await supabase.rpc('increment_tokens', {
-            user_id: userData.id,
-            tokens_to_add: tokensToAdd,
-          });
+          // Handle token distribution based on subscription type
+          if (subscriptionStatus === 'pro_annual') {
+            // Pro Annual renewal: Create new distribution schedule (14 months, 300 tokens/month)
+            const now = new Date();
+            const nextMonth = new Date(now);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-          if (tokenError) {
-            console.error('[Stripe Webhook] Error adding tokens on subscription renewal:', tokenError);
+            // Create or update distribution record for renewal
+            const { error: distError } = await supabase
+              .from('subscription_token_distributions')
+              .upsert({
+                user_id: userData.id,
+                subscription_id: subscriptionId,
+                subscription_status: 'pro_annual',
+                total_months: 14,
+                months_distributed: 0,
+                tokens_per_month: 300,
+                next_distribution_date: nextMonth.toISOString(),
+              }, {
+                onConflict: 'user_id,subscription_id'
+              });
+
+            if (distError) {
+              console.error('[Stripe Webhook] Error creating distribution schedule on renewal:', distError);
+            } else {
+              // Give first month's tokens immediately
+              const { error: tokenError } = await supabase.rpc('increment_tokens', {
+                user_id: userData.id,
+                tokens_to_add: 300,
+              });
+
+              if (tokenError) {
+                console.error('[Stripe Webhook] Error adding first month tokens on renewal:', tokenError);
+              } else {
+                // Update distribution to reflect first month
+                await supabase
+                  .from('subscription_token_distributions')
+                  .update({
+                    months_distributed: 1,
+                    last_distribution_date: now.toISOString(),
+                  })
+                  .eq('user_id', userData.id)
+                  .eq('subscription_id', subscriptionId);
+
+                console.log(`[Stripe Webhook] Created Pro Annual distribution schedule on renewal for user ${userData.id} (14 months, 300 tokens/month)`);
+              }
+            }
           } else {
-            console.log(`[Stripe Webhook] Added ${tokensToAdd} tokens on subscription payment for user ${userData.id} (${subscriptionStatus})`);
+            // Pro Monthly: Give 300 tokens directly on renewal
+            const { error: tokenError } = await supabase.rpc('increment_tokens', {
+              user_id: userData.id,
+              tokens_to_add: 300,
+            });
+
+            if (tokenError) {
+              console.error('[Stripe Webhook] Error adding tokens on subscription renewal:', tokenError);
+            } else {
+              console.log(`[Stripe Webhook] Added 300 tokens on subscription payment for user ${userData.id} (${subscriptionStatus})`);
+            }
           }
         }
 
