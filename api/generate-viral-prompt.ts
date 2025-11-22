@@ -17,16 +17,84 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.' });
   }
 
-  const languageInstructions: Record<'fr' | 'en' | 'es', string> = {
-    fr: 'Génère un prompt de vidéo virale en français. Le prompt doit être créatif, accrocheur et conçu pour devenir viral sur TikTok, Instagram Reels ou YouTube Shorts.',
-    en: 'Generate a viral video prompt in English. The prompt should be creative, catchy, and designed to go viral on TikTok, Instagram Reels, or YouTube Shorts.',
-    es: 'Genera un prompt de video viral en español. El prompt debe ser creativo, llamativo y diseñado para volverse viral en TikTok, Instagram Reels o YouTube Shorts.',
+  const systemPrompt = {
+    role: "AI Video Trend Analyst & Viral Prompt Generator",
+    objective: "Analyze current AI video trends on social media and generate optimized prompts with maximum viral potential",
+    instructions: {
+      step_1: {
+        name: "Research Current Trends",
+        tasks: [
+          "Identify trending AI video styles on TikTok, Instagram Reels, and YouTube Shorts",
+          "Analyze viral visual styles (transitions, 3D effects, morphing, artistic styles)",
+          "Identify viral narrative formats (before/after, storytelling, transformations, challenges)",
+          "Find engaging themes (nostalgia, emotions, humor, surprising revelations)",
+          "Identify hooks that stop scrolling in first 3 seconds",
+          "Determine optimal video duration",
+          "Find trending music/sounds"
+        ],
+        data_recency: "Less than 2 weeks old"
+      },
+      step_2: {
+        name: "Evaluate Viral Potential",
+        criteria: [
+          "Average engagement rate",
+          "Ease of reproduction",
+          "Originality vs market saturation",
+          "Emotional potential (surprise, wonder, laughter, nostalgia)",
+          "Shareability factor"
+        ]
+      },
+      step_3: {
+        name: "Generate Video Prompt",
+        required_elements: [
+          "concept",
+          "hook_0_3_seconds",
+          "visual_style",
+          "narrative_structure",
+          "transitions_effects",
+          "call_to_action",
+          "technical_prompt_for_ai_tool",
+          "recommendations"
+        ]
+      }
+    },
+    output_format: {
+      trend_identified: "string",
+      viral_score: "number (1-10)",
+      why_it_works: "string",
+      video_prompt: {
+        concept: "string",
+        hook: "string (0-3 seconds description)",
+        development: "string",
+        visual_style: {
+          colors: "string",
+          lighting: "string",
+          effects: "array of strings",
+          artistic_style: "string"
+        },
+        technical_ai_prompt: "string (detailed prompt for Runway/Pika/Sora)",
+        call_to_action: "string"
+      },
+      additional_tips: {
+        ideal_duration_seconds: "number",
+        music_type: "string",
+        hashtags: "array of strings",
+        best_posting_time: "string"
+      }
+    },
+    critical_rules: [
+      "Use only real and recent data (less than 2 weeks)",
+      "Prioritize rising trends, not saturated ones",
+      "Be specific and actionable, not vague",
+      "Think 'scroll-stopper': what will make someone stop in 1 second?",
+      "Focus on maximum viral potential"
+    ]
   };
 
-  const systemPrompts: Record<'fr' | 'en' | 'es', string> = {
-    fr: 'Tu es un expert en création de contenu viral. Tu génères des prompts créatifs et accrocheurs pour des vidéos courtes qui ont le potentiel de devenir virales sur les réseaux sociaux.',
-    en: 'You are a viral content expert. You generate creative and catchy prompts for short videos that have the potential to go viral on social media.',
-    es: 'Eres un experto en creación de contenido viral. Generas prompts creativos y llamativos para videos cortos que tienen el potencial de volverse virales en las redes sociales.',
+  const languageInstructions: Record<'fr' | 'en' | 'es', string> = {
+    fr: 'Analyse les tendances actuelles de vidéos IA sur les réseaux sociaux et génère un prompt optimisé avec un potentiel viral maximum. Réponds en JSON avec le format spécifié, en français.',
+    en: 'Analyze current AI video trends on social media and generate an optimized prompt with maximum viral potential. Respond in JSON with the specified format, in English.',
+    es: 'Analiza las tendencias actuales de videos IA en redes sociales y genera un prompt optimizado con máximo potencial viral. Responde en JSON con el formato especificado, en español.',
   };
 
   try {
@@ -41,15 +109,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: [
           {
             role: 'system',
-            content: systemPrompts[language as 'fr' | 'en' | 'es'],
+            content: JSON.stringify(systemPrompt, null, 2) + '\n\nAction: Start analysis now and propose THE AI video prompt with the highest viral potential right now. Respond ONLY with valid JSON matching the output_format structure.',
           },
           {
             role: 'user',
-            content: languageInstructions[language as 'fr' | 'en' | 'es'] + ' The prompt should be detailed, visual, and inspire engaging video content. Return only the prompt, no additional text.',
+            content: languageInstructions[language as 'fr' | 'en' | 'es'],
           },
         ],
         temperature: 0.9,
-        max_tokens: 200,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -61,9 +130,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data = await response.json();
-    const generatedPrompt = data.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
-
-    return res.status(200).json({ prompt: generatedPrompt });
+    let responseContent = data.choices[0].message.content.trim();
+    
+    // Parse JSON response
+    let parsedResponse;
+    try {
+      parsedResponse = typeof responseContent === 'string' ? JSON.parse(responseContent) : responseContent;
+    } catch (e) {
+      // If not JSON, extract technical_ai_prompt if possible, otherwise use the whole response
+      console.warn('Failed to parse JSON response, extracting text directly');
+      parsedResponse = { video_prompt: { technical_ai_prompt: responseContent } };
+    }
+    
+    // Extract the technical AI prompt for the video generation
+    const technicalPrompt = parsedResponse?.video_prompt?.technical_ai_prompt || 
+                           parsedResponse?.technical_ai_prompt ||
+                           parsedResponse?.video_prompt ||
+                           responseContent;
+    
+    // Return both the technical prompt (for the input field) and full analysis (for potential future use)
+    return res.status(200).json({ 
+      prompt: typeof technicalPrompt === 'string' ? technicalPrompt : JSON.stringify(technicalPrompt),
+      analysis: parsedResponse // Return full analysis for potential future features
+    });
   } catch (error: any) {
     console.error('Error generating viral prompt:', error);
     return res.status(500).json({ 
