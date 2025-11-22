@@ -109,16 +109,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: [
           {
             role: 'system',
-            content: JSON.stringify(systemPrompt, null, 2) + '\n\nAction: Start analysis now and propose THE AI video prompt with the highest viral potential right now. Respond ONLY with valid JSON matching the output_format structure.',
+            content: JSON.stringify(systemPrompt, null, 2) + '\n\nIMPORTANT: Respond ONLY with valid JSON matching the output_format structure. Do not include any text before or after the JSON. The JSON must be parseable and complete.',
           },
           {
             role: 'user',
-            content: languageInstructions[language as 'fr' | 'en' | 'es'],
+            content: languageInstructions[language as 'fr' | 'en' | 'es'] + '\n\nRemember: Return ONLY valid JSON, no additional text or explanations.',
           },
         ],
         temperature: 0.9,
-        max_tokens: 1500,
-        response_format: { type: 'json_object' },
+        max_tokens: 2000,
       }),
     });
 
