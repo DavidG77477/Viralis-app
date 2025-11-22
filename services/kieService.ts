@@ -646,59 +646,25 @@ export const generateScript = async (prompt: string): Promise<string> => {
 };
 
 /**
- * Generate a viral video prompt using ChatGPT
+ * Generate a viral video prompt using ChatGPT via API route
  * This creates a completely new prompt from scratch designed to go viral
  */
 export const generateViralPrompt = async (language: 'fr' | 'en' | 'es' = 'en'): Promise<string> => {
-    const apiKey = getOpenAiApiKey();
-
-    if (!apiKey) {
-        throw new Error('OpenAI API key is not configured. Viral prompt generation requires an OpenAI API key.');
-    }
-
-    const languageInstructions: Record<'fr' | 'en' | 'es', string> = {
-        fr: 'Génère un prompt de vidéo virale en français. Le prompt doit être créatif, accrocheur et conçu pour devenir viral sur TikTok, Instagram Reels ou YouTube Shorts.',
-        en: 'Generate a viral video prompt in English. The prompt should be creative, catchy, and designed to go viral on TikTok, Instagram Reels, or YouTube Shorts.',
-        es: 'Genera un prompt de video viral en español. El prompt debe ser creativo, llamativo y diseñado para volverse viral en TikTok, Instagram Reels o YouTube Shorts.',
-    };
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('/api/generate-viral-prompt', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            model: 'gpt-4',
-            messages: [
-                {
-                    role: 'system',
-                    content: language === 'fr' 
-                        ? 'Tu es un expert en création de contenu viral. Tu génères des prompts créatifs et accrocheurs pour des vidéos courtes qui ont le potentiel de devenir virales sur les réseaux sociaux.'
-                        : language === 'es'
-                        ? 'Eres un experto en creación de contenido viral. Generas prompts creativos y llamativos para videos cortos que tienen el potencial de volverse virales en las redes sociales.'
-                        : 'You are a viral content expert. You generate creative and catchy prompts for short videos that have the potential to go viral on social media.'
-                },
-                {
-                    role: 'user',
-                    content: languageInstructions[language] + ' The prompt should be detailed, visual, and inspire engaging video content. Return only the prompt, no additional text.'
-                }
-            ],
-            temperature: 0.9, // Higher creativity
-            max_tokens: 200,
-        }),
+        body: JSON.stringify({ language }),
     });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || 'Failed to generate viral prompt. Please check your OpenAI API key.');
+        throw new Error(errorData.error || 'Failed to generate viral prompt. Please check your OpenAI API key.');
     }
 
     const data = await response.json();
-    const generatedPrompt = data.choices[0].message.content.trim();
-    
-    // Clean up the prompt in case it has quotes or extra formatting
-    return generatedPrompt.replace(/^["']|["']$/g, '');
+    return data.prompt;
 };
 
 interface PromptEnhancementOptions {
