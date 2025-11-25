@@ -1087,27 +1087,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         if (!user || !profile) return;
                         setIsCancelling(true);
                         try {
-                          // Annuler l'abonnement (sera annulé à la fin de la période)
+                          // Annuler l'abonnement immédiatement
                           // Utiliser profile.id et profile.email pour s'assurer qu'on trouve le bon utilisateur
                           const result = await cancelSubscription(profile.id, profile.email);
                     
-                    // Formater la date de fin
-                    const endDate = new Date(result.current_period_end);
-                    const formattedDate = endDate.toLocaleDateString(
-                      language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US',
-                      { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      }
-                    );
-                    
                     alert(
                       language === 'fr'
-                        ? `Votre abonnement sera annulé le ${formattedDate}. Vous garderez l'accès jusqu'à cette date.`
+                        ? `Votre abonnement a été annulé immédiatement. Aucun prélèvement supplémentaire ne sera effectué.`
                         : language === 'es'
-                        ? `Su suscripción será cancelada el ${formattedDate}. Mantendrá el acceso hasta esa fecha.`
-                        : `Your subscription will be cancelled on ${formattedDate}. You will keep access until that date.`
+                        ? `Su suscripción ha sido cancelada inmediatamente. No se realizarán más cargos.`
+                        : `Your subscription has been cancelled immediately. No further charges will be made.`
                     );
                     setShowCancelModal(false);
                     

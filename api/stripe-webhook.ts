@@ -383,9 +383,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           } else {
             // Pro Monthly: Give 300 tokens directly
+            // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
             const { error: tokenError } = await supabase.rpc('increment_tokens', {
-              user_id: userId,
               tokens_to_add: 300,
+              user_id: userId,
             });
 
             if (tokenError) {
@@ -549,9 +550,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               console.error('[Stripe Webhook] Error creating distribution schedule on renewal:', distError);
             } else {
               // Give first month's tokens immediately
+              // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
               const { error: tokenError } = await supabase.rpc('increment_tokens', {
-                user_id: userData.id,
                 tokens_to_add: 300,
+                user_id: userData.id,
               });
 
               if (tokenError) {
@@ -572,9 +574,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           } else {
             // Pro Monthly: Give 300 tokens directly on renewal
+            // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
             const { error: tokenError } = await supabase.rpc('increment_tokens', {
-              user_id: userData.id,
               tokens_to_add: 300,
+              user_id: userData.id,
             });
 
             if (tokenError) {

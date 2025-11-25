@@ -59,9 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const distribution of eligibleDistributions) {
       try {
         // Add tokens to user
+        // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
         const { error: tokenError } = await supabase.rpc('increment_tokens', {
-          user_id: distribution.user_id,
           tokens_to_add: distribution.tokens_per_month,
+          user_id: distribution.user_id,
         });
 
         if (tokenError) {

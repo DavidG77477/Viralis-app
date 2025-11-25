@@ -411,10 +411,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const email = customerEmail || (customer as any).email || `user-${userId.substring(0, 8)}@temp.com`;
                 const name = (customer as any).name || email.split('@')[0];
 
-                // Créer le profil avec les infos de Stripe
+                // Créer ou mettre à jour le profil avec les infos de Stripe
                 const { data: newUserData, error: createError } = await supabase
                   .from('users')
-                  .insert({
+                  .upsert({
                     id: userId,
                     email: email,
                     name: name,
@@ -422,6 +422,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     stripe_subscription_id: foundSubscriptionId,
                     provider: 'email',
                     tokens: 30,
+                  }, {
+                    onConflict: 'id'
                   })
                   .select('id, email, stripe_customer_id, stripe_subscription_id')
                   .single();
@@ -544,28 +546,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // Annuler l'abonnement dans Stripe (à la fin de la période)
-        const subscription = await stripe.subscriptions.update(
-          subscriptionId,
-          {
-            cancel_at_period_end: true,
-          }
-        );
+        // Annuler l'abonnement immédiatement dans Stripe
+        const canceledSubscription = await stripe.subscriptions.cancel(subscriptionId);
 
-        console.log('[Stripe] Subscription set to cancel at period end:', {
-          subscriptionId: subscription.id,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          currentPeriodEnd: (subscription as any).current_period_end 
-            ? new Date((subscription as any).current_period_end * 1000).toISOString()
+        console.log('[Stripe] Subscription cancelled immediately:', {
+          subscriptionId: canceledSubscription.id,
+          status: canceledSubscription.status,
+          canceledAt: canceledSubscription.canceled_at 
+            ? new Date(canceledSubscription.canceled_at * 1000).toISOString()
             : null,
         });
 
+        // Mettre à jour le statut dans Supabase
+        await supabase
+          .from('users')
+          .update({ 
+            subscription_status: 'free',
+            stripe_subscription_id: null,
+          })
+          .eq('id', userData.id);
+
+        // Supprimer le plan de distribution de tokens si existe
+        await supabase
+          .from('subscription_token_distributions')
+          .delete()
+          .eq('user_id', userData.id)
+          .eq('subscription_id', subscriptionId);
+
         return res.status(200).json({ 
           success: true,
-          message: 'Subscription will be cancelled at the end of the billing period',
-          cancel_at_period_end: subscription.cancel_at_period_end,
-          current_period_end: (subscription as any).current_period_end 
-            ? new Date((subscription as any).current_period_end * 1000).toISOString()
+          message: 'Subscription cancelled immediately. No further charges will be made.',
+          status: canceledSubscription.status,
+          canceled_at: canceledSubscription.canceled_at 
+            ? new Date(canceledSubscription.canceled_at * 1000).toISOString()
             : null,
         });
       }
