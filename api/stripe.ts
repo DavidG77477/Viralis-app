@@ -308,7 +308,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('id', userId)
           .single();
 
-        if (userError) {
+        // Si l'utilisateur n'existe pas, essayer de le créer
+        if (userError && userError.code === 'PGRST116') {
+          console.warn('[Stripe] User profile not found, attempting to create it');
+          
+          // Utiliser RPC ou SQL direct pour créer le profil depuis auth.users
+          // Note: On ne peut pas accéder directement à auth.users via PostgREST
+          // Le trigger handle_new_user devrait créer le profil, mais s'il n'existe pas,
+          // on doit le créer manuellement avec les infos disponibles
+          
+          // Essayer de créer un profil minimal
+          const { data: newUserData, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: userId,
+              email: `user-${userId.substring(0, 8)}@temp.com`, // Email temporaire
+              name: 'User',
+              provider: 'email',
+              tokens: 30,
+            })
+            .select('id, stripe_customer_id, stripe_subscription_id')
+            .single();
+
+          if (createError || !newUserData) {
+            console.error('[Stripe] Failed to create user profile:', createError);
+            return res.status(404).json({ 
+              error: 'User profile not found',
+              details: 'Your user profile does not exist. Please refresh the page or contact support.',
+              suggestion: 'Try refreshing the page to create your profile automatically'
+            });
+          }
+
+          userData = newUserData;
+          console.log('[Stripe] User profile created automatically:', { userId: userData.id });
+        } else if (userError) {
           console.error('[Stripe] Error fetching user:', userError);
           console.error('[Stripe] Error code:', userError.code);
           console.error('[Stripe] Error message:', userError.message);
