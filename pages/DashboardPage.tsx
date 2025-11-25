@@ -994,7 +994,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               </div>
 
               {/* Active Subscription Section */}
-              {(isUserPro(profile) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active') ? (
+              {/* Afficher si : abonnement actif OU abonnement annulé (pour montrer les infos d'annulation) */}
+              {(isUserPro(profile) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active' || subscriptionStatus?.planType) ? (
                 <div className="bg-slate-800/50 rounded-xl p-6 mb-6 border border-slate-700/50">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">
@@ -1022,7 +1023,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         {language === 'fr' ? 'Plan' : language === 'es' ? 'Plan' : 'Plan'}
                       </p>
                       <p className="text-white font-semibold">
-                        {profile?.subscription_status === 'pro_monthly' 
+                        {(subscriptionStatus?.planType || profile?.subscription_status) === 'pro_monthly' 
                           ? (language === 'fr' ? 'Pro Mensuel' : language === 'es' ? 'Pro Mensual' : 'Pro Monthly')
                           : (language === 'fr' ? 'Pro Annuel' : language === 'es' ? 'Pro Anual' : 'Pro Annual')}
                       </p>
@@ -1032,9 +1033,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         {language === 'fr' ? 'Prix' : language === 'es' ? 'Precio' : 'Price'}
                       </p>
                       <p className="text-white font-semibold">
-                        {profile?.subscription_status === 'pro_monthly' ? '$19.99' : '$199.99'}
+                        {(subscriptionStatus?.planType || profile?.subscription_status) === 'pro_monthly' ? '$19.99' : '$199.99'}
                         <span className="text-xs text-slate-400 ml-1">
-                          {profile?.subscription_status === 'pro_monthly' 
+                          {(subscriptionStatus?.planType || profile?.subscription_status) === 'pro_monthly' 
                             ? (language === 'fr' ? '/mois' : language === 'es' ? '/mes' : '/month')
                             : (language === 'fr' ? '/an' : language === 'es' ? '/año' : '/year')}
                         </span>

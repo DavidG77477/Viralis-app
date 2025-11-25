@@ -252,24 +252,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // Get active subscriptions from Stripe
+        // Get subscriptions from Stripe (including canceled ones)
         const subscriptions = await stripe.subscriptions.list({
           customer: customerId,
           status: 'all',
-          limit: 1,
+          limit: 10, // Get more to find canceled subscriptions
         });
 
         if (subscriptions.data.length === 0) {
+          console.log('[Stripe] No subscriptions found for customer:', customerId);
           return res.status(200).json({
             status: null,
             planType: null,
             currentPeriodEnd: null,
             cancelAtPeriodEnd: false,
+            canceledAt: null,
+            canceledDate: null,
           });
         }
 
-        const subscription = subscriptions.data[0];
+        // Prefer active subscription, but also check canceled ones
+        let subscription = subscriptions.data.find(sub => sub.status === 'active' || sub.status === 'trialing');
+        if (!subscription) {
+          // If no active, get the most recent canceled subscription
+          subscription = subscriptions.data.find(sub => sub.status === 'canceled');
+        }
+        if (!subscription) {
+          // Fallback to first subscription
+          subscription = subscriptions.data[0];
+        }
+
         const priceId = subscription.items.data[0]?.price.id;
+        console.log('[Stripe] Found subscription:', {
+          id: subscription.id,
+          status: subscription.status,
+          priceId: priceId,
+        });
 
         // Map price ID to plan type (support both test and live)
         let planType: 'pro_monthly' | 'pro_annual' | null = null;
@@ -284,8 +302,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         if (proMonthlyPriceIds.includes(priceId)) {
           planType = 'pro_monthly';
+          console.log('[Stripe] Detected plan type: pro_monthly');
         } else if (proAnnualPriceIds.includes(priceId)) {
           planType = 'pro_annual';
+          console.log('[Stripe] Detected plan type: pro_annual');
+        } else {
+          console.warn('[Stripe] Unknown price ID:', priceId);
         }
 
         const subscriptionStatus = subscription.status as 'active' | 'canceled' | 'past_due' | 'unpaid' | null;
@@ -647,11 +669,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : null,
         });
 
+        // Récupérer le planType avant de mettre à jour (pour le garder en mémoire)
+        let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
+        try {
+          const currentSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceId = currentSubscription.items.data[0]?.price.id;
+          const proMonthlyPriceIds = [
+            'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
+            'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+          ];
+          const proAnnualPriceIds = [
+            'price_1STdyaQ95ijGuOd8OjQauruf', // Live
+            'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+          ];
+          if (proMonthlyPriceIds.includes(priceId)) {
+            planTypeToKeep = 'pro_monthly';
+          } else if (proAnnualPriceIds.includes(priceId)) {
+            planTypeToKeep = 'pro_annual';
+          }
+          console.log('[Stripe] Plan type before cancellation:', planTypeToKeep);
+        } catch (err) {
+          console.warn('[Stripe] Could not retrieve plan type before cancellation:', err);
+        }
+
         // Mettre à jour le statut dans Supabase
+        // On garde le planType dans subscription_status pour l'affichage même après annulation
         const { error: updateError, data: updatedUser } = await supabase
           .from('users')
           .update({ 
-            subscription_status: 'free',
+            subscription_status: planTypeToKeep || 'free', // Garder le planType si disponible, sinon 'free'
             stripe_subscription_id: null,
           })
           .eq('id', userData.id)
