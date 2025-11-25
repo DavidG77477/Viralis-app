@@ -1048,7 +1048,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
 
               {/* Active Subscription Section */}
               {/* Afficher si : abonnement actif OU abonnement annulé (pour montrer les infos d'annulation) */}
-              {(isUserPro(profile) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active' || subscriptionStatus?.planType) ? (
+              {(isUserPro(profile, subscriptionStatus) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active' || subscriptionStatus?.planType) ? (
                 <div className="bg-slate-800/50 rounded-xl p-6 mb-6 border border-slate-700/50">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">
@@ -1106,38 +1106,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       </p>
                     </div>
                   )}
-                  {subscriptionStatus?.currentPeriodEnd && (
+                  {(subscriptionStatus?.currentPeriodEnd || profile?.pro_access_until) && (
                     <div className="mb-4">
                       <p className="text-slate-400 text-sm">
-                        {subscriptionStatus?.status === 'canceled'
-                          ? (language === 'fr' 
-                              ? `Accès actif jusqu'au ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                        {(() => {
+                          // Utiliser currentPeriodEnd de Stripe si disponible, sinon pro_access_until du profil
+                          const accessUntilDate = subscriptionStatus?.currentPeriodEnd || profile?.pro_access_until;
+                          if (!accessUntilDate) return null;
+                          
+                          const isCanceled = subscriptionStatus?.status === 'canceled';
+                          const isExpired = new Date(accessUntilDate) < new Date();
+                          
+                          if (isCanceled || isExpired) {
+                            return language === 'fr' 
+                              ? `Accès actif jusqu'au ${new Date(accessUntilDate).toLocaleDateString(
                                   'fr-FR',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
                                 )}`
                               : language === 'es'
-                              ? `Acceso activo hasta el ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                              ? `Acceso activo hasta el ${new Date(accessUntilDate).toLocaleDateString(
                                   'es-ES',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
                                 )}`
-                              : `Access active until ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                              : `Access active until ${new Date(accessUntilDate).toLocaleDateString(
                                   'en-US',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
-                                )}`)
-                          : (language === 'fr'
-                              ? `Renouvellement le ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                )}`;
+                          } else {
+                            return language === 'fr'
+                              ? `Renouvellement le ${new Date(accessUntilDate).toLocaleDateString(
                                   'fr-FR',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
                                 )}`
                               : language === 'es'
-                              ? `Renovación el ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                              ? `Renovación el ${new Date(accessUntilDate).toLocaleDateString(
                                   'es-ES',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
                                 )}`
-                              : `Renews on ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                              : `Renews on ${new Date(accessUntilDate).toLocaleDateString(
                                   'en-US',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
-                                )}`)}
+                                )}`;
+                          }
+                        })()}
                       </p>
                     </div>
                   )}

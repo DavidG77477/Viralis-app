@@ -41,11 +41,36 @@ export interface UserProfile {
   subscription_status?: 'free' | 'pro_monthly' | 'pro_annual' | null;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
+  pro_access_until?: string | null; // Date until which Pro access is valid (even after cancellation)
 }
 
-export const isUserPro = (profile: UserProfile | null): boolean => {
+export const isUserPro = (profile: UserProfile | null, subscriptionStatus?: { status: string | null; currentPeriodEnd: string | null } | null): boolean => {
   if (!profile) return false;
-  return profile.subscription_status === 'pro_monthly' || profile.subscription_status === 'pro_annual';
+  
+  // Vérifier si l'utilisateur a un abonnement actif
+  if (profile.subscription_status === 'pro_monthly' || profile.subscription_status === 'pro_annual') {
+    return true;
+  }
+  
+  // Vérifier si l'utilisateur a encore accès Pro grâce à pro_access_until
+  if (profile.pro_access_until) {
+    const accessUntil = new Date(profile.pro_access_until);
+    const now = new Date();
+    if (accessUntil > now) {
+      return true;
+    }
+  }
+  
+  // Vérifier aussi via subscriptionStatus si fourni (pour les cas où pro_access_until n'est pas encore mis à jour)
+  if (subscriptionStatus?.status === 'canceled' && subscriptionStatus?.currentPeriodEnd) {
+    const periodEnd = new Date(subscriptionStatus.currentPeriodEnd);
+    const now = new Date();
+    if (periodEnd > now) {
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 export const getUserProfileById = async (userId: string): Promise<UserProfile | null> => {

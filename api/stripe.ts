@@ -669,11 +669,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : null,
         });
 
-        // Récupérer le planType avant de mettre à jour (pour le garder en mémoire)
+        // Récupérer le planType et current_period_end avant de mettre à jour (pour garder l'accès jusqu'à la fin)
         let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
+        let proAccessUntil: string | null = null;
         try {
-          const currentSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const priceId = currentSubscription.items.data[0]?.price.id;
+          // Récupérer la subscription depuis canceledSubscription (elle contient encore current_period_end)
+          const currentPeriodEnd = (canceledSubscription as any).current_period_end;
+          if (currentPeriodEnd) {
+            // Convertir le timestamp Unix en ISO string
+            proAccessUntil = new Date(currentPeriodEnd * 1000).toISOString();
+            console.log('[Stripe] Pro access until (from current_period_end):', proAccessUntil);
+          }
+          
+          const priceId = (canceledSubscription as any).items?.data?.[0]?.price?.id;
           const proMonthlyPriceIds = [
             'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
             'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
@@ -689,19 +697,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
           console.log('[Stripe] Plan type before cancellation:', planTypeToKeep);
         } catch (err) {
-          console.warn('[Stripe] Could not retrieve plan type before cancellation:', err);
+          console.warn('[Stripe] Could not retrieve plan type or current_period_end before cancellation:', err);
         }
 
         // Mettre à jour le statut dans Supabase
-        // On garde le planType dans subscription_status pour l'affichage même après annulation
+        // On met subscription_status à 'free' mais on garde pro_access_until jusqu'à current_period_end
+        const updateData: any = {
+          subscription_status: 'free',
+          stripe_subscription_id: null,
+        };
+        
+        // Si on a une date de fin d'accès, l'ajouter
+        if (proAccessUntil) {
+          updateData.pro_access_until = proAccessUntil;
+        }
+        
         const { error: updateError, data: updatedUser } = await supabase
           .from('users')
-          .update({ 
-            subscription_status: planTypeToKeep || 'free', // Garder le planType si disponible, sinon 'free'
-            stripe_subscription_id: null,
-          })
+          .update(updateData)
           .eq('id', userData.id)
-          .select('id, email, subscription_status, stripe_subscription_id')
+          .select('id, email, subscription_status, stripe_subscription_id, pro_access_until')
           .single();
 
         if (updateError) {
@@ -713,6 +728,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             email: updatedUser.email,
             newStatus: updatedUser.subscription_status,
             stripe_subscription_id: updatedUser.stripe_subscription_id,
+            pro_access_until: updatedUser.pro_access_until || 'N/A',
           });
         } else {
           console.warn('[Stripe] ⚠️ Update succeeded but no data returned');

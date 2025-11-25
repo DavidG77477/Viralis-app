@@ -330,6 +330,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           if (subscriptionId) {
             updateData.stripe_subscription_id = subscriptionId;
+            
+            // Récupérer current_period_end depuis la subscription Stripe pour définir pro_access_until
+            try {
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              if (subscription.current_period_end) {
+                updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
+                console.log('[Stripe Webhook] Pro access until (from subscription):', updateData.pro_access_until);
+              }
+            } catch (err) {
+              console.warn('[Stripe Webhook] Could not retrieve current_period_end from subscription:', err);
+            }
           }
           
           const { error: subError } = await supabase
@@ -531,10 +542,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (priceId && PRICE_TO_SUBSCRIPTION_STATUS[priceId]) {
           const subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId];
           
-          // Update subscription status
+          // Update subscription status and pro_access_until
+          // Récupérer current_period_end depuis la subscription Stripe (déjà récupérée)
+          const updateData: any = { subscription_status: subscriptionStatus };
+          
+          if (subscription.current_period_end) {
+            updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
+            console.log('[Stripe Webhook] Pro access until (from current_period_end):', updateData.pro_access_until);
+          }
+          
           const { error: subError } = await supabase
             .from('users')
-            .update({ subscription_status: subscriptionStatus })
+            .update(updateData)
             .eq('id', userData.id);
 
           if (subError) {
