@@ -466,7 +466,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!userData.stripe_subscription_id) {
           console.error('[Stripe] No subscription found for user:', userId);
-          return res.status(400).json({ error: 'No active subscription found' });
+          console.error('[Stripe] User data:', {
+            id: userData?.id,
+            email: userData?.email,
+            hasStripeCustomerId: !!userData?.stripe_customer_id,
+            hasStripeSubscriptionId: !!userData?.stripe_subscription_id,
+          });
+          return res.status(400).json({ 
+            error: 'No active subscription found',
+            details: 'You do not have an active subscription. If you believe this is an error, please contact support.',
+            userEmail: userData?.email || 'Unknown'
+          });
         }
 
         // Annuler l'abonnement dans Stripe (à la fin de la période)
