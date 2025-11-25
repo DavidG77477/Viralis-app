@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -161,9 +161,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       if (previousUserIdRef.current !== null) {
         previousUserIdRef.current = null;
         hasLoadedRef.current = false;
-        setProfile(null);
-        setVideos([]);
-        setIsLoading(false);
+      setProfile(null);
+      setVideos([]);
+      setIsLoading(false);
         setSupabaseError(null);
       }
       return;
@@ -190,12 +190,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
         }
 
         setSupabaseError(null);
-        setIsLoading(true);
-        const supabaseProfile = await loadUserProfile(user.id, {
+      setIsLoading(true);
+      const supabaseProfile = await loadUserProfile(user.id, {
           email: user.email ?? null,
           name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
           avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
-        });
+      });
       if (supabaseProfile) {
         await loadUserVideos(supabaseProfile.id);
         // Load subscription status from Stripe if user has a Stripe customer ID
@@ -220,7 +220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           }
         }
       }
-        setIsLoading(false);
+      setIsLoading(false);
         hasLoadedRef.current = true;
       } catch (error) {
         if (error instanceof SupabaseCredentialsError) {
@@ -243,22 +243,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
     try {
       let userProfile = await getUserProfileById(userId);
 
-      if (!userProfile) {
-        userProfile = await ensureUserProfile({
+    if (!userProfile) {
+      userProfile = await ensureUserProfile({
           userId,
-          email: metadata.email,
-          name: metadata.name,
-          avatarUrl: metadata.avatarUrl,
+        email: metadata.email,
+        name: metadata.name,
+        avatarUrl: metadata.avatarUrl,
           provider: 'email',
-        });
-      }
+      });
+    }
 
-      if (userProfile) {
-        setProfile(userProfile);
-        setUserTokens(userProfile.tokens);
-      }
+    if (userProfile) {
+      setProfile(userProfile);
+      setUserTokens(userProfile.tokens);
+    }
 
-      return userProfile;
+    return userProfile;
     } catch (error) {
       if (error instanceof SupabaseCredentialsError) {
         setSupabaseError(error.message);
@@ -271,9 +271,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
 
   const loadUserVideos = async (userId: string) => {
     try {
-      setIsLoadingVideos(true);
-      const userVideos = await getUserVideos(userId, 10);
-      setVideos(userVideos);
+    setIsLoadingVideos(true);
+    const userVideos = await getUserVideos(userId, 10);
+    setVideos(userVideos);
       
       // Debug: Log all video URLs when loaded
       console.log('[Video Debug] Loaded videos:', userVideos.length);
@@ -295,7 +295,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       } else {
         console.error('Erreur lors du chargement des vidéos:', error);
       }
-      setIsLoadingVideos(false);
+    setIsLoadingVideos(false);
     }
   };
 
@@ -495,15 +495,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           <section className="max-w-5xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">{d.generateTitle}</h2>
             {user && (
-              <VideoGenerator
-                userTokens={userTokens}
-                setUserTokens={setUserTokens}
-                language={language}
+            <VideoGenerator
+              userTokens={userTokens}
+              setUserTokens={setUserTokens}
+              language={language}
                 supabaseUserId={profile?.id ?? user.id}
-                onVideoGenerated={handleVideoGenerated}
-                showSocialProof={false}
+              onVideoGenerated={handleVideoGenerated}
+              showSocialProof={false}
                 userProfile={profile}
-              />
+            />
             )}
           </section>
 
@@ -545,15 +545,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   </svg>
                   Debug
                 </button>
-                <button
-                  onClick={refreshVideos}
-                  className="px-5 py-2.5 bg-gradient-to-r from-[#00ff9d]/10 to-[#00b3ff]/10 hover:from-[#00ff9d]/20 hover:to-[#00b3ff]/20 border border-[#00ff9d]/30 hover:border-[#00ff9d]/50 text-white rounded-xl transition-all duration-300 text-sm font-semibold flex items-center gap-2 backdrop-blur-sm hover:scale-105 hover:shadow-[0_0_15px_rgba(0,255,153,0.3)]"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  {d.refresh}
-                </button>
+              <button
+                onClick={refreshVideos}
+                className="px-5 py-2.5 bg-gradient-to-r from-[#00ff9d]/10 to-[#00b3ff]/10 hover:from-[#00ff9d]/20 hover:to-[#00b3ff]/20 border border-[#00ff9d]/30 hover:border-[#00ff9d]/50 text-white rounded-xl transition-all duration-300 text-sm font-semibold flex items-center gap-2 backdrop-blur-sm hover:scale-105 hover:shadow-[0_0_15px_rgba(0,255,153,0.3)]"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {d.refresh}
+              </button>
               </div>
             </div>
 
@@ -578,11 +578,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   const VideoCard = ({ video }: { video: Video }) => {
                     const [videoError, setVideoError] = useState(false);
                     const [isVideoLoading, setIsVideoLoading] = useState(true);
+                    const [posterImage, setPosterImage] = useState<string | null>(null);
                     const videoRef = useRef<HTMLVideoElement>(null);
+                    const canvasRef = useRef<HTMLCanvasElement>(null);
                     
                     // Detect Safari browser
                     const isSafari = typeof window !== 'undefined' && 
                       /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    
+                    // Fonction pour capturer la première frame de la vidéo
+                    const captureFirstFrame = useCallback(() => {
+                      if (!videoRef.current || !canvasRef.current) return;
+                      
+                      const video = videoRef.current;
+                      const canvas = canvasRef.current;
+                      
+                      // Vérifier que la vidéo a des dimensions
+                      if (video.videoWidth === 0 || video.videoHeight === 0) {
+                        console.log('[Video Debug] Video dimensions not ready yet');
+                        return;
+                      }
+                      
+                      // Définir les dimensions du canvas
+                      canvas.width = video.videoWidth;
+                      canvas.height = video.videoHeight;
+                      
+                      // Dessiner la première frame sur le canvas
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        // Convertir en image
+                        const imageUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        setPosterImage(imageUrl);
+                        console.log('[Video Debug] First frame captured');
+                      }
+                    }, []);
 
                     useEffect(() => {
                       // Reset error state when video URL changes
@@ -663,35 +693,52 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     
                     const handleVideoLoadedMetadata = () => {
                       console.log('[Video Debug] Video metadata loaded:', video.video_url);
-                      // Si les métadonnées sont chargées, on peut considérer que la vidéo est prête
+                      // Capturer la première frame pour l'afficher comme poster
+                      if (videoRef.current) {
+                        // Aller à la première frame (0 secondes)
+                        videoRef.current.currentTime = 0.1; // Petit offset pour s'assurer qu'on a une frame
+                      }
+                    };
+                    
+                    const handleVideoSeeked = () => {
+                      // Une fois que la vidéo a cherché la première frame, on la capture
+                      captureFirstFrame();
                       setIsVideoLoading(false);
                     };
 
                     return (
-                      <div
-                        key={video.id}
-                        className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-[#00ff9d]/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,255,153,0.2)]"
-                      >
-                        {/* Gradient overlay on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#00ff9d]/0 to-[#00b3ff]/0 group-hover:from-[#00ff9d]/5 group-hover:to-[#00b3ff]/5 transition-all duration-500 pointer-events-none rounded-2xl"></div>
-                        
+                  <div
+                    key={video.id}
+                    className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-[#00ff9d]/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,255,153,0.2)]"
+                  >
+                    {/* Gradient overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#00ff9d]/0 to-[#00b3ff]/0 group-hover:from-[#00ff9d]/5 group-hover:to-[#00b3ff]/5 transition-all duration-500 pointer-events-none rounded-2xl"></div>
+                    
                         <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden rounded-t-2xl">
+                          {/* Canvas caché pour capturer la première frame */}
+                          <canvas ref={canvasRef} className="hidden" />
+                          
                           {!videoError ? (
                             <>
-                              {/* Poster/Thumbnail pour Safari - affiché en arrière-plan */}
-                              {isSafari && !video.thumbnail_url && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00ff9d]/20 to-[#00b3ff]/20 flex items-center justify-center">
-                                    <svg className="w-8 h-8 text-[#00ff9d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              )}
+                              {/* Afficher la première frame capturée ou la thumbnail comme poster */}
+                              {posterImage ? (
+                                <img
+                                  src={posterImage}
+                                  alt="Video thumbnail"
+                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 z-10"
+                                />
+                              ) : video.thumbnail_url ? (
+                                <img
+                                  src={video.thumbnail_url}
+                                  alt="Video thumbnail"
+                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 z-10"
+                                />
+                              ) : null}
+                              {/* Vidéo cachée - utilisée uniquement pour capturer la première frame */}
                               <video
                                 ref={videoRef}
                                 src={video.video_url}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                className="hidden"
                                 controls={false}
                                 preload="metadata"
                                 playsInline
@@ -701,58 +748,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 // @ts-ignore - Safari-specific attributes
                                 x-webkit-airplay="allow"
                                 {...(isSafari ? {} : { crossOrigin: 'anonymous' })}
-                                poster={video.thumbnail_url || undefined}
                                 onError={(e) => handleVideoError(e)}
-                                onLoadedData={handleVideoLoaded}
-                                onCanPlay={handleVideoCanPlay}
                                 onLoadedMetadata={handleVideoLoadedMetadata}
+                                onSeeked={handleVideoSeeked}
                                 onLoadStart={() => {
                                   console.log('[Video Debug] Video load started:', video.video_url);
-                                }}
-                                onWaiting={() => {
-                                  console.log('[Video Debug] Video waiting for data:', video.video_url);
-                                }}
-                                onStalled={() => {
-                                  console.warn('[Video Debug] Video stalled:', video.video_url);
-                                }}
-                                onSuspend={() => {
-                                  console.log('[Video Debug] Video suspended:', video.video_url);
-                                  // Safari suspend souvent le chargement pour économiser la bande passante
-                                  // On ne force pas le rechargement immédiatement pour éviter une boucle
-                                  // Le chargement se fera au survol (onMouseEnter)
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (!videoError) {
-                                    const videoEl = e.currentTarget;
-                                    videoEl.muted = true; // Ensure muted for autoplay
-                                    // Pour Safari, on charge d'abord les métadonnées si nécessaire
-                                    if (isSafari) {
-                                      if (videoEl.readyState === 0 || videoEl.readyState === 1) {
-                                        console.log('[Video Debug] Safari: Loading video metadata on hover');
-                                        videoEl.load();
-                                        // Attendre un peu que les métadonnées se chargent avant de jouer
-                                        setTimeout(() => {
-                                          videoEl.play().catch((err) => {
-                                            console.warn('[Video Debug] Safari autoplay failed:', err);
-                                          });
-                                        }, 300);
-                                      } else {
-                                        // Les métadonnées sont déjà chargées, on peut jouer directement
-                                        videoEl.play().catch((err) => {
-                                          console.warn('[Video Debug] Autoplay failed:', err);
-                                        });
-                                      }
-                                    } else {
-                                      // Pour les autres navigateurs, jouer directement
-                                      videoEl.play().catch((err) => {
-                                        console.warn('[Video Debug] Autoplay failed:', err);
-                                      });
-                                    }
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.pause();
-                                  e.currentTarget.currentTime = 0;
                                 }}
                               />
                               {isVideoLoading && (
@@ -810,28 +810,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                               </a>
                             </div>
                           )}
-                          {/* Gradient overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          
-                          {/* Action button on hover */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-                            <a
-                              href={video.video_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,153,0.4)]"
-                            >
-                              {d.openLabel}
-                            </a>
-                          </div>
-                          
-                          {/* Badge overlay */}
-                          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20">
-                              {video.resolution}
-                            </span>
-                          </div>
-                        </div>
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
+                      {/* Action button on hover */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
+                        <a
+                          href={video.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,153,0.4)]"
+                        >
+                          {d.openLabel}
+                        </a>
+                      </div>
+                      
+                      {/* Badge overlay */}
+                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20">
+                          {video.resolution}
+                        </span>
+                      </div>
+                    </div>
                     
                     <div className="p-5 relative z-10">
                       <p className="text-white font-semibold mb-3 line-clamp-2 text-sm leading-relaxed group-hover:text-[#00ff9d] transition-colors duration-300">
