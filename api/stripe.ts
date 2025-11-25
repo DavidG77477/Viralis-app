@@ -2,13 +2,24 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// Plan ID to Stripe Price ID mapping (LIVE MODE)
-const PLAN_TO_PRICE_ID: Record<string, string> = {
+// Plan ID to Stripe Price ID mapping - LIVE MODE
+const PLAN_TO_PRICE_ID_LIVE: Record<string, string> = {
   'token-pack': 'price_1STdsSQ95ijGuOd86o9Kz6Xn',
   'premium-tokens': 'price_1STdtvQ95ijGuOd8hnKkQEE5',
   'pro-monthly': 'price_1STdvsQ95ijGuOd8DTnBtkkE',
   'pro-annual': 'price_1STdyaQ95ijGuOd8OjQauruf',
 };
+
+// Plan ID to Stripe Price ID mapping - TEST MODE
+const PLAN_TO_PRICE_ID_TEST: Record<string, string> = {
+  'token-pack': 'price_1SXNuYPt6mHWDz2H77mFGPPJ',
+  'premium-tokens': 'price_1SXNvGPt6mHWDz2HgoV6VX8Y',
+  'pro-monthly': 'price_1SXNw9Pt6mHWDz2H2gH72U3w',
+  'pro-annual': 'price_1SXNxXPt6mHWDz2H8rm3Vnwh',
+};
+
+// Select Price IDs based on mode
+const PLAN_TO_PRICE_ID = isTestMode ? PLAN_TO_PRICE_ID_TEST : PLAN_TO_PRICE_ID_LIVE;
 
 const isSubscriptionPlan = (planId: string): boolean => {
   return planId === 'pro-monthly' || planId === 'pro-annual';
@@ -249,11 +260,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const subscription = subscriptions.data[0];
         const priceId = subscription.items.data[0]?.price.id;
 
-        // Map price ID to plan type
+        // Map price ID to plan type (support both test and live)
         let planType: 'pro_monthly' | 'pro_annual' | null = null;
-        if (priceId === 'price_1STdvsQ95ijGuOd8DTnBtkkE') {
+        const proMonthlyPriceIds = [
+          'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
+          'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+        ];
+        const proAnnualPriceIds = [
+          'price_1STdyaQ95ijGuOd8OjQauruf', // Live
+          'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+        ];
+        
+        if (proMonthlyPriceIds.includes(priceId)) {
           planType = 'pro_monthly';
-        } else if (priceId === 'price_1STdyaQ95ijGuOd8OjQauruf') {
+        } else if (proAnnualPriceIds.includes(priceId)) {
           planType = 'pro_annual';
         }
 

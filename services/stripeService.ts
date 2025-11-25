@@ -104,14 +104,33 @@ export const getSubscriptionStatus = async (userId: string): Promise<Subscriptio
 /**
  * Map plan IDs to Stripe Price IDs
  * 
- * Phase 2: These will be used in the API routes
+ * Note: This is for reference only. The actual Price IDs are selected
+ * server-side in api/stripe.ts based on the STRIPE_SECRET_KEY (test vs live).
+ * 
+ * Live mode Price IDs:
  */
-export const PLAN_TO_PRICE_ID: Record<PlanId, string> = {
+const PLAN_TO_PRICE_ID_LIVE: Record<PlanId, string> = {
   'token-pack': 'price_1STdsSQ95ijGuOd86o9Kz6Xn',
   'premium-tokens': 'price_1STdtvQ95ijGuOd8hnKkQEE5',
   'pro-monthly': 'price_1STdvsQ95ijGuOd8DTnBtkkE',
   'pro-annual': 'price_1STdyaQ95ijGuOd8OjQauruf',
 };
+
+/**
+ * Test mode Price IDs:
+ */
+const PLAN_TO_PRICE_ID_TEST: Record<PlanId, string> = {
+  'token-pack': 'price_1SXNuYPt6mHWDz2H77mFGPPJ',
+  'premium-tokens': 'price_1SXNvGPt6mHWDz2HgoV6VX8Y',
+  'pro-monthly': 'price_1SXNw9Pt6mHWDz2H2gH72U3w',
+  'pro-annual': 'price_1SXNxXPt6mHWDz2H8rm3Vnwh',
+};
+
+/**
+ * Legacy export for backwards compatibility
+ * Note: Server-side code in api/stripe.ts handles test/live mode selection
+ */
+export const PLAN_TO_PRICE_ID: Record<PlanId, string> = PLAN_TO_PRICE_ID_LIVE;
 
 /**
  * Check if a plan is a subscription (recurring) or one-time payment

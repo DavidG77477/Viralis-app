@@ -12,16 +12,24 @@ const stripe = new Stripe(stripeSecretKey, {
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
-// Token amounts for each pack (LIVE MODE)
+// Token amounts for each pack (LIVE + TEST MODE)
 const TOKEN_AMOUNTS: Record<string, number> = {
+  // Live mode
   'price_1STdsSQ95ijGuOd86o9Kz6Xn': 100, // Token Pack
   'price_1STdtvQ95ijGuOd8hnKkQEE5': 1200, // Premium Token Pack
+  // Test mode
+  'price_1SXNuYPt6mHWDz2H77mFGPPJ': 100, // Token Pack (Test)
+  'price_1SXNvGPt6mHWDz2HgoV6VX8Y': 1200, // Premium Token Pack (Test)
 };
 
-// Plan ID to subscription status mapping (LIVE MODE)
+// Plan ID to subscription status mapping (LIVE + TEST MODE)
 const PRICE_TO_SUBSCRIPTION_STATUS: Record<string, 'pro_monthly' | 'pro_annual'> = {
+  // Live mode
   'price_1STdvsQ95ijGuOd8DTnBtkkE': 'pro_monthly',
   'price_1STdyaQ95ijGuOd8OjQauruf': 'pro_annual',
+  // Test mode
+  'price_1SXNw9Pt6mHWDz2H2gH72U3w': 'pro_monthly',
+  'price_1SXNxXPt6mHWDz2H8rm3Vnwh': 'pro_annual',
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
