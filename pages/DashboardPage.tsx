@@ -1090,12 +1090,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     // Annuler l'abonnement (sera annulé à la fin de la période)
                     const result = await cancelSubscription(user.id);
                     
+                    // Formater la date de fin
+                    const endDate = new Date(result.current_period_end);
+                    const formattedDate = endDate.toLocaleDateString(
+                      language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US',
+                      { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }
+                    );
+                    
                     alert(
                       language === 'fr'
-                        ? 'Votre abonnement sera annulé à la fin de la période de facturation. Vous garderez l\'accès jusqu\'à cette date.'
+                        ? `Votre abonnement sera annulé le ${formattedDate}. Vous garderez l'accès jusqu'à cette date.`
                         : language === 'es'
-                        ? 'Su suscripción será cancelada al final del período de facturación. Mantendrá el acceso hasta esa fecha.'
-                        : 'Your subscription will be cancelled at the end of the billing period. You will keep access until that date.'
+                        ? `Su suscripción será cancelada el ${formattedDate}. Mantendrá el acceso hasta esa fecha.`
+                        : `Your subscription will be cancelled on ${formattedDate}. You will keep access until that date.`
                     );
                     setShowCancelModal(false);
                     
