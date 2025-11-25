@@ -302,7 +302,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Récupérer l'utilisateur et son subscription_id
-        const { data: userData, error: userError } = await supabase
+        let { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, stripe_customer_id, stripe_subscription_id')
           .eq('id', userId)
