@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { getSubscriptionStatus, cancelSubscription, type SubscriptionStatus } from '../services/stripeService';
+import { getSubscriptionStatus, cancelSubscription, getPurchaseHistory, type SubscriptionStatus, type PurchaseHistoryItem } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -108,6 +108,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [isLoadingPurchaseHistory, setIsLoadingPurchaseHistory] = useState(false);
+  const [showTokenNotification, setShowTokenNotification] = useState(false);
+  const [tokenNotificationAmount, setTokenNotificationAmount] = useState(0);
+  const [tokenNotificationPlan, setTokenNotificationPlan] = useState<'pro_monthly' | 'pro_annual' | null>(null);
+  const previousTokensRef = useRef<number>(0);
   const navigate = useNavigate();
   const inferredProfile = (profile ?? null) as (UserProfile & {
     plan?: string | null;
@@ -211,6 +215,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
           avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
       });
       if (supabaseProfile) {
+        // Initialiser la référence avant de mettre à jour le profil
+        if (previousTokensRef.current === 0) {
+          previousTokensRef.current = supabaseProfile.tokens;
+        }
         setProfile(supabaseProfile);
         setUserTokens(supabaseProfile.tokens);
         await loadUserVideos(supabaseProfile.id);
@@ -273,6 +281,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
         const previousStatusJson = previousStatus ? JSON.stringify(previousStatus) : null;
         const currentStatusJson = currentStatus ? JSON.stringify(currentStatus) : null;
         
+        // Recharger le profil pour vérifier aussi les tokens
+        const updatedProfile = await loadUserProfile(user.id, {
+          email: user.email ?? null,
+          name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+          avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+        });
+        
+        if (updatedProfile) {
+          // Vérifier si les tokens ont augmenté grâce à l'abonnement
+          const tokenIncrease = updatedProfile.tokens - previousTokensRef.current;
+          
+          // Si les tokens ont augmenté et que l'utilisateur a un abonnement actif
+          if (tokenIncrease > 0 && previousTokensRef.current > 0 && currentStatus.status === 'active' && currentStatus.planType) {
+            console.log(`[Dashboard] Token increase detected: +${tokenIncrease} tokens (previous: ${previousTokensRef.current}, current: ${updatedProfile.tokens})`);
+            setTokenNotificationAmount(tokenIncrease);
+            setTokenNotificationPlan(currentStatus.planType);
+            setShowTokenNotification(true);
+          }
+          
+          previousTokensRef.current = updatedProfile.tokens;
+          setUserTokens(updatedProfile.tokens);
+        }
+        
         // Si le statut a changé, mettre à jour
         if (previousStatusJson !== currentStatusJson) {
           console.log('[Dashboard] Subscription status changed, updating...', {
@@ -280,14 +311,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
             current: currentStatus,
           });
           setSubscriptionStatus(currentStatus);
-          
-          // Recharger le profil pour synchroniser avec Supabase
-          const updatedProfile = await loadUserProfile(user.id, {
-            email: user.email ?? null,
-            name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
-            avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
-          });
-          
           if (updatedProfile) {
             setProfile(updatedProfile);
           }
@@ -1146,6 +1169,55 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   </Link>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Token Notification Modal */}
+      {showTokenNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowTokenNotification(false)}>
+          <div className="bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              {/* Success Icon */}
+              <div className="mb-6 flex justify-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full blur-xl opacity-50 animate-pulse" />
+                  <div className="relative w-20 h-20 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] rounded-full flex items-center justify-center">
+                    <svg className="w-10 h-10 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] bg-clip-text text-transparent">
+                {language === 'fr' 
+                  ? '🎉 Nouveaux jetons reçus !' 
+                  : language === 'es'
+                  ? '🎉 ¡Nuevos tokens recibidos!'
+                  : '🎉 New tokens received!'}
+              </h2>
+
+              <p className="text-lg text-slate-300 mb-4">
+                {language === 'fr'
+                  ? `Bravo ! Tu as reçu ${tokenNotificationAmount} nouveaux jetons grâce à ton abonnement ${tokenNotificationPlan === 'pro_monthly' ? 'Pro Mensuel' : 'Pro Annuel'} !`
+                  : language === 'es'
+                  ? `¡Felicidades! Has recibido ${tokenNotificationAmount} nuevos tokens gracias a tu suscripción ${tokenNotificationPlan === 'pro_monthly' ? 'Pro Mensual' : 'Pro Anual'} !`
+                  : `Congratulations! You received ${tokenNotificationAmount} new tokens thanks to your ${tokenNotificationPlan === 'pro_monthly' ? 'Pro Monthly' : 'Pro Annual'} subscription!`}
+              </p>
+
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <img src={tokenIcon} alt="Tokens" className="w-8 h-8" />
+                <span className="text-3xl font-bold text-white">+{tokenNotificationAmount}</span>
+              </div>
+
+              <button
+                onClick={() => setShowTokenNotification(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 text-slate-950 font-semibold rounded-lg transition-all duration-200"
+              >
+                {language === 'fr' ? 'Génial !' : language === 'es' ? '¡Genial!' : 'Awesome!'}
+              </button>
             </div>
           </div>
         </div>
