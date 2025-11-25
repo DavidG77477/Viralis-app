@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { createPortalSession, getSubscriptionStatus, cancelSubscription, type SubscriptionStatus } from '../services/stripeService';
+import { createPortalSession, getSubscriptionStatus, cancelSubscription, getPurchaseHistory, type SubscriptionStatus, type PurchaseHistoryItem } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -106,6 +106,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const [isCancelling, setIsCancelling] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
+  const [isLoadingPurchaseHistory, setIsLoadingPurchaseHistory] = useState(false);
   const navigate = useNavigate();
   const inferredProfile = (profile ?? null) as (UserProfile & {
     plan?: string | null;
@@ -192,34 +194,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
 
         setSupabaseError(null);
       setIsLoading(true);
+      
+      // Check if we're coming from a successful purchase
+      const searchParams = new URLSearchParams(window.location.search);
+      const fromSuccess = searchParams.get('from') === 'success';
+      if (fromSuccess) {
+        // Clear the parameter
+        window.history.replaceState({}, '', '/dashboard');
+        // Wait a bit for webhook to process
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
       const supabaseProfile = await loadUserProfile(user.id, {
           email: user.email ?? null,
           name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
           avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
       });
       if (supabaseProfile) {
+        setProfile(supabaseProfile);
+        setUserTokens(supabaseProfile.tokens);
         await loadUserVideos(supabaseProfile.id);
-        // Load subscription status from Stripe if user has a Stripe customer ID
-        if (supabaseProfile.stripe_customer_id) {
-          try {
-            const subscriptionStatusData = await getSubscriptionStatus(supabaseProfile.id);
-            setSubscriptionStatus(subscriptionStatusData);
-            // Update profile with subscription status if it differs
-            if (subscriptionStatusData.status && subscriptionStatusData.planType) {
-              const currentStatus = supabaseProfile.subscription_status;
-              const expectedStatus = subscriptionStatusData.planType;
-              if (currentStatus !== expectedStatus && subscriptionStatusData.status === 'active') {
-                // Update in Supabase to keep in sync (only if active, not if canceled)
-                const { updateUserSubscriptionStatus } = await import('../services/supabaseClient');
-                await updateUserSubscriptionStatus(supabaseProfile.id, expectedStatus);
-                // Update local profile
-                setProfile({ ...supabaseProfile, subscription_status: expectedStatus });
-              }
+        // Load subscription status and purchase history from Stripe
+        // Even if user doesn't have stripe_customer_id yet, try to load (will search by email)
+        try {
+          const subscriptionStatusData = await getSubscriptionStatus(supabaseProfile.id);
+          setSubscriptionStatus(subscriptionStatusData);
+          // Update profile with subscription status if it differs
+          if (subscriptionStatusData.status && subscriptionStatusData.planType) {
+            const currentStatus = supabaseProfile.subscription_status;
+            const expectedStatus = subscriptionStatusData.planType;
+            if (currentStatus !== expectedStatus && subscriptionStatusData.status === 'active') {
+              // Update in Supabase to keep in sync (only if active, not if canceled)
+              const { updateUserSubscriptionStatus } = await import('../services/supabaseClient');
+              await updateUserSubscriptionStatus(supabaseProfile.id, expectedStatus);
+              // Update local profile
+              setProfile({ ...supabaseProfile, subscription_status: expectedStatus });
             }
-          } catch (error) {
-            console.error('Error loading subscription status:', error);
-            // Don't fail the whole page load if subscription status fails
           }
+
+          // Load purchase history (will search by customer_id or email)
+          await loadPurchaseHistory(supabaseProfile.id);
+        } catch (error) {
+          console.error('Error loading subscription status or purchase history:', error);
+          // Don't fail the whole page load if subscription status fails
         }
       }
       setIsLoading(false);
@@ -313,6 +330,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       }
       console.error('Erreur loadUserProfile:', error);
       return null;
+    }
+  };
+
+  const loadPurchaseHistory = async (userId: string) => {
+    try {
+      setIsLoadingPurchaseHistory(true);
+      const history = await getPurchaseHistory(userId);
+      setPurchaseHistory(history);
+    } catch (error) {
+      console.error('Error loading purchase history:', error);
+      setPurchaseHistory([]);
+    } finally {
+      setIsLoadingPurchaseHistory(false);
     }
   };
 
@@ -1144,14 +1174,69 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   {language === 'fr' ? 'Derniers Achats' : language === 'es' ? 'Últimas Compras' : 'Recent Purchases'}
                 </h3>
                 <div className="space-y-3">
-                  {/* TODO Phase 2: Replace with actual purchase history from Stripe */}
-                  <div className="text-center py-8 text-slate-400 text-sm">
-                    {language === 'fr' 
-                      ? 'Aucun achat récent'
-                      : language === 'es'
-                      ? 'No hay compras recientes'
-                      : 'No recent purchases'}
-                  </div>
+                  {isLoadingPurchaseHistory ? (
+                    <div className="text-center py-8 text-slate-400 text-sm">
+                      {language === 'fr' ? 'Chargement...' : language === 'es' ? 'Cargando...' : 'Loading...'}
+                    </div>
+                  ) : purchaseHistory.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400 text-sm">
+                      {language === 'fr' 
+                        ? 'Aucun achat récent'
+                        : language === 'es'
+                        ? 'No hay compras recientes'
+                        : 'No recent purchases'}
+                    </div>
+                  ) : (
+                    purchaseHistory.map((purchase) => {
+                      const purchaseDate = new Date(purchase.date);
+                      const formattedDate = purchaseDate.toLocaleDateString(
+                        language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US',
+                        { year: 'numeric', month: 'long', day: 'numeric' }
+                      );
+
+                      return (
+                        <div
+                          key={purchase.id}
+                          className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-white font-semibold">
+                                  {purchase.planType === 'pro_monthly'
+                                    ? (language === 'fr' ? 'Pro Mensuel' : language === 'es' ? 'Pro Mensual' : 'Pro Monthly')
+                                    : purchase.planType === 'pro_annual'
+                                    ? (language === 'fr' ? 'Pro Annuel' : language === 'es' ? 'Pro Anual' : 'Pro Annual')
+                                    : purchase.description === 'Token Pack'
+                                    ? (language === 'fr' ? 'Pack de Jetons' : language === 'es' ? 'Paquete de Tokens' : 'Token Pack')
+                                    : purchase.description}
+                                </h4>
+                                {purchase.type === 'subscription' && (
+                                  <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-400">
+                                    {language === 'fr' ? 'Abonnement' : language === 'es' ? 'Suscripción' : 'Subscription'}
+                                  </span>
+                                )}
+                                {purchase.type === 'one-time' && (
+                                  <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-xs text-purple-400">
+                                    {language === 'fr' ? 'Achat unique' : language === 'es' ? 'Compra única' : 'One-time'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-slate-400 text-sm">{formattedDate}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-white font-bold">
+                                {purchase.currency === 'USD' ? '$' : purchase.currency} {purchase.amount.toFixed(2)}
+                              </p>
+                              <p className="text-green-400 text-xs mt-1">
+                                {language === 'fr' ? 'Payé' : language === 'es' ? 'Pagado' : 'Paid'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -1225,6 +1310,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         const updatedStatus = await getSubscriptionStatus(profile.id);
                         console.log('[Dashboard] Subscription status from Stripe:', updatedStatus);
                         setSubscriptionStatus(updatedStatus);
+                        // Reload purchase history after cancellation
+                        await loadPurchaseHistory(profile.id);
                       } catch (error) {
                         console.error('[Dashboard] Error reloading subscription status:', error);
                         // Mettre à null si pas d'abonnement

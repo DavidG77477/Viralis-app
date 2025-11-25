@@ -167,6 +167,34 @@ export const isSubscriptionPlan = (planId: PlanId): boolean => {
   return planId === 'pro-monthly' || planId === 'pro-annual';
 };
 
+export interface PurchaseHistoryItem {
+  id: string;
+  type: 'subscription' | 'one-time';
+  description: string;
+  amount: number;
+  currency: string;
+  status: string;
+  date: string;
+  planType?: 'pro_monthly' | 'pro_annual' | null;
+}
+
+/**
+ * Get purchase history from Stripe
+ * 
+ * @param userId - The user's ID from Supabase
+ * @returns Promise with purchase history
+ */
+export const getPurchaseHistory = async (userId: string): Promise<PurchaseHistoryItem[]> => {
+  const response = await fetch(`/api/stripe?action=get-purchase-history&userId=${userId}`);
+  
+  if (!response.ok) {
+    console.error('Failed to get purchase history');
+    return [];
+  }
+  
+  return response.json();
+};
+
 /**
  * Sync user subscription from Stripe to Supabase
  * This is useful for users who subscribed before the IDs were properly saved

@@ -18,7 +18,7 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ language, onLanguageChange })
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigate('/dashboard');
+      navigate('/dashboard?from=success');
     }, 3000);
 
     return () => clearTimeout(timer);
@@ -92,7 +92,7 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ language, onLanguageChange })
             </div>
 
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/dashboard?from=success')}
               className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 text-slate-950 font-semibold rounded-lg transition-all duration-200"
             >
               {language === 'fr' ? 'Aller au dashboard' : language === 'es' ? 'Ir al panel' : 'Go to Dashboard'}

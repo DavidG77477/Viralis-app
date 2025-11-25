@@ -81,30 +81,68 @@ export const ensureUserProfile = async (payload: SupabaseUserPayload): Promise<U
   if (!IS_SUPABASE_CONFIGURED) {
     return null;
   }
-  const profilePayload = {
+  
+  // First, try to get existing profile
+  const { data: existingProfile } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', payload.userId)
+    .maybeSingle();
+  
+  // Only include fields that exist in the table
+  const profilePayload: any = {
     id: payload.userId,
     email: payload.email,
     name: payload.name ?? payload.email?.split('@')[0] ?? 'Utilisateur',
     avatar_url: payload.avatarUrl ?? undefined,
     provider: payload.provider ?? 'google',
-    clerk_id: null,
   };
-
-  const { data, error } = await supabase
-    .from('users')
-    .upsert(profilePayload, { onConflict: 'id' })
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    if (isInvalidApiKeyError(error)) {
-      throw new SupabaseCredentialsError();
+  
+  // Only include clerk_id if the column exists (it might not be in all schemas)
+  // We'll use update instead of upsert if profile exists, to avoid errors
+  
+  if (existingProfile) {
+    // Profile exists, just update non-null fields
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        email: payload.email,
+        name: payload.name ?? existingProfile.name,
+        avatar_url: payload.avatarUrl ?? existingProfile.avatar_url,
+        provider: payload.provider ?? existingProfile.provider,
+      })
+      .eq('id', payload.userId)
+      .select()
+      .maybeSingle();
+    
+    if (error) {
+      if (isInvalidApiKeyError(error)) {
+        throw new SupabaseCredentialsError();
+      }
+      console.error('Erreur lors de la mise à jour du profil Supabase :', error);
+      // Return existing profile instead of null to avoid breaking the app
+      return existingProfile;
     }
-    console.error('Erreur lors de la synchronisation du profil Supabase :', error);
-    return null;
+    
+    return data;
+  } else {
+    // Profile doesn't exist, insert it
+    const { data, error } = await supabase
+      .from('users')
+      .insert(profilePayload)
+      .select()
+      .maybeSingle();
+    
+    if (error) {
+      if (isInvalidApiKeyError(error)) {
+        throw new SupabaseCredentialsError();
+      }
+      console.error('Erreur lors de la création du profil Supabase :', error);
+      return null;
+    }
+    
+    return data;
   }
-
-  return data;
 };
 
 export const updateUserTokens = async (userId: string, tokensUsed: number): Promise<number | null> => {

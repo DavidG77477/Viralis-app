@@ -953,8 +953,182 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
+      case 'get-purchase-history': {
+        if (req.method !== 'GET') {
+          return res.status(405).json({ error: 'Method not allowed' });
+        }
+
+        const { userId } = req.query;
+
+        if (!userId || typeof userId !== 'string') {
+          return res.status(400).json({ error: 'Missing or invalid userId' });
+        }
+
+        // Get user's Stripe customer ID from Supabase
+        let customerId: string | null = null;
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('stripe_customer_id, email')
+          .eq('id', userId)
+          .single();
+
+        if (!userError && userData?.stripe_customer_id) {
+          customerId = userData.stripe_customer_id;
+        } else if (!userError && userData?.email) {
+          // Try to find customer by email
+          try {
+            const customers = await stripe.customers.list({
+              email: userData.email,
+              limit: 1,
+            });
+            if (customers.data.length > 0) {
+              customerId = customers.data[0].id;
+            }
+          } catch (err) {
+            console.error('[Stripe] Error searching customer by email:', err);
+          }
+        }
+
+        if (!customerId) {
+          return res.status(200).json([]);
+        }
+
+        const purchaseHistory: Array<{
+          id: string;
+          type: 'subscription' | 'one-time';
+          description: string;
+          amount: number;
+          currency: string;
+          status: string;
+          date: string;
+          planType?: 'pro_monthly' | 'pro_annual' | null;
+        }> = [];
+
+        try {
+          // Get invoices (for subscriptions and one-time payments)
+          const invoices = await stripe.invoices.list({
+            customer: customerId,
+            limit: 20,
+          });
+
+          for (const invoice of invoices.data) {
+            if (invoice.status === 'paid' && invoice.amount_paid && invoice.amount_paid > 0) {
+              const lineItem = invoice.lines.data[0];
+              const price = (lineItem as any)?.price;
+              const isSubscription = (invoice as any).subscription !== null && (invoice as any).subscription !== undefined;
+
+              let description = '';
+              let planType: 'pro_monthly' | 'pro_annual' | null = null;
+
+              if (isSubscription && price && typeof price === 'object' && !price.deleted) {
+                const priceId = (price as any).id;
+                // Check if it's a subscription plan
+                if (PRICE_TO_SUBSCRIPTION_STATUS[priceId]) {
+                  planType = PRICE_TO_SUBSCRIPTION_STATUS[priceId];
+                  description = planType === 'pro_monthly' 
+                    ? 'Pro Monthly Subscription'
+                    : 'Pro Annual Subscription';
+                } else {
+                  description = (price as any).nickname || priceId || 'Subscription';
+                }
+              } else if (price && typeof price === 'object' && !price.deleted) {
+                // One-time payment (token pack)
+                const priceId = (price as any).id;
+                if (priceId && priceId.includes('token')) {
+                  description = 'Token Pack';
+                } else {
+                  description = (price as any).nickname || 'One-time Payment';
+                }
+              } else {
+                description = invoice.description || 'Payment';
+              }
+
+              purchaseHistory.push({
+                id: invoice.id,
+                type: isSubscription ? 'subscription' : 'one-time',
+                description,
+                amount: invoice.amount_paid / 100, // Convert from cents
+                currency: invoice.currency.toUpperCase(),
+                status: invoice.status,
+                date: new Date(invoice.created * 1000).toISOString(),
+                planType,
+              });
+            }
+          }
+
+          // Also get checkout sessions for one-time payments and subscriptions
+          const checkoutSessions = await stripe.checkout.sessions.list({
+            customer: customerId,
+            limit: 20,
+            expand: ['data.line_items'],
+          });
+
+          for (const session of checkoutSessions.data) {
+            if (session.payment_status === 'paid' && session.amount_total && session.amount_total > 0) {
+              // Check if this session is already in invoices
+              const alreadyInHistory = purchaseHistory.some(item => 
+                item.id === session.id || 
+                (session.invoice && item.id === session.invoice as string) ||
+                (session.subscription && purchaseHistory.some(p => p.type === 'subscription' && p.id === session.subscription as string))
+              );
+
+              if (!alreadyInHistory) {
+                let description = 'Payment';
+                let planType: 'pro_monthly' | 'pro_annual' | null = null;
+
+                // Try to get line_items from expanded data first
+                let priceId: string | undefined;
+                if (session.line_items?.data && session.line_items.data.length > 0) {
+                  priceId = (session.line_items.data[0] as any)?.price?.id;
+                } else {
+                  // If not expanded, retrieve the session with expanded line_items
+                  try {
+                    const expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+                      expand: ['line_items'],
+                    });
+                    priceId = (expandedSession.line_items?.data[0] as any)?.price?.id;
+                  } catch (err) {
+                    console.warn('[Stripe] Could not expand session line_items:', err);
+                  }
+                }
+
+                if (priceId) {
+                  if (PRICE_TO_SUBSCRIPTION_STATUS[priceId]) {
+                    planType = PRICE_TO_SUBSCRIPTION_STATUS[priceId];
+                    description = planType === 'pro_monthly' 
+                      ? 'Pro Monthly Subscription'
+                      : 'Pro Annual Subscription';
+                  } else {
+                    description = 'Token Pack';
+                  }
+                }
+
+                purchaseHistory.push({
+                  id: session.id,
+                  type: session.mode === 'subscription' ? 'subscription' : 'one-time',
+                  description,
+                  amount: session.amount_total / 100,
+                  currency: session.currency?.toUpperCase() || 'USD',
+                  status: session.payment_status,
+                  date: new Date(session.created * 1000).toISOString(),
+                  planType,
+                });
+              }
+            }
+          }
+
+          // Sort by date (newest first)
+          purchaseHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          return res.status(200).json(purchaseHistory);
+        } catch (error: any) {
+          console.error('[Stripe] Error getting purchase history:', error);
+          return res.status(500).json({ error: 'Failed to get purchase history', details: error.message });
+        }
+      }
+
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: create-checkout-session, create-portal-session, get-subscription-status, cancel-subscription, or sync-user-subscription' });
+        return res.status(400).json({ error: 'Invalid action. Use: create-checkout-session, create-portal-session, get-subscription-status, cancel-subscription, sync-user-subscription, or get-purchase-history' });
     }
   } catch (error: any) {
     console.error('[Stripe] Error:', error);
