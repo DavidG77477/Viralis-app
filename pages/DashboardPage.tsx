@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { createPortalSession, getSubscriptionStatus, cancelSubscription, getPurchaseHistory, type SubscriptionStatus, type PurchaseHistoryItem } from '../services/stripeService';
+import { getSubscriptionStatus, cancelSubscription, type SubscriptionStatus } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
