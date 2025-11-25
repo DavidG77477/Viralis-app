@@ -295,6 +295,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { userId } = req.body;
 
+        console.log('[Stripe] Cancel subscription request:', { userId });
+
         if (!userId) {
           return res.status(400).json({ error: 'Missing userId' });
         }
@@ -302,14 +304,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Récupérer l'utilisateur et son subscription_id
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('stripe_customer_id, stripe_subscription_id')
+          .select('id, stripe_customer_id, stripe_subscription_id')
           .eq('id', userId)
           .single();
 
-        if (userError || !userData) {
-          console.error('[Stripe] User not found:', userId);
+        if (userError) {
+          console.error('[Stripe] Error fetching user:', userError);
+          console.error('[Stripe] Error code:', userError.code);
+          console.error('[Stripe] Error message:', userError.message);
+          return res.status(404).json({ 
+            error: 'User not found',
+            details: userError.message || 'User does not exist in database'
+          });
+        }
+
+        if (!userData) {
+          console.error('[Stripe] User data is null for userId:', userId);
           return res.status(404).json({ error: 'User not found' });
         }
+
+        console.log('[Stripe] User found:', {
+          userId: userData.id,
+          hasStripeCustomerId: !!userData.stripe_customer_id,
+          hasStripeSubscriptionId: !!userData.stripe_subscription_id,
+        });
 
         if (!userData.stripe_subscription_id) {
           console.error('[Stripe] No subscription found for user:', userId);
