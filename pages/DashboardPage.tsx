@@ -632,18 +632,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         setIsVideoLoading(false);
                       }, isSafari ? 15000 : 10000);
                       
-                      // Pour Safari, on charge les métadonnées seulement (pas la vidéo complète)
-                      // Safari suspend souvent le chargement automatique pour économiser la bande passante
-                      // Le chargement complet se fera au survol (onMouseEnter)
+                      // Pour Safari, forcer le chargement des métadonnées pour capturer la première frame
                       let safariLoadTimeout: NodeJS.Timeout | null = null;
                       if (isSafari && videoRef.current) {
+                        // Forcer le chargement immédiatement
+                        console.log('[Video Debug] Safari: Forcing video metadata load');
+                        videoRef.current.load();
+                        
+                        // Si après 2 secondes les métadonnées ne sont pas chargées, réessayer
                         safariLoadTimeout = setTimeout(() => {
-                          if (videoRef.current && videoRef.current.readyState === 0) {
-                            console.log('[Video Debug] Safari: Loading video metadata only');
-                            // Charger seulement les métadonnées, pas la vidéo complète
+                          if (videoRef.current && videoRef.current.readyState < 2) {
+                            console.log('[Video Debug] Safari: Retrying video load after 2s');
                             videoRef.current.load();
                           }
-                        }, 1000);
+                        }, 2000);
+                      } else if (videoRef.current) {
+                        // Pour les autres navigateurs, charger normalement
+                        videoRef.current.load();
                       }
                       
                       // Test if URL is accessible (sauf pour Safari qui peut bloquer)
@@ -686,11 +691,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       setIsVideoLoading(false);
                     };
                     
-                    const handleVideoCanPlay = () => {
-                      console.log('[Video Debug] Video can play:', video.video_url);
-                      setIsVideoLoading(false);
-                    };
-                    
                     const handleVideoLoadedMetadata = () => {
                       console.log('[Video Debug] Video metadata loaded:', video.video_url);
                       // Capturer la première frame pour l'afficher comme poster
@@ -702,8 +702,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     
                     const handleVideoSeeked = () => {
                       // Une fois que la vidéo a cherché la première frame, on la capture
+                      console.log('[Video Debug] Video seeked to first frame, capturing...');
                       captureFirstFrame();
                       setIsVideoLoading(false);
+                    };
+                    
+                    const handleVideoCanPlay = () => {
+                      // Si on peut jouer, essayer de capturer la première frame
+                      if (videoRef.current && !posterImage) {
+                        console.log('[Video Debug] Video can play, trying to capture first frame');
+                        if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA
+                          videoRef.current.currentTime = 0.1;
+                        }
+                      }
                     };
 
                     return (
@@ -751,6 +762,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 onError={(e) => handleVideoError(e)}
                                 onLoadedMetadata={handleVideoLoadedMetadata}
                                 onSeeked={handleVideoSeeked}
+                                onCanPlay={handleVideoCanPlay}
+                                onLoadedData={() => {
+                                  console.log('[Video Debug] Video data loaded:', video.video_url);
+                                  // Essayer de capturer la première frame si pas encore fait
+                                  if (!posterImage && videoRef.current && videoRef.current.readyState >= 2) {
+                                    videoRef.current.currentTime = 0.1;
+                                  }
+                                }}
                                 onLoadStart={() => {
                                   console.log('[Video Debug] Video load started:', video.video_url);
                                 }}
