@@ -97,12 +97,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!gmailPassword) {
       // Fallback: utiliser Resend si Gmail n'est pas configuré
       const { Resend } = await import('resend');
-      const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
         return res.status(500).json({ error: 'GMAIL_APP_PASSWORD or RESEND_API_KEY must be configured' });
-      }
-      const resend = new Resend(apiKey);
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'Viralis Studio <contact@viralis-studio.app>';
+    }
+    const resend = new Resend(apiKey);
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Viralis Studio <contact@viralis-studio.app>';
       
       // Utiliser Resend comme fallback
       return await sendWithResend(resend, fromEmail, yourEmail, name, email, message, res);

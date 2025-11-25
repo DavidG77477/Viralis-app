@@ -144,7 +144,7 @@ export const cancelSubscription = async (userId: string): Promise<{
   cancel_at_period_end: boolean;
   current_period_end: string;
 }> => {
-  const response = await fetch('/api/cancel-subscription', {
+  const response = await fetch('/api/stripe?action=cancel-subscription', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId }),

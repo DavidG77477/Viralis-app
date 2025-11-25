@@ -288,8 +288,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      case 'cancel-subscription': {
+        if (req.method !== 'POST') {
+          return res.status(405).json({ error: 'Method not allowed' });
+        }
+
+        const { userId } = req.body;
+
+        if (!userId) {
+          return res.status(400).json({ error: 'Missing userId' });
+        }
+
+        // Récupérer l'utilisateur et son subscription_id
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('stripe_customer_id, stripe_subscription_id')
+          .eq('id', userId)
+          .single();
+
+        if (userError || !userData) {
+          console.error('[Stripe] User not found:', userId);
+          return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!userData.stripe_subscription_id) {
+          console.error('[Stripe] No subscription found for user:', userId);
+          return res.status(400).json({ error: 'No active subscription found' });
+        }
+
+        // Annuler l'abonnement dans Stripe (à la fin de la période)
+        const subscription = await stripe.subscriptions.update(
+          userData.stripe_subscription_id,
+          {
+            cancel_at_period_end: true,
+          }
+        );
+
+        console.log('[Stripe] Subscription set to cancel at period end:', {
+          subscriptionId: subscription.id,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          currentPeriodEnd: (subscription as any).current_period_end 
+            ? new Date((subscription as any).current_period_end * 1000).toISOString()
+            : null,
+        });
+
+        return res.status(200).json({ 
+          success: true,
+          message: 'Subscription will be cancelled at the end of the billing period',
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          current_period_end: (subscription as any).current_period_end 
+            ? new Date((subscription as any).current_period_end * 1000).toISOString()
+            : null,
+        });
+      }
+
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: create-checkout-session, create-portal-session, or get-subscription-status' });
+        return res.status(400).json({ error: 'Invalid action. Use: create-checkout-session, create-portal-session, get-subscription-status, or cancel-subscription' });
     }
   } catch (error: any) {
     console.error('[Stripe] Error:', error);

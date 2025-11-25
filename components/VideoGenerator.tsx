@@ -491,7 +491,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             });
             setLoadingMessage(t.loadingMessages[0]);
             if (shouldPersist) {
-                setUserTokens(prev => prev - videoCost);
+            setUserTokens(prev => prev - videoCost);
                 tokensDeducted = true;
             }
             
@@ -578,8 +578,8 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 // Pour les autres modèles, utiliser le polling classique
                 const finalOperation = await pollVideoOperation(initialOperation);
                 downloadLink = finalOperation.response?.generatedVideos?.[0]?.video?.uri;
-                if (!downloadLink) {
-                    throw new Error(t.errorRetrieveVideo);
+            if (!downloadLink) {
+                throw new Error(t.errorRetrieveVideo);
                 }
             }
 
@@ -631,33 +631,33 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                     }
                 } else {
                     // Pour les autres modèles, sauvegarder normalement
-                    try {
-                        const savedVideo = await saveVideo({
-                            user_id: supabaseUserId,
-                            prompt: enhancedPrompt,
-                            video_url: finalPersistedUrl,
-                            aspect_ratio: aspectRatio,
-                            resolution,
-                            tokens_used: videoCost,
-                        });
+            try {
+                const savedVideo = await saveVideo({
+                    user_id: supabaseUserId,
+                    prompt: enhancedPrompt,
+                    video_url: finalPersistedUrl,
+                    aspect_ratio: aspectRatio,
+                    resolution,
+                    tokens_used: videoCost,
+                });
 
-                        if (!savedVideo) {
-                            throw new Error('Impossible de sauvegarder la vidéo générée.');
-                        }
+                if (!savedVideo) {
+                    throw new Error('Impossible de sauvegarder la vidéo générée.');
+                }
 
-                        const updatedTokenBalance = await updateUserTokens(supabaseUserId, videoCost);
-                        if (updatedTokenBalance === null) {
-                            setUserTokens(prev => prev + videoCost);
-                            setError('Impossible de mettre à jour tes jetons. Réessaie plus tard.');
-                            return;
-                        }
-                        setUserTokens(updatedTokenBalance);
+                const updatedTokenBalance = await updateUserTokens(supabaseUserId, videoCost);
+                if (updatedTokenBalance === null) {
+                    setUserTokens(prev => prev + videoCost);
+                    setError('Impossible de mettre à jour tes jetons. Réessaie plus tard.');
+                    return;
+                }
+                setUserTokens(updatedTokenBalance);
 
-                        if (onVideoGenerated) {
-                            onVideoGenerated(savedVideo);
-                        }
-                    } catch (saveError) {
-                        console.error('Error saving video to database:', saveError);
+                if (onVideoGenerated) {
+                    onVideoGenerated(savedVideo);
+                }
+            } catch (saveError) {
+                console.error('Error saving video to database:', saveError);
                     }
                 }
             } else {
@@ -672,7 +672,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                 setError(err.message || t.errorUnknown);
             }
             if (tokensDeducted) {
-                setUserTokens(prev => prev + videoCost); // Refund tokens on failure
+            setUserTokens(prev => prev + videoCost); // Refund tokens on failure
             }
         } finally {
             setIsLoading(false);
@@ -695,7 +695,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
             document.body.appendChild(link);
             link.click();
             link.remove();
-            setDownloadMessage(null);
+                            setDownloadMessage(null);
         } catch (downloadError) {
             console.error('Erreur lors du téléchargement :', downloadError);
             setError(t.downloadError ?? 'Impossible de télécharger la vidéo. Réessaie.');
@@ -728,8 +728,8 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                     <div className="relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold" style={{background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent'}}>
-                                {t.generatorSettingsTitle}
-                            </h2>
+                            {t.generatorSettingsTitle}
+                        </h2>
                             <div className="flex items-center gap-1.5 bg-slate-900/60 p-0.5 rounded-lg border border-slate-700/50">
                                 <button
                                     type="button"
@@ -1118,30 +1118,30 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                         )}
 
                         {generationMode === 'text-to-video' ? (
-                            <textarea
-                                className="w-full bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-slate-700/50 rounded-xl p-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00ff9d]/50 focus:border-[#00ff9d]/50 transition-all duration-300 backdrop-blur-sm resize-none"
-                                rows={5}
-                                placeholder={t.promptPlaceholder}
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                disabled={isLoading}
-                            />
+                        <textarea
+                            className="w-full bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-slate-700/50 rounded-xl p-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00ff9d]/50 focus:border-[#00ff9d]/50 transition-all duration-300 backdrop-blur-sm resize-none"
+                            rows={5}
+                            placeholder={t.promptPlaceholder}
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            disabled={isLoading}
+                        />
                         ) : (
                             <>
-                                {imagePreview ? (
-                                    <div className="relative group">
-                                        <img src={imagePreview} alt="Upload preview" className="w-full h-auto rounded-lg" />
-                                        <button onClick={removeImage} className="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100" disabled={isLoading}>
-                                            <XCircleIcon className="w-6 h-6" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-br from-slate-900/60 to-slate-800/60 hover:from-[#00ff9d]/10 hover:to-[#00b3ff]/10 border border-dashed border-slate-600/50 hover:border-[#00ff9d]/50 rounded-xl p-6 text-slate-400 hover:text-white transition-all duration-300 group" disabled={isLoading}>
-                                       <ImageIcon className="w-6 h-6 group-hover:text-[#00ff9d] transition-colors" />
+                        {imagePreview ? (
+                            <div className="relative group">
+                                <img src={imagePreview} alt="Upload preview" className="w-full h-auto rounded-lg" />
+                                <button onClick={removeImage} className="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100" disabled={isLoading}>
+                                    <XCircleIcon className="w-6 h-6" />
+                                </button>
+                            </div>
+                        ) : (
+                            <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-br from-slate-900/60 to-slate-800/60 hover:from-[#00ff9d]/10 hover:to-[#00b3ff]/10 border border-dashed border-slate-600/50 hover:border-[#00ff9d]/50 rounded-xl p-6 text-slate-400 hover:text-white transition-all duration-300 group" disabled={isLoading}>
+                               <ImageIcon className="w-6 h-6 group-hover:text-[#00ff9d] transition-colors" />
                                        <span className="font-medium">{t.uploadImageLabel ?? 'Upload an Image'}</span>
-                                    </button>
-                                )}
-                                <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+                            </button>
+                        )}
+                        <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                                 <textarea
                                     className="w-full bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-slate-700/50 rounded-xl p-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00ff9d]/50 focus:border-[#00ff9d]/50 transition-all duration-300 backdrop-blur-sm resize-none"
                                     rows={3}
@@ -1179,47 +1179,47 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 <span className="relative z-10">Upgrade to Pro</span>
                             </button>
                         ) : (
-                            <button
-                                onClick={handleGenerate}
+                        <button
+                            onClick={handleGenerate}
                                 disabled={isLoading || (generationMode === 'text-to-video' && !prompt) || (generationMode === 'photo-to-video' && !imageFile)}
-                                className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 shadow-[0_0_25px_rgba(0,255,153,0.3)] hover:shadow-[0_0_40px_rgba(0,255,153,0.5)] relative overflow-hidden group"
-                            >
-                                <style>
-                                    {`
-                                        @keyframes sparkle {
-                                            0%, 100% {
-                                                opacity: 0;
-                                                transform: scale(0) rotate(0deg);
-                                            }
-                                            50% {
-                                                opacity: 1;
-                                                transform: scale(1) rotate(180deg);
-                                            }
+                            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 shadow-[0_0_25px_rgba(0,255,153,0.3)] hover:shadow-[0_0_40px_rgba(0,255,153,0.5)] relative overflow-hidden group"
+                        >
+                            <style>
+                                {`
+                                    @keyframes sparkle {
+                                        0%, 100% {
+                                            opacity: 0;
+                                            transform: scale(0) rotate(0deg);
                                         }
-                                        .sparkle {
-                                            animation: sparkle 1.5s ease-in-out infinite;
+                                        50% {
+                                            opacity: 1;
+                                            transform: scale(1) rotate(180deg);
                                         }
-                                        .sparkle:nth-child(1) { animation-delay: 0s; }
-                                        .sparkle:nth-child(2) { animation-delay: 0.3s; }
-                                        .sparkle:nth-child(3) { animation-delay: 0.6s; }
-                                        .sparkle:nth-child(4) { animation-delay: 0.9s; }
-                                    `}
-                                </style>
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                {isLoading ? (
-                                    <span>{loadingMessage}</span>
-                                ) : (
-                                    <>
-                                        <div className="relative z-10 flex items-center justify-center w-6 h-6">
-                                            <span className="absolute sparkle text-lg">✨</span>
-                                            <span className="absolute sparkle text-sm" style={{transform: 'translate(-8px, -4px)'}}>⭐</span>
-                                            <span className="absolute sparkle text-xs" style={{transform: 'translate(8px, 4px)'}}>✨</span>
-                                            <span className="absolute sparkle text-sm" style={{transform: 'translate(0px, -8px)'}}>⭐</span>
-                                        </div>
+                                    }
+                                    .sparkle {
+                                        animation: sparkle 1.5s ease-in-out infinite;
+                                    }
+                                    .sparkle:nth-child(1) { animation-delay: 0s; }
+                                    .sparkle:nth-child(2) { animation-delay: 0.3s; }
+                                    .sparkle:nth-child(3) { animation-delay: 0.6s; }
+                                    .sparkle:nth-child(4) { animation-delay: 0.9s; }
+                                `}
+                            </style>
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                            {isLoading ? (
+                                <span>{loadingMessage}</span>
+                            ) : (
+                                <>
+                                    <div className="relative z-10 flex items-center justify-center w-6 h-6">
+                                        <span className="absolute sparkle text-lg">✨</span>
+                                        <span className="absolute sparkle text-sm" style={{transform: 'translate(-8px, -4px)'}}>⭐</span>
+                                        <span className="absolute sparkle text-xs" style={{transform: 'translate(8px, 4px)'}}>✨</span>
+                                        <span className="absolute sparkle text-sm" style={{transform: 'translate(0px, -8px)'}}>⭐</span>
+                                    </div>
                                         <span className="relative z-10">{t.generateVideoButton} ({videoCost} {t.tokens})</span>
-                                    </>
-                                )}
-                            </button>
+                                </>
+                            )}
+                        </button>
                         )}
                         {error && <p className="text-red-400 text-center">{error}</p>}
                         </div>
