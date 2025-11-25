@@ -220,11 +220,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log('[Stripe Webhook] User found. Current tokens:', userCheck.tokens);
           
           // Add tokens to user account
-          // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
-          const { error: tokenError, data: tokenData } = await supabase.rpc('increment_tokens', {
-            tokens_to_add: tokensToAdd,
-            user_id: userId,
-          });
+          // Try RPC first, fallback to direct update if cache not ready
+          let tokenError: any = null;
+          let tokenData: any = null;
+          
+          try {
+            // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
+            const rpcResult = await supabase.rpc('increment_tokens', {
+              tokens_to_add: tokensToAdd,
+              user_id: userId,
+            });
+            tokenError = rpcResult.error;
+            tokenData = rpcResult.data;
+          } catch (rpcErr: any) {
+            console.warn('[Stripe Webhook] RPC call failed, using direct SQL update:', rpcErr.message);
+            // Fallback: Use direct SQL update to bypass PostgREST cache
+            const newTokenCount = (userCheck.tokens || 0) + tokensToAdd;
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ tokens: newTokenCount })
+              .eq('id', userId);
+            tokenError = updateError;
+            if (!updateError) {
+              tokenData = { success: true };
+              console.log('[Stripe Webhook] ✅ Tokens added via direct update');
+            }
+          }
 
           if (tokenError) {
             console.error('[Stripe Webhook] ❌ Error adding tokens:', tokenError);
