@@ -593,16 +593,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       console.log('[Video Debug] Video ID:', video.id);
                       console.log('[Video Debug] Video URL:', video.video_url);
                       console.log('[Video Debug] Browser:', isSafari ? 'Safari' : 'Other');
+                      console.log('[Video Debug] Thumbnail URL:', video.thumbnail_url);
                       console.log('[Video Debug] Full video object:', video);
                       
-                      // Timeout pour éviter un chargement infini (10 secondes)
+                      // Timeout pour éviter un chargement infini (15 secondes pour Safari, 10 pour les autres)
                       const loadingTimeout = setTimeout(() => {
-                        console.warn('[Video Debug] Loading timeout after 10s for:', video.video_url);
+                        console.warn('[Video Debug] Loading timeout after', isSafari ? '15s' : '10s', 'for:', video.video_url);
                         setIsVideoLoading(false);
-                      }, 10000);
+                      }, isSafari ? 15000 : 10000);
                       
-                      // Test if URL is accessible
-                      if (video.video_url) {
+                      // Pour Safari, forcer le chargement des métadonnées après un court délai
+                      let safariLoadTimeout: NodeJS.Timeout | null = null;
+                      if (isSafari && videoRef.current) {
+                        safariLoadTimeout = setTimeout(() => {
+                          if (videoRef.current && videoRef.current.readyState === 0) {
+                            console.log('[Video Debug] Safari: Forcing video load');
+                            videoRef.current.load();
+                          }
+                        }, 500);
+                      }
+                      
+                      // Test if URL is accessible (sauf pour Safari qui peut bloquer)
+                      if (video.video_url && !isSafari) {
                         fetch(video.video_url, { method: 'HEAD', mode: 'no-cors' })
                           .then(() => {
                             console.log('[Video Debug] URL is accessible (HEAD request succeeded)');
@@ -615,8 +627,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       // Cleanup timeout on unmount
                       return () => {
                         clearTimeout(loadingTimeout);
+                        if (safariLoadTimeout) {
+                          clearTimeout(safariLoadTimeout);
+                        }
                       };
-                    }, [video.video_url, video.id, isSafari]);
+                    }, [video.video_url, video.id, video.thumbnail_url, isSafari]);
 
                     const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
                       const videoElement = e.currentTarget;
@@ -665,10 +680,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 src={video.video_url}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 controls={false}
-                                preload="metadata"
+                                preload={isSafari ? "none" : "metadata"}
                                 playsInline
                                 muted
-                                {...(!isSafari && { crossOrigin: 'anonymous' })}
+                                // @ts-ignore - Safari-specific attributes
+                                webkit-playsinline="true"
+                                // @ts-ignore - Safari-specific attributes
+                                x-webkit-airplay="allow"
+                                {...(isSafari ? {} : { crossOrigin: 'anonymous' })}
+                                poster={video.thumbnail_url || undefined}
                                 onError={(e) => handleVideoError(e)}
                                 onLoadedData={handleVideoLoaded}
                                 onCanPlay={handleVideoCanPlay}
@@ -682,10 +702,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 onStalled={() => {
                                   console.warn('[Video Debug] Video stalled:', video.video_url);
                                 }}
+                                onSuspend={() => {
+                                  console.log('[Video Debug] Video suspended:', video.video_url);
+                                  // Safari peut suspendre le chargement, on force le chargement des métadonnées
+                                  if (videoRef.current && isSafari) {
+                                    videoRef.current.load();
+                                  }
+                                }}
                                 onMouseEnter={(e) => {
                                   if (!videoError) {
                                     const videoEl = e.currentTarget;
                                     videoEl.muted = true; // Ensure muted for autoplay
+                                    // Pour Safari, on charge d'abord les métadonnées
+                                    if (isSafari && videoEl.readyState === 0) {
+                                      videoEl.load();
+                                    }
                                     videoEl.play().catch((err) => {
                                       console.warn('[Video Debug] Autoplay failed:', err);
                                       // Ignore play errors (autoplay restrictions)
