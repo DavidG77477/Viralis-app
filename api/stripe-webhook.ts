@@ -316,23 +316,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (PRICE_TO_SUBSCRIPTION_STATUS[priceId]) {
           const subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId];
           
-          // Update user subscription status
+          // Get subscription ID from session
+          const subscriptionId = session.subscription as string;
+          
+          // Update user subscription status and IDs
+          const updateData: any = { 
+            subscription_status: subscriptionStatus,
+          };
+          
+          if (customerId && typeof customerId === 'string') {
+            updateData.stripe_customer_id = customerId;
+          }
+          
+          if (subscriptionId) {
+            updateData.stripe_subscription_id = subscriptionId;
+          }
+          
           const { error: subError } = await supabase
             .from('users')
-            .update({ subscription_status: subscriptionStatus })
+            .update(updateData)
             .eq('id', userId);
 
           if (subError) {
             console.error('[Stripe Webhook] Error updating subscription status:', subError);
           } else {
-            console.log(`[Stripe Webhook] Updated subscription status to ${subscriptionStatus} for user ${userId}`);
+            console.log(`[Stripe Webhook] ✅ Updated user ${userId}:`, {
+              subscription_status: subscriptionStatus,
+              stripe_customer_id: customerId || 'already set',
+              stripe_subscription_id: subscriptionId || 'N/A',
+            });
           }
 
           // Handle token distribution based on subscription type
           if (subscriptionStatus === 'pro_annual') {
             // Pro Annual: Create monthly distribution schedule (14 months, 300 tokens/month)
-            // Get subscription ID from session
-            const subscriptionId = session.subscription as string;
             
             if (subscriptionId) {
               // Calculate first distribution date (now) and next distribution (1 month from now)

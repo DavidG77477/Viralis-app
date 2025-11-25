@@ -25,6 +25,16 @@ const PLAN_TO_PRICE_ID_TEST: Record<string, string> = {
 // Select Price IDs based on mode
 const PLAN_TO_PRICE_ID = isTestMode ? PLAN_TO_PRICE_ID_TEST : PLAN_TO_PRICE_ID_LIVE;
 
+// Price ID to subscription status mapping (LIVE + TEST MODE)
+const PRICE_TO_SUBSCRIPTION_STATUS: Record<string, 'pro_monthly' | 'pro_annual'> = {
+  // Live mode
+  'price_1STdvsQ95ijGuOd8DTnBtkkE': 'pro_monthly',
+  'price_1STdyaQ95ijGuOd8OjQauruf': 'pro_annual',
+  // Test mode
+  'price_1SXNw9Pt6mHWDz2H2gH72U3w': 'pro_monthly',
+  'price_1SXNxXPt6mHWDz2H8rm3Vnwh': 'pro_annual',
+};
+
 const isSubscriptionPlan = (planId: string): boolean => {
   return planId === 'pro-monthly' || planId === 'pro-annual';
 };
@@ -303,30 +313,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Helper function to find user by ID or email
         const findUser = async (): Promise<{ id: string; email: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null } | null> => {
-          // D'abord essayer par ID
-          let { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('id, email, stripe_customer_id, stripe_subscription_id')
-            .eq('id', userId)
-            .single();
+        // D'abord essayer par ID
+        let { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, email, stripe_customer_id, stripe_subscription_id')
+          .eq('id', userId)
+          .single();
 
           if (!userError && userData) {
             console.log('[Stripe] User found by ID:', userData.id);
             return userData;
           }
 
-          // Si pas trouvé par ID et qu'on a un email, essayer par email
-          if (userError && userError.code === 'PGRST116' && (userEmail || userId.includes('@'))) {
-            const emailToSearch = userEmail || userId;
-            console.log('[Stripe] User not found by ID, trying by email:', emailToSearch);
-            const { data: userByEmail, error: emailError } = await supabase
-              .from('users')
-              .select('id, email, stripe_customer_id, stripe_subscription_id')
-              .eq('email', emailToSearch)
-              .single();
-            
-            if (!emailError && userByEmail) {
-              console.log('[Stripe] User found by email:', userByEmail.id);
+        // Si pas trouvé par ID et qu'on a un email, essayer par email
+        if (userError && userError.code === 'PGRST116' && (userEmail || userId.includes('@'))) {
+          const emailToSearch = userEmail || userId;
+          console.log('[Stripe] User not found by ID, trying by email:', emailToSearch);
+          const { data: userByEmail, error: emailError } = await supabase
+            .from('users')
+            .select('id, email, stripe_customer_id, stripe_subscription_id')
+            .eq('email', emailToSearch)
+            .single();
+          
+          if (!emailError && userByEmail) {
+            console.log('[Stripe] User found by email:', userByEmail.id);
               return userByEmail;
             }
           }
@@ -474,57 +484,118 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log('[Stripe] User found:', {
           userId: userData.id,
+          email: userData.email,
           hasStripeCustomerId: !!userData.stripe_customer_id,
           hasStripeSubscriptionId: !!userData.stripe_subscription_id,
         });
 
-        // Si pas de subscription_id enregistré mais qu'on a un customer_id, chercher l'abonnement actif dans Stripe
+        // Si pas de subscription_id, chercher l'abonnement actif dans Stripe
         let subscriptionId = userData.stripe_subscription_id;
+        let foundCustomerId = userData.stripe_customer_id;
         
-        if (!subscriptionId && userData.stripe_customer_id) {
-          console.log('[Stripe] No subscription_id in database, searching active subscription in Stripe for customer:', userData.stripe_customer_id);
+        if (!subscriptionId) {
+          console.log('[Stripe] No subscription_id in database, searching in Stripe...');
           
           try {
-            const subscriptions = await stripe.subscriptions.list({
-              customer: userData.stripe_customer_id,
-              status: 'active',
-              limit: 1,
-            });
+            // Méthode 1: Si on a un customer_id, chercher par customer_id
+            if (foundCustomerId) {
+              console.log('[Stripe] Searching by customer_id:', foundCustomerId);
+              const subscriptions = await stripe.subscriptions.list({
+                customer: foundCustomerId,
+                status: 'active',
+                limit: 1,
+              });
 
-            if (subscriptions.data.length > 0) {
-              subscriptionId = subscriptions.data[0].id;
-              console.log('[Stripe] Found active subscription in Stripe:', subscriptionId);
-              
-              // Mettre à jour l'utilisateur avec le subscription_id trouvé
-              await supabase
-                .from('users')
-                .update({ stripe_subscription_id: subscriptionId })
-                .eq('id', userData.id);
-              
-              console.log('[Stripe] Updated user with subscription_id:', subscriptionId);
-            } else {
-              // Aussi chercher les abonnements qui vont être annulés (cancel_at_period_end: true)
-              const allSubscriptions = await stripe.subscriptions.list({
-                customer: userData.stripe_customer_id,
-                status: 'all',
+              if (subscriptions.data.length > 0) {
+                subscriptionId = subscriptions.data[0].id;
+                console.log('[Stripe] Found active subscription by customer_id:', subscriptionId);
+              } else {
+                // Chercher aussi les abonnements actifs (même en cours d'annulation)
+                const allSubscriptions = await stripe.subscriptions.list({
+                  customer: foundCustomerId,
+                  status: 'all',
+                  limit: 10,
+                });
+
+                const activeOrCanceling = allSubscriptions.data.find(
+                  sub => sub.status === 'active'
+                );
+
+                if (activeOrCanceling) {
+                  subscriptionId = activeOrCanceling.id;
+                  console.log('[Stripe] Found active subscription (may be canceling):', subscriptionId);
+                }
+              }
+            }
+            
+            // Méthode 2: Si toujours pas trouvé, chercher par client_reference_id (userId) dans les sessions
+            if (!subscriptionId) {
+              console.log('[Stripe] Searching by client_reference_id (userId):', userId);
+              const sessions = await stripe.checkout.sessions.list({
+                limit: 100,
+              });
+
+              // Chercher une session avec ce userId comme client_reference_id
+              for (const session of sessions.data) {
+                if (session.client_reference_id === userId && session.subscription) {
+                  const sessionSubscriptionId = session.subscription as string;
+                  foundCustomerId = session.customer as string;
+                  
+                  // Vérifier que l'abonnement est actif
+                  try {
+                    const subscription = await stripe.subscriptions.retrieve(sessionSubscriptionId);
+                    if (subscription.status === 'active') {
+                      subscriptionId = sessionSubscriptionId;
+                      console.log('[Stripe] Found active subscription by client_reference_id:', subscriptionId);
+                      console.log('[Stripe] Found customer_id from session:', foundCustomerId);
+                      break;
+                    }
+                  } catch (err) {
+                    // Subscription might be deleted, continue searching
+                    continue;
+                  }
+                }
+              }
+            }
+
+            // Méthode 3: Si toujours pas trouvé, chercher par email dans les customers
+            if (!subscriptionId && userData.email) {
+              console.log('[Stripe] Searching by email:', userData.email);
+              const customers = await stripe.customers.list({
+                email: userData.email,
                 limit: 10,
               });
 
-              // Chercher les abonnements actifs (même s'ils sont en cours d'annulation)
-              const activeOrCanceling = allSubscriptions.data.find(
-                sub => sub.status === 'active'
-              );
+              for (const customer of customers.data) {
+                const subscriptions = await stripe.subscriptions.list({
+                  customer: customer.id,
+                  status: 'active',
+                  limit: 1,
+                });
 
-              if (activeOrCanceling) {
-                subscriptionId = activeOrCanceling.id;
-                console.log('[Stripe] Found subscription (active or canceling):', subscriptionId);
-                
-                // Mettre à jour l'utilisateur avec le subscription_id trouvé
-                await supabase
-                  .from('users')
-                  .update({ stripe_subscription_id: subscriptionId })
-                  .eq('id', userData.id);
+                if (subscriptions.data.length > 0) {
+                  subscriptionId = subscriptions.data[0].id;
+                  foundCustomerId = customer.id;
+                  console.log('[Stripe] Found active subscription by email:', subscriptionId);
+                  console.log('[Stripe] Found customer_id by email:', foundCustomerId);
+                  break;
+                }
               }
+            }
+
+            // Si on a trouvé un abonnement, mettre à jour l'utilisateur
+            if (subscriptionId) {
+              const updateData: any = { stripe_subscription_id: subscriptionId };
+              if (foundCustomerId && !userData.stripe_customer_id) {
+                updateData.stripe_customer_id = foundCustomerId;
+              }
+              
+              await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', userData.id);
+              
+              console.log('[Stripe] Updated user with:', updateData);
             }
           } catch (stripeError: any) {
             console.error('[Stripe] Error searching for subscription in Stripe:', stripeError);
@@ -532,17 +603,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (!subscriptionId) {
-          console.error('[Stripe] No subscription found for user:', userId);
+          console.error('[Stripe] ❌ No subscription found for user:', userId);
           console.error('[Stripe] User data:', {
             id: userData?.id,
             email: userData?.email,
             hasStripeCustomerId: !!userData?.stripe_customer_id,
             hasStripeSubscriptionId: !!userData?.stripe_subscription_id,
+            stripe_customer_id: userData?.stripe_customer_id || 'NOT SET',
           });
+          console.error('[Stripe] Attempted search methods:');
+          console.error('  - By stripe_customer_id:', userData?.stripe_customer_id || 'N/A');
+          console.error('  - By client_reference_id (userId):', userId);
+          console.error('  - By email:', userData?.email || 'N/A');
+          
           return res.status(400).json({ 
             error: 'No active subscription found',
-            details: 'You do not have an active subscription. If you believe this is an error, please contact support.',
-            userEmail: userData?.email || 'Unknown'
+            details: 'No active subscription found in Stripe. Please check that your subscription was successfully created. If you just subscribed, please wait a few moments and try again.',
+            userEmail: userData?.email || 'Unknown',
+            userId: userData?.id,
+            debug: {
+              hasStripeCustomerId: !!userData?.stripe_customer_id,
+              hasStripeSubscriptionId: !!userData?.stripe_subscription_id,
+            }
           });
         }
 
@@ -583,8 +665,220 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      case 'sync-user-subscription': {
+        if (req.method !== 'POST') {
+          return res.status(405).json({ error: 'Method not allowed' });
+        }
+
+        const { userId, userEmail } = req.body;
+
+        console.log('[Stripe] Sync subscription request:', { userId, userEmail });
+
+        if (!userId) {
+          return res.status(400).json({ error: 'Missing userId' });
+        }
+
+        // Helper function to find user by ID or email
+        const findUser = async (): Promise<{ id: string; email: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null } | null> => {
+          // D'abord essayer par ID
+          let { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, email, stripe_customer_id, stripe_subscription_id, subscription_status')
+            .eq('id', userId)
+            .single();
+
+          if (!userError && userData) {
+            return userData;
+          }
+
+          // Si pas trouvé par ID et qu'on a un email, essayer par email
+          if (userError && userError.code === 'PGRST116' && (userEmail || userId.includes('@'))) {
+            const emailToSearch = userEmail || userId;
+            const { data: userByEmail, error: emailError } = await supabase
+              .from('users')
+              .select('id, email, stripe_customer_id, stripe_subscription_id, subscription_status')
+              .eq('email', emailToSearch)
+              .single();
+            
+            if (!emailError && userByEmail) {
+              return userByEmail;
+            }
+          }
+
+          return null;
+        };
+
+        // Récupérer l'utilisateur
+        let userData = await findUser();
+
+        if (!userData) {
+          return res.status(404).json({ error: 'User not found in Supabase' });
+        }
+
+        console.log('[Stripe] User found:', {
+          userId: userData.id,
+          email: userData.email,
+          hasStripeCustomerId: !!userData.stripe_customer_id,
+          hasStripeSubscriptionId: !!userData.stripe_subscription_id,
+        });
+
+        let foundCustomerId = userData.stripe_customer_id;
+        let foundSubscriptionId: string | null = null;
+        let subscriptionStatus: string | null = null;
+
+        try {
+          // Méthode 1: Chercher par customer_id si disponible
+          if (foundCustomerId) {
+            console.log('[Stripe] Searching by customer_id:', foundCustomerId);
+            const subscriptions = await stripe.subscriptions.list({
+              customer: foundCustomerId,
+              status: 'all',
+              limit: 10,
+            });
+
+            const activeSubscription = subscriptions.data.find(
+              sub => sub.status === 'active' || sub.status === 'trialing'
+            );
+
+            if (activeSubscription) {
+              foundSubscriptionId = activeSubscription.id;
+              const priceId = activeSubscription.items.data[0]?.price.id;
+              subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId] || null;
+              console.log('[Stripe] Found subscription by customer_id:', foundSubscriptionId);
+            }
+          }
+          
+          // Méthode 2: Chercher par client_reference_id (userId) dans les sessions
+          if (!foundSubscriptionId) {
+            console.log('[Stripe] Searching by client_reference_id (userId):', userId);
+            const sessions = await stripe.checkout.sessions.list({
+              limit: 100,
+            });
+
+            for (const session of sessions.data) {
+              if (session.client_reference_id === userId && session.subscription) {
+                const sessionSubscriptionId = session.subscription as string;
+                if (!foundCustomerId) {
+                  foundCustomerId = session.customer as string;
+                }
+                
+                try {
+                  const subscription = await stripe.subscriptions.retrieve(sessionSubscriptionId);
+                  if (subscription.status === 'active' || subscription.status === 'trialing') {
+                    foundSubscriptionId = sessionSubscriptionId;
+                    const priceId = subscription.items.data[0]?.price.id;
+                    subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId] || null;
+                    console.log('[Stripe] Found subscription by client_reference_id:', foundSubscriptionId);
+                    break;
+                  }
+                } catch (err) {
+                  continue;
+                }
+              }
+            }
+          }
+
+          // Méthode 3: Chercher par email dans les customers
+          if (!foundSubscriptionId && userData.email) {
+            console.log('[Stripe] Searching by email:', userData.email);
+            const customers = await stripe.customers.list({
+              email: userData.email,
+              limit: 10,
+            });
+
+            for (const customer of customers.data) {
+              const subscriptions = await stripe.subscriptions.list({
+                customer: customer.id,
+                status: 'all',
+                limit: 10,
+              });
+
+              const activeSubscription = subscriptions.data.find(
+                sub => sub.status === 'active' || sub.status === 'trialing'
+              );
+
+              if (activeSubscription) {
+                foundSubscriptionId = activeSubscription.id;
+                foundCustomerId = customer.id;
+                const priceId = activeSubscription.items.data[0]?.price.id;
+                subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId] || null;
+                console.log('[Stripe] Found subscription by email:', foundSubscriptionId);
+                break;
+              }
+            }
+          }
+
+          // Mettre à jour l'utilisateur avec les IDs trouvés
+          if (foundCustomerId || foundSubscriptionId || subscriptionStatus) {
+            const updateData: any = {};
+            
+            if (foundCustomerId && foundCustomerId !== userData.stripe_customer_id) {
+              updateData.stripe_customer_id = foundCustomerId;
+            }
+            
+            if (foundSubscriptionId && foundSubscriptionId !== userData.stripe_subscription_id) {
+              updateData.stripe_subscription_id = foundSubscriptionId;
+            }
+            
+            if (subscriptionStatus && subscriptionStatus !== userData.subscription_status) {
+              updateData.subscription_status = subscriptionStatus;
+            }
+
+            if (Object.keys(updateData).length > 0) {
+              const { error: updateError } = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', userData.id);
+
+              if (updateError) {
+                console.error('[Stripe] Error updating user:', updateError);
+                return res.status(500).json({ 
+                  error: 'Failed to update user',
+                  details: updateError.message 
+                });
+              }
+
+              console.log('[Stripe] ✅ User updated with:', updateData);
+              
+              return res.status(200).json({
+                success: true,
+                message: 'Subscription synced successfully',
+                data: {
+                  stripe_customer_id: foundCustomerId || userData.stripe_customer_id,
+                  stripe_subscription_id: foundSubscriptionId || userData.stripe_subscription_id,
+                  subscription_status: subscriptionStatus || userData.subscription_status,
+                  updated: updateData,
+                }
+              });
+            } else {
+              return res.status(200).json({
+                success: true,
+                message: 'No changes needed - subscription already synced',
+                data: {
+                  stripe_customer_id: userData.stripe_customer_id,
+                  stripe_subscription_id: userData.stripe_subscription_id,
+                  subscription_status: userData.subscription_status,
+                }
+              });
+            }
+          } else {
+            return res.status(404).json({
+              success: false,
+              error: 'No active subscription found in Stripe',
+              message: 'Could not find any active subscription for this user in Stripe. Please ensure you have an active subscription.',
+            });
+          }
+        } catch (stripeError: any) {
+          console.error('[Stripe] Error syncing subscription:', stripeError);
+          return res.status(500).json({
+            error: 'Error syncing subscription',
+            details: stripeError.message || 'Unknown error'
+          });
+        }
+      }
+
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: create-checkout-session, create-portal-session, get-subscription-status, or cancel-subscription' });
+        return res.status(400).json({ error: 'Invalid action. Use: create-checkout-session, create-portal-session, get-subscription-status, cancel-subscription, or sync-user-subscription' });
     }
   } catch (error: any) {
     console.error('[Stripe] Error:', error);

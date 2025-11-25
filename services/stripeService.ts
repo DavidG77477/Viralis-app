@@ -165,3 +165,39 @@ export const isSubscriptionPlan = (planId: PlanId): boolean => {
   return planId === 'pro-monthly' || planId === 'pro-annual';
 };
 
+/**
+ * Sync user subscription from Stripe to Supabase
+ * This is useful for users who subscribed before the IDs were properly saved
+ * 
+ * @param userId - The user's ID from Supabase
+ * @param userEmail - The user's email (optional, helps with search)
+ * @returns Promise with sync results
+ */
+export const syncUserSubscription = async (
+  userId: string, 
+  userEmail?: string
+): Promise<{
+  success: boolean;
+  message: string;
+  data?: {
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    subscription_status: string | null;
+    updated?: Record<string, any>;
+  };
+  error?: string;
+}> => {
+  const response = await fetch('/api/stripe?action=sync-user-subscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, userEmail }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to sync subscription' }));
+    throw new Error(error.error || 'Failed to sync subscription');
+  }
+  
+  return response.json();
+};
+
