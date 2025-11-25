@@ -2,6 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
+// Get Stripe secret key and determine mode
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+const isTestMode = stripeSecretKey.startsWith('sk_test_');
+
 // Plan ID to Stripe Price ID mapping - LIVE MODE
 const PLAN_TO_PRICE_ID_LIVE: Record<string, string> = {
   'token-pack': 'price_1STdsSQ95ijGuOd86o9Kz6Xn',
@@ -24,9 +28,6 @@ const PLAN_TO_PRICE_ID = isTestMode ? PLAN_TO_PRICE_ID_TEST : PLAN_TO_PRICE_ID_L
 const isSubscriptionPlan = (planId: string): boolean => {
   return planId === 'pro-monthly' || planId === 'pro-annual';
 };
-
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
-const isTestMode = stripeSecretKey.startsWith('sk_test_');
 
 // Initialize Stripe only if key is present
 let stripe: Stripe | null = null;
