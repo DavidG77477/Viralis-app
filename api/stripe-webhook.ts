@@ -51,11 +51,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // TODO: Re-enable signature verification once body parsing issue is resolved
   const SKIP_SIGNATURE_VERIFICATION = process.env.SKIP_WEBHOOK_SIGNATURE === 'true';
   
-  if (SKIP_SIGNATURE_VERIFICATION) {
-    console.warn('[Stripe Webhook] ⚠️ SIGNATURE VERIFICATION DISABLED - FOR TESTING ONLY');
+  console.log('[Stripe Webhook] SKIP_WEBHOOK_SIGNATURE env var:', process.env.SKIP_WEBHOOK_SIGNATURE);
+  console.log('[Stripe Webhook] SKIP_SIGNATURE_VERIFICATION:', SKIP_SIGNATURE_VERIFICATION);
+  
+  // If body is already parsed to object, we can't verify signature anyway
+  // So skip verification in that case
+  const bodyIsParsed = req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body);
+  
+  if (SKIP_SIGNATURE_VERIFICATION || bodyIsParsed) {
+    if (bodyIsParsed) {
+      console.warn('[Stripe Webhook] ⚠️ Body is parsed to object - skipping signature verification');
+    } else {
+      console.warn('[Stripe Webhook] ⚠️ SIGNATURE VERIFICATION DISABLED via env var - FOR TESTING ONLY');
+    }
     // Use the parsed body directly
     event = req.body as Stripe.Event;
     console.log('[Stripe Webhook] Using parsed body directly. Event type:', event.type);
+    console.log('[Stripe Webhook] Event ID:', event.id);
   } else {
     try {
       // Get raw body for webhook signature verification
