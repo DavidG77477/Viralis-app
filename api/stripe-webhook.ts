@@ -83,11 +83,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        console.log('[Stripe Webhook] Processing checkout.session.completed');
+        console.log('[Stripe Webhook] Session ID:', session.id);
+        console.log('[Stripe Webhook] Session client_reference_id:', session.client_reference_id);
+        console.log('[Stripe Webhook] Session metadata:', session.metadata);
+        
         const userId = session.client_reference_id || session.metadata?.userId;
         const planId = session.metadata?.planId;
 
+        console.log('[Stripe Webhook] Extracted userId:', userId);
+        console.log('[Stripe Webhook] Extracted planId:', planId);
+
         if (!userId) {
           console.error('[Stripe Webhook] No userId in checkout session');
+          console.error('[Stripe Webhook] Session object:', JSON.stringify(session, null, 2));
           return res.status(400).json({ error: 'No userId in checkout session' });
         }
 
