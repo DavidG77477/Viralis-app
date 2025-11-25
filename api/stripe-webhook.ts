@@ -178,7 +178,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Handle token packs (one-time payments)
         if (TOKEN_AMOUNTS[priceId]) {
           const tokensToAdd = TOKEN_AMOUNTS[priceId];
-          console.log(`[Stripe Webhook] Adding ${tokensToAdd} tokens to user ${userId}`);
+          console.log(`[Stripe Webhook] ✅ Found token pack! Adding ${tokensToAdd} tokens to user ${userId}`);
+          
+          // Verify user exists first
+          const { data: userCheck, error: userCheckError } = await supabase
+            .from('users')
+            .select('id, tokens')
+            .eq('id', userId)
+            .single();
+          
+          if (userCheckError || !userCheck) {
+            console.error('[Stripe Webhook] ❌ User not found in database:', userId);
+            console.error('[Stripe Webhook] User check error:', userCheckError);
+            return res.status(400).json({ error: `User ${userId} not found in database` });
+          }
+          
+          console.log('[Stripe Webhook] User found. Current tokens:', userCheck.tokens);
           
           // Add tokens to user account
           const { error: tokenError, data: tokenData } = await supabase.rpc('increment_tokens', {
@@ -187,15 +202,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
 
           if (tokenError) {
-            console.error('[Stripe Webhook] Error adding tokens:', tokenError);
+            console.error('[Stripe Webhook] ❌ Error adding tokens:', tokenError);
             console.error('[Stripe Webhook] Error details:', JSON.stringify(tokenError, null, 2));
-            // Don't fail the webhook, just log the error
+            console.error('[Stripe Webhook] Error code:', tokenError.code);
+            console.error('[Stripe Webhook] Error message:', tokenError.message);
+            return res.status(500).json({ error: 'Failed to add tokens', details: tokenError.message });
           } else {
-            console.log(`[Stripe Webhook] Successfully added ${tokensToAdd} tokens to user ${userId}`);
+            console.log(`[Stripe Webhook] ✅ Successfully added ${tokensToAdd} tokens to user ${userId}`);
             console.log('[Stripe Webhook] Token update result:', tokenData);
+            
+            // Verify tokens were added
+            const { data: updatedUser, error: verifyError } = await supabase
+              .from('users')
+              .select('tokens')
+              .eq('id', userId)
+              .single();
+            
+            if (verifyError) {
+              console.warn('[Stripe Webhook] Could not verify token update:', verifyError);
+            } else {
+              console.log('[Stripe Webhook] ✅ Verified: User now has', updatedUser?.tokens, 'tokens');
+            }
           }
         } else {
-          console.warn(`[Stripe Webhook] Price ID ${priceId} not found in TOKEN_AMOUNTS. Available Price IDs:`, Object.keys(TOKEN_AMOUNTS));
+          console.warn(`[Stripe Webhook] ⚠️ Price ID ${priceId} not found in TOKEN_AMOUNTS`);
+          console.warn('[Stripe Webhook] Available Price IDs:', Object.keys(TOKEN_AMOUNTS));
+          console.warn('[Stripe Webhook] This might be a subscription plan, checking...');
         }
 
         // Handle subscription plans
