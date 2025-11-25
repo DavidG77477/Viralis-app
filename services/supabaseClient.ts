@@ -82,11 +82,23 @@ export const ensureUserProfile = async (payload: SupabaseUserPayload): Promise<U
     return null;
   }
   
-  // First, try to get existing profile
-  const { data: existingProfile } = await supabase
+  if (!payload.email) {
+    console.error('Cannot create profile without email');
+    return null;
+  }
+  
+  // First, try to get existing profile by ID
+  const { data: existingProfileById } = await supabase
     .from('users')
     .select('*')
     .eq('id', payload.userId)
+    .maybeSingle();
+  
+  // Also check if a profile exists with the same email (in case of email change or duplicate)
+  const { data: existingProfileByEmail } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', payload.email)
     .maybeSingle();
   
   // Only include fields that exist in the table
@@ -98,18 +110,15 @@ export const ensureUserProfile = async (payload: SupabaseUserPayload): Promise<U
     provider: payload.provider ?? 'google',
   };
   
-  // Only include clerk_id if the column exists (it might not be in all schemas)
-  // We'll use update instead of upsert if profile exists, to avoid errors
-  
-  if (existingProfile) {
-    // Profile exists, just update non-null fields
+  // Case 1: Profile exists with the same ID - update it
+  if (existingProfileById) {
     const { data, error } = await supabase
       .from('users')
       .update({
         email: payload.email,
-        name: payload.name ?? existingProfile.name,
-        avatar_url: payload.avatarUrl ?? existingProfile.avatar_url,
-        provider: payload.provider ?? existingProfile.provider,
+        name: payload.name ?? existingProfileById.name,
+        avatar_url: payload.avatarUrl ?? existingProfileById.avatar_url,
+        provider: payload.provider ?? existingProfileById.provider,
       })
       .eq('id', payload.userId)
       .select()
@@ -121,28 +130,53 @@ export const ensureUserProfile = async (payload: SupabaseUserPayload): Promise<U
       }
       console.error('Erreur lors de la mise à jour du profil Supabase :', error);
       // Return existing profile instead of null to avoid breaking the app
-      return existingProfile;
-    }
-    
-    return data;
-  } else {
-    // Profile doesn't exist, insert it
-    const { data, error } = await supabase
-      .from('users')
-      .insert(profilePayload)
-      .select()
-      .maybeSingle();
-    
-    if (error) {
-      if (isInvalidApiKeyError(error)) {
-        throw new SupabaseCredentialsError();
-      }
-      console.error('Erreur lors de la création du profil Supabase :', error);
-      return null;
+      return existingProfileById;
     }
     
     return data;
   }
+  
+  // Case 2: Profile exists with the same email but different ID
+  // This should not happen normally (trigger creates profile with same ID as auth.users)
+  // If it does, we return the existing profile to avoid conflicts
+  if (existingProfileByEmail && existingProfileByEmail.id !== payload.userId) {
+    console.warn(`Profile exists with email ${payload.email} but different ID. Existing ID: ${existingProfileByEmail.id}, New ID: ${payload.userId}. Returning existing profile.`);
+    // Return the existing profile - the trigger should have created it with the correct ID
+    // If there's a mismatch, there might be a data integrity issue
+    return existingProfileByEmail;
+  }
+  
+  // Case 3: No profile exists - create a new one
+  const { data, error } = await supabase
+    .from('users')
+    .insert(profilePayload)
+    .select()
+    .maybeSingle();
+  
+  if (error) {
+    if (isInvalidApiKeyError(error)) {
+      throw new SupabaseCredentialsError();
+    }
+    
+    // If it's a duplicate key error, try to get the existing profile
+    if (error.code === '23505') {
+      console.warn('Duplicate key error, attempting to fetch existing profile');
+      const { data: existingProfile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', payload.email)
+        .maybeSingle();
+      
+      if (existingProfile) {
+        return existingProfile;
+      }
+    }
+    
+    console.error('Erreur lors de la création du profil Supabase :', error);
+    return null;
+  }
+  
+  return data;
 };
 
 export const updateUserTokens = async (userId: string, tokensUsed: number): Promise<number | null> => {
