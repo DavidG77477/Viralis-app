@@ -274,6 +274,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
       setIsLoadingVideos(true);
       const userVideos = await getUserVideos(userId, 10);
       setVideos(userVideos);
+      
+      // Debug: Log all video URLs when loaded
+      console.log('[Video Debug] Loaded videos:', userVideos.length);
+      userVideos.forEach((video, index) => {
+        console.log(`[Video Debug] [${index + 1}/${userVideos.length}]`, {
+          id: video.id,
+          url: video.video_url,
+          prompt: video.prompt.substring(0, 50) + '...',
+          aspect_ratio: video.aspect_ratio,
+          resolution: video.resolution,
+          created_at: video.created_at,
+        });
+      });
+      
       setIsLoadingVideos(false);
     } catch (error) {
       if (error instanceof SupabaseCredentialsError) {
@@ -506,15 +520,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               >
                 {d.myVideos}
               </h2>
-              <button
-                onClick={refreshVideos}
-                className="px-5 py-2.5 bg-gradient-to-r from-[#00ff9d]/10 to-[#00b3ff]/10 hover:from-[#00ff9d]/20 hover:to-[#00b3ff]/20 border border-[#00ff9d]/30 hover:border-[#00ff9d]/50 text-white rounded-xl transition-all duration-300 text-sm font-semibold flex items-center gap-2 backdrop-blur-sm hover:scale-105 hover:shadow-[0_0_15px_rgba(0,255,153,0.3)]"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {d.refresh}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    console.log('[Video Debug] All videos:', videos);
+                    console.log('[Video Debug] Video URLs:');
+                    videos.forEach((v, index) => {
+                      console.log(`  [${index + 1}] ID: ${v.id}`);
+                      console.log(`      URL: ${v.video_url}`);
+                      console.log(`      Prompt: ${v.prompt.substring(0, 50)}...`);
+                      console.log(`      Created: ${v.created_at}`);
+                    });
+                    alert(language === 'fr' 
+                      ? `URLs des vidéos affichées dans la console (F12)\nTotal: ${videos.length} vidéo(s)`
+                      : language === 'es'
+                      ? `URLs de videos mostradas en la consola (F12)\nTotal: ${videos.length} video(s)`
+                      : `Video URLs logged to console (F12)\nTotal: ${videos.length} video(s)`);
+                  }}
+                  className="px-4 py-2.5 bg-gradient-to-r from-slate-700/50 to-slate-800/50 hover:from-slate-700/70 hover:to-slate-800/70 border border-slate-600/30 hover:border-slate-600/50 text-white rounded-xl transition-all duration-300 text-xs font-semibold flex items-center gap-2 backdrop-blur-sm hover:scale-105"
+                  title={language === 'fr' ? 'Afficher les URLs dans la console' : language === 'es' ? 'Mostrar URLs en la consola' : 'Show URLs in console'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Debug
+                </button>
+                <button
+                  onClick={refreshVideos}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#00ff9d]/10 to-[#00b3ff]/10 hover:from-[#00ff9d]/20 hover:to-[#00b3ff]/20 border border-[#00ff9d]/30 hover:border-[#00ff9d]/50 text-white rounded-xl transition-all duration-300 text-sm font-semibold flex items-center gap-2 backdrop-blur-sm hover:scale-105 hover:shadow-[0_0_15px_rgba(0,255,153,0.3)]"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {d.refresh}
+                </button>
+              </div>
             </div>
 
             {isLoadingVideos ? (
@@ -534,48 +574,177 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
-                {videos.map((video) => (
-                  <div
-                    key={video.id}
-                    className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-[#00ff9d]/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,255,153,0.2)]"
-                  >
-                    {/* Gradient overlay on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#00ff9d]/0 to-[#00b3ff]/0 group-hover:from-[#00ff9d]/5 group-hover:to-[#00b3ff]/5 transition-all duration-500 pointer-events-none rounded-2xl"></div>
+                {videos.map((video) => {
+                  const VideoCard = ({ video }: { video: Video }) => {
+                    const [videoError, setVideoError] = useState(false);
+                    const [isVideoLoading, setIsVideoLoading] = useState(true);
+                    const videoRef = useRef<HTMLVideoElement>(null);
                     
-                    <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden rounded-t-2xl">
-                      <video
-                        src={video.video_url}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        controls={false}
-                        preload="metadata"
-                        onMouseEnter={(e) => e.currentTarget.play()}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.pause();
-                          e.currentTarget.currentTime = 0;
-                        }}
-                      />
-                      {/* Gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    // Detect Safari browser
+                    const isSafari = typeof window !== 'undefined' && 
+                      /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+                    useEffect(() => {
+                      // Reset error state when video URL changes
+                      setVideoError(false);
+                      setIsVideoLoading(true);
                       
-                      {/* Action button on hover */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-                        <a
-                          href={video.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,153,0.4)]"
-                        >
-                          {d.openLabel}
-                        </a>
-                      </div>
+                      // Debug: Log video URL
+                      console.log('[Video Debug] Video ID:', video.id);
+                      console.log('[Video Debug] Video URL:', video.video_url);
+                      console.log('[Video Debug] Browser:', isSafari ? 'Safari' : 'Other');
+                      console.log('[Video Debug] Full video object:', video);
                       
-                      {/* Badge overlay */}
-                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20">
-                          {video.resolution}
-                        </span>
-                      </div>
-                    </div>
+                      // Test if URL is accessible
+                      if (video.video_url) {
+                        fetch(video.video_url, { method: 'HEAD', mode: 'no-cors' })
+                          .then(() => {
+                            console.log('[Video Debug] URL is accessible (HEAD request succeeded)');
+                          })
+                          .catch((err) => {
+                            console.warn('[Video Debug] URL might not be accessible:', err);
+                          });
+                      }
+                    }, [video.video_url, video.id, isSafari]);
+
+                    const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+                      const videoElement = e.currentTarget;
+                      const error = videoElement.error;
+                      console.error('[Video Debug] Video failed to load:', {
+                        videoId: video.id,
+                        videoUrl: video.video_url,
+                        errorCode: error?.code,
+                        errorMessage: error?.message,
+                        networkState: videoElement.networkState,
+                        readyState: videoElement.readyState,
+                      });
+                      setVideoError(true);
+                      setIsVideoLoading(false);
+                    };
+
+                    const handleVideoLoaded = () => {
+                      console.log('[Video Debug] Video loaded successfully:', video.video_url);
+                      setIsVideoLoading(false);
+                    };
+
+                    return (
+                      <div
+                        key={video.id}
+                        className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-[#00ff9d]/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,255,153,0.2)]"
+                      >
+                        {/* Gradient overlay on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#00ff9d]/0 to-[#00b3ff]/0 group-hover:from-[#00ff9d]/5 group-hover:to-[#00b3ff]/5 transition-all duration-500 pointer-events-none rounded-2xl"></div>
+                        
+                        <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden rounded-t-2xl">
+                          {!videoError ? (
+                            <>
+                              <video
+                                ref={videoRef}
+                                src={video.video_url}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                controls={false}
+                                preload="metadata"
+                                playsInline
+                                muted
+                                {...(!isSafari && { crossOrigin: 'anonymous' })}
+                                onError={(e) => handleVideoError(e)}
+                                onLoadedData={handleVideoLoaded}
+                                onCanPlay={() => {
+                                  console.log('[Video Debug] Video can play:', video.video_url);
+                                  setIsVideoLoading(false);
+                                }}
+                                onLoadedMetadata={() => {
+                                  console.log('[Video Debug] Video metadata loaded:', video.video_url);
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!videoError) {
+                                    const videoEl = e.currentTarget;
+                                    videoEl.muted = true; // Ensure muted for autoplay
+                                    videoEl.play().catch((err) => {
+                                      console.warn('[Video Debug] Autoplay failed:', err);
+                                      // Ignore play errors (autoplay restrictions)
+                                    });
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.pause();
+                                  e.currentTarget.currentTime = 0;
+                                }}
+                              />
+                              {isVideoLoading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50">
+                                  <div className="w-12 h-12 border-4 border-[#00ff9d]/20 border-t-[#00ff9d] rounded-full animate-spin"></div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-4">
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00ff9d]/20 to-[#00b3ff]/20 flex items-center justify-center mb-4">
+                                <svg className="w-8 h-8 text-[#00ff9d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                              <p className="text-slate-400 text-xs text-center mb-2">
+                                {language === 'fr' ? 'Vidéo non disponible' : language === 'es' ? 'Video no disponible' : 'Video unavailable'}
+                              </p>
+                              {isSafari && (
+                                <p className="text-slate-500 text-[10px] text-center mb-2 max-w-xs">
+                                  {language === 'fr' 
+                                    ? 'Safari peut avoir des restrictions. Essayez d\'ouvrir la vidéo dans un nouvel onglet.'
+                                    : language === 'es'
+                                    ? 'Safari puede tener restricciones. Intenta abrir el video en una nueva pestaña.'
+                                    : 'Safari may have restrictions. Try opening the video in a new tab.'}
+                                </p>
+                              )}
+                              <div className="w-full max-w-xs mb-3">
+                                <p className="text-slate-500 text-[10px] break-all text-center mb-2">
+                                  {video.video_url}
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    console.log('[Video Debug] Full video data:', video);
+                                    navigator.clipboard.writeText(video.video_url).then(() => {
+                                      alert(language === 'fr' ? 'URL copiée dans le presse-papiers' : language === 'es' ? 'URL copiada al portapapeles' : 'URL copied to clipboard');
+                                    });
+                                  }}
+                                  className="text-[#00ff9d] text-[10px] hover:underline mb-2"
+                                >
+                                  {language === 'fr' ? '📋 Copier l\'URL' : language === 'es' ? '📋 Copiar URL' : '📋 Copy URL'}
+                                </button>
+                              </div>
+                              <a
+                                href={video.video_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#00ff9d] text-xs hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {language === 'fr' ? 'Ouvrir dans un nouvel onglet' : language === 'es' ? 'Abrir en nueva pestaña' : 'Open in new tab'}
+                              </a>
+                            </div>
+                          )}
+                          {/* Gradient overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          
+                          {/* Action button on hover */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
+                            <a
+                              href={video.video_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:from-[#00ff9d]/90 hover:to-[#00b3ff]/90 text-slate-950 px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,153,0.4)]"
+                            >
+                              {d.openLabel}
+                            </a>
+                          </div>
+                          
+                          {/* Badge overlay */}
+                          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20">
+                              {video.resolution}
+                            </span>
+                          </div>
+                        </div>
                     
                     <div className="p-5 relative z-10">
                       <p className="text-white font-semibold mb-3 line-clamp-2 text-sm leading-relaxed group-hover:text-[#00ff9d] transition-colors duration-300">
@@ -618,7 +787,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       </div>
                     </div>
                   </div>
-                ))}
+                    );
+                  };
+
+                  return <VideoCard key={video.id} video={video} />;
+                })}
               </div>
             )}
           </section>
