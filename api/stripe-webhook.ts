@@ -220,9 +220,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log('[Stripe Webhook] User found. Current tokens:', userCheck.tokens);
           
           // Add tokens to user account
+          // Parameters must be in alphabetical order for Supabase RPC: tokens_to_add, user_id
           const { error: tokenError, data: tokenData } = await supabase.rpc('increment_tokens', {
-            user_id: userId,
             tokens_to_add: tokensToAdd,
+            user_id: userId,
           });
 
           if (tokenError) {
@@ -302,8 +303,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               } else {
                 // Give first month's tokens immediately
                 const { error: tokenError } = await supabase.rpc('increment_tokens', {
-                  user_id: userId,
                   tokens_to_add: 300,
+                  user_id: userId,
                 });
 
                 if (tokenError) {
