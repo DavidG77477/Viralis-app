@@ -133,6 +133,32 @@ const PLAN_TO_PRICE_ID_TEST: Record<PlanId, string> = {
 export const PLAN_TO_PRICE_ID: Record<PlanId, string> = PLAN_TO_PRICE_ID_LIVE;
 
 /**
+ * Cancel a subscription (will cancel at the end of the billing period)
+ * 
+ * @param userId - The user's ID from Supabase
+ * @returns Promise with cancellation details
+ */
+export const cancelSubscription = async (userId: string): Promise<{
+  success: boolean;
+  message: string;
+  cancel_at_period_end: boolean;
+  current_period_end: string;
+}> => {
+  const response = await fetch('/api/cancel-subscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to cancel subscription' }));
+    throw new Error(error.error || 'Failed to cancel subscription');
+  }
+  
+  return response.json();
+};
+
+/**
  * Check if a plan is a subscription (recurring) or one-time payment
  */
 export const isSubscriptionPlan = (planId: PlanId): boolean => {

@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { createPortalSession, getSubscriptionStatus } from '../services/stripeService';
+import { createPortalSession, getSubscriptionStatus, cancelSubscription } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -1087,20 +1087,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   if (!user || !profile) return;
                   setIsCancelling(true);
                   try {
-                    // TODO Phase 2: Replace with actual cancellation API call
-                    alert(language === 'fr'
-                      ? 'Configuration Stripe en cours. Cette fonctionnalité sera bientôt disponible.'
-                      : language === 'es'
-                      ? 'Configuración de Stripe en curso. Esta funcionalidad estará disponible pronto.'
-                      : 'Stripe configuration in progress. This feature will be available soon.');
+                    // Annuler l'abonnement (sera annulé à la fin de la période)
+                    const result = await cancelSubscription(user.id);
+                    
+                    alert(
+                      language === 'fr'
+                        ? 'Votre abonnement sera annulé à la fin de la période de facturation. Vous garderez l\'accès jusqu\'à cette date.'
+                        : language === 'es'
+                        ? 'Su suscripción será cancelada al final del período de facturación. Mantendrá el acceso hasta esa fecha.'
+                        : 'Your subscription will be cancelled at the end of the billing period. You will keep access until that date.'
+                    );
                     setShowCancelModal(false);
-                  } catch (error) {
+                    
+                    // Recharger le profil pour mettre à jour le statut
+                    if (user) {
+                      await loadUserProfile(user.id, {
+                        email: user.email ?? null,
+                        name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+                        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+                      });
+                    }
+                  } catch (error: any) {
                     console.error('Error cancelling subscription:', error);
-                    alert(language === 'fr'
-                      ? 'Une erreur est survenue lors de l\'annulation.'
-                      : language === 'es'
-                      ? 'Ocurrió un error al cancelar.'
-                      : 'An error occurred while cancelling.');
+                    alert(
+                      language === 'fr'
+                        ? `Erreur lors de l'annulation: ${error.message || 'Erreur inconnue'}`
+                        : language === 'es'
+                        ? `Error al cancelar: ${error.message || 'Error desconocido'}`
+                        : `Error cancelling subscription: ${error.message || 'Unknown error'}`
+                    );
                   } finally {
                     setIsCancelling(false);
                   }
