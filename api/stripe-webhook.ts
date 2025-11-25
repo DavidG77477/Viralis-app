@@ -498,13 +498,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`[Stripe Webhook] Deleted token distribution schedule for user ${userData.id}`);
         }
 
-        // Set subscription status to free
+        // Set subscription status to free but keep pro_access_until until current_period_end
+        // La subscription object du webhook devrait contenir current_period_end
+        const updateData: any = { 
+          subscription_status: 'free',
+          stripe_subscription_id: null,
+        };
+        
+        // Récupérer current_period_end depuis la subscription object du webhook
+        if (subscription.current_period_end) {
+          updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
+          console.log('[Stripe Webhook] Pro access until (from subscription object):', updateData.pro_access_until);
+        } else {
+          // Si pas disponible dans l'objet webhook, essayer de récupérer depuis Stripe
+          try {
+            const canceledSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+            if (canceledSubscription.current_period_end) {
+              updateData.pro_access_until = new Date(canceledSubscription.current_period_end * 1000).toISOString();
+              console.log('[Stripe Webhook] Pro access until (from Stripe API):', updateData.pro_access_until);
+            }
+          } catch (err) {
+            console.warn('[Stripe Webhook] Could not retrieve current_period_end from canceled subscription:', err);
+          }
+        }
+        
         const { error: subError } = await supabase
           .from('users')
-          .update({ 
-            subscription_status: 'free',
-            stripe_subscription_id: null,
-          })
+          .update(updateData)
           .eq('id', userData.id);
 
         if (subError) {
