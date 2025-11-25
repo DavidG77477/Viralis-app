@@ -146,6 +146,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Stripe Webhook] Running in LIVE mode');
   }
 
+  // Helper function to find user by Stripe customer ID, with email fallback
+  const findUserByStripeCustomer = async (customerId: string): Promise<{ id: string; email?: string } | null> => {
+    // First, try to find by stripe_customer_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('stripe_customer_id', customerId)
+      .single();
+
+    if (!userError && userData) {
+      console.log(`[Stripe Webhook] User found by stripe_customer_id: ${userData.id}`);
+      return userData;
+    }
+
+    // If not found, get customer email from Stripe and search by email
+    console.log(`[Stripe Webhook] User not found by stripe_customer_id, trying email fallback for customer: ${customerId}`);
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+      
+      if (customer && typeof customer === 'object' && !customer.deleted) {
+        const customerEmail = (customer as any).email;
+        
+        if (customerEmail) {
+          console.log(`[Stripe Webhook] Customer email from Stripe: ${customerEmail}`);
+          
+          // Search user by email
+          const { data: userByEmail, error: emailError } = await supabase
+            .from('users')
+            .select('id, email')
+            .eq('email', customerEmail)
+            .single();
+
+          if (!emailError && userByEmail) {
+            console.log(`[Stripe Webhook] User found by email: ${userByEmail.id}`);
+            
+            // Update user with stripe_customer_id for future lookups
+            await supabase
+              .from('users')
+              .update({ stripe_customer_id: customerId })
+              .eq('id', userByEmail.id);
+            
+            console.log(`[Stripe Webhook] Updated user ${userByEmail.id} with stripe_customer_id: ${customerId}`);
+            return userByEmail;
+          } else {
+            console.error(`[Stripe Webhook] User not found by email: ${customerEmail}`, emailError);
+          }
+        } else {
+          console.error(`[Stripe Webhook] No email found for Stripe customer: ${customerId}`);
+        }
+      }
+    } catch (stripeError: any) {
+      console.error(`[Stripe Webhook] Error retrieving customer from Stripe:`, stripeError.message);
+    }
+
+    return null;
+  };
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -352,14 +409,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         }
 
-        // Find user by Stripe customer ID
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('stripe_customer_id', customerId)
-          .single();
+        // Find user by Stripe customer ID (with email fallback)
+        const userData = await findUserByStripeCustomer(customerId);
 
-        if (userError || !userData) {
+        if (!userData) {
           console.error('[Stripe Webhook] User not found for customer:', customerId);
           break;
         }
@@ -389,24 +442,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const customerId = subscription.customer as string;
         const subscriptionId = subscription.id;
 
-        // Find user by Stripe customer ID
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('stripe_customer_id', customerId)
-          .single();
+        console.log(`[Stripe Webhook] Processing subscription deletion for customer: ${customerId}, subscription: ${subscriptionId}`);
 
-        if (userError || !userData) {
+        // Find user by Stripe customer ID (with email fallback)
+        const userData = await findUserByStripeCustomer(customerId);
+
+        if (!userData) {
           console.error('[Stripe Webhook] User not found for customer:', customerId);
+          console.error('[Stripe Webhook] This subscription cancellation will not be synced to Supabase');
+          // Don't break - log the error but continue to avoid silent failures
           break;
         }
 
+        console.log(`[Stripe Webhook] Found user ${userData.id} for subscription cancellation`);
+
         // Delete token distribution schedule if it exists (Pro Annual)
-        await supabase
+        const { error: distDeleteError } = await supabase
           .from('subscription_token_distributions')
           .delete()
           .eq('user_id', userData.id)
           .eq('subscription_id', subscriptionId);
+
+        if (distDeleteError) {
+          console.warn('[Stripe Webhook] Error deleting token distribution schedule:', distDeleteError);
+        } else {
+          console.log(`[Stripe Webhook] Deleted token distribution schedule for user ${userData.id}`);
+        }
 
         // Set subscription status to free
         const { error: subError } = await supabase
@@ -420,7 +481,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (subError) {
           console.error('[Stripe Webhook] Error canceling subscription:', subError);
         } else {
-          console.log(`[Stripe Webhook] Canceled subscription for user ${userData.id} and removed token distribution schedule`);
+          console.log(`[Stripe Webhook] ✅ Successfully canceled subscription for user ${userData.id} and removed token distribution schedule`);
         }
 
         break;
@@ -439,14 +500,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const customerId = subscription.customer as string;
 
-        // Find user by Stripe customer ID
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('stripe_customer_id', customerId)
-          .single();
+        // Find user by Stripe customer ID (with email fallback)
+        const userData = await findUserByStripeCustomer(customerId);
 
-        if (userError || !userData) {
+        if (!userData) {
           console.error('[Stripe Webhook] User not found for customer:', customerId);
           break;
         }

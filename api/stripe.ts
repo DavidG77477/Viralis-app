@@ -301,33 +301,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Missing userId' });
         }
 
-        // Récupérer l'utilisateur et son subscription_id
-        // D'abord essayer par ID
-        let { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id, email, stripe_customer_id, stripe_subscription_id')
-          .eq('id', userId)
-          .single();
-
-        // Si pas trouvé par ID et qu'on a un email, essayer par email
-        if (userError && userError.code === 'PGRST116' && (userEmail || userId.includes('@'))) {
-          const emailToSearch = userEmail || userId;
-          console.log('[Stripe] User not found by ID, trying by email:', emailToSearch);
-          const { data: userByEmail, error: emailError } = await supabase
+        // Helper function to find user by ID or email
+        const findUser = async (): Promise<{ id: string; email: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null } | null> => {
+          // D'abord essayer par ID
+          let { data: userData, error: userError } = await supabase
             .from('users')
             .select('id, email, stripe_customer_id, stripe_subscription_id')
-            .eq('email', emailToSearch)
+            .eq('id', userId)
             .single();
-          
-          if (!emailError && userByEmail) {
-            userData = userByEmail;
-            userError = null;
-            console.log('[Stripe] User found by email:', userByEmail.id);
+
+          if (!userError && userData) {
+            console.log('[Stripe] User found by ID:', userData.id);
+            return userData;
           }
-        }
+
+          // Si pas trouvé par ID et qu'on a un email, essayer par email
+          if (userError && userError.code === 'PGRST116' && (userEmail || userId.includes('@'))) {
+            const emailToSearch = userEmail || userId;
+            console.log('[Stripe] User not found by ID, trying by email:', emailToSearch);
+            const { data: userByEmail, error: emailError } = await supabase
+              .from('users')
+              .select('id, email, stripe_customer_id, stripe_subscription_id')
+              .eq('email', emailToSearch)
+              .single();
+            
+            if (!emailError && userByEmail) {
+              console.log('[Stripe] User found by email:', userByEmail.id);
+              return userByEmail;
+            }
+          }
+
+          return null;
+        };
+
+        // Récupérer l'utilisateur
+        let userData = await findUser();
+        let userError: any = userData ? null : { code: 'PGRST116', message: 'User not found' };
 
         // Si l'utilisateur n'existe pas dans users, chercher dans Stripe
-        if (userError && userError.code === 'PGRST116') {
+        if (!userData && userError && userError.code === 'PGRST116') {
           console.warn('[Stripe] User profile not found, searching in Stripe');
           
           try {
@@ -411,7 +423,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     provider: 'email',
                     tokens: 30,
                   })
-                  .select('id, stripe_customer_id, stripe_subscription_id')
+                  .select('id, email, stripe_customer_id, stripe_subscription_id')
                   .single();
 
                 if (createError || !newUserData) {
@@ -464,7 +476,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           hasStripeSubscriptionId: !!userData.stripe_subscription_id,
         });
 
-        if (!userData.stripe_subscription_id) {
+        // Si pas de subscription_id enregistré mais qu'on a un customer_id, chercher l'abonnement actif dans Stripe
+        let subscriptionId = userData.stripe_subscription_id;
+        
+        if (!subscriptionId && userData.stripe_customer_id) {
+          console.log('[Stripe] No subscription_id in database, searching active subscription in Stripe for customer:', userData.stripe_customer_id);
+          
+          try {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: userData.stripe_customer_id,
+              status: 'active',
+              limit: 1,
+            });
+
+            if (subscriptions.data.length > 0) {
+              subscriptionId = subscriptions.data[0].id;
+              console.log('[Stripe] Found active subscription in Stripe:', subscriptionId);
+              
+              // Mettre à jour l'utilisateur avec le subscription_id trouvé
+              await supabase
+                .from('users')
+                .update({ stripe_subscription_id: subscriptionId })
+                .eq('id', userData.id);
+              
+              console.log('[Stripe] Updated user with subscription_id:', subscriptionId);
+            } else {
+              // Aussi chercher les abonnements qui vont être annulés (cancel_at_period_end: true)
+              const allSubscriptions = await stripe.subscriptions.list({
+                customer: userData.stripe_customer_id,
+                status: 'all',
+                limit: 10,
+              });
+
+              // Chercher les abonnements actifs (même s'ils sont en cours d'annulation)
+              const activeOrCanceling = allSubscriptions.data.find(
+                sub => sub.status === 'active'
+              );
+
+              if (activeOrCanceling) {
+                subscriptionId = activeOrCanceling.id;
+                console.log('[Stripe] Found subscription (active or canceling):', subscriptionId);
+                
+                // Mettre à jour l'utilisateur avec le subscription_id trouvé
+                await supabase
+                  .from('users')
+                  .update({ stripe_subscription_id: subscriptionId })
+                  .eq('id', userData.id);
+              }
+            }
+          } catch (stripeError: any) {
+            console.error('[Stripe] Error searching for subscription in Stripe:', stripeError);
+          }
+        }
+
+        if (!subscriptionId) {
           console.error('[Stripe] No subscription found for user:', userId);
           console.error('[Stripe] User data:', {
             id: userData?.id,
@@ -481,7 +546,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Annuler l'abonnement dans Stripe (à la fin de la période)
         const subscription = await stripe.subscriptions.update(
-          userData.stripe_subscription_id,
+          subscriptionId,
           {
             cancel_at_period_end: true,
           }
