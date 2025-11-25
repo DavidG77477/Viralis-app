@@ -293,9 +293,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (error: any) {
     console.error('[Stripe] Error:', error);
+    console.error('[Stripe] Error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      stack: error.stack,
+    });
     return res.status(500).json({ 
       error: 'Stripe operation failed',
       message: error.message || 'Unknown error',
+      type: error.type || undefined,
+      code: error.code || undefined,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
