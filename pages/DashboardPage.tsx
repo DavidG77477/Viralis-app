@@ -595,6 +595,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       console.log('[Video Debug] Browser:', isSafari ? 'Safari' : 'Other');
                       console.log('[Video Debug] Full video object:', video);
                       
+                      // Timeout pour éviter un chargement infini (10 secondes)
+                      const loadingTimeout = setTimeout(() => {
+                        console.warn('[Video Debug] Loading timeout after 10s for:', video.video_url);
+                        setIsVideoLoading(false);
+                      }, 10000);
+                      
                       // Test if URL is accessible
                       if (video.video_url) {
                         fetch(video.video_url, { method: 'HEAD', mode: 'no-cors' })
@@ -605,6 +611,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                             console.warn('[Video Debug] URL might not be accessible:', err);
                           });
                       }
+                      
+                      // Cleanup timeout on unmount
+                      return () => {
+                        clearTimeout(loadingTimeout);
+                      };
                     }, [video.video_url, video.id, isSafari]);
 
                     const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
@@ -624,6 +635,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
 
                     const handleVideoLoaded = () => {
                       console.log('[Video Debug] Video loaded successfully:', video.video_url);
+                      setIsVideoLoading(false);
+                    };
+                    
+                    const handleVideoCanPlay = () => {
+                      console.log('[Video Debug] Video can play:', video.video_url);
+                      setIsVideoLoading(false);
+                    };
+                    
+                    const handleVideoLoadedMetadata = () => {
+                      console.log('[Video Debug] Video metadata loaded:', video.video_url);
+                      // Si les métadonnées sont chargées, on peut considérer que la vidéo est prête
                       setIsVideoLoading(false);
                     };
 
@@ -649,12 +671,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 {...(!isSafari && { crossOrigin: 'anonymous' })}
                                 onError={(e) => handleVideoError(e)}
                                 onLoadedData={handleVideoLoaded}
-                                onCanPlay={() => {
-                                  console.log('[Video Debug] Video can play:', video.video_url);
-                                  setIsVideoLoading(false);
+                                onCanPlay={handleVideoCanPlay}
+                                onLoadedMetadata={handleVideoLoadedMetadata}
+                                onLoadStart={() => {
+                                  console.log('[Video Debug] Video load started:', video.video_url);
                                 }}
-                                onLoadedMetadata={() => {
-                                  console.log('[Video Debug] Video metadata loaded:', video.video_url);
+                                onWaiting={() => {
+                                  console.log('[Video Debug] Video waiting for data:', video.video_url);
+                                }}
+                                onStalled={() => {
+                                  console.warn('[Video Debug] Video stalled:', video.video_url);
                                 }}
                                 onMouseEnter={(e) => {
                                   if (!videoError) {
@@ -672,8 +698,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 }}
                               />
                               {isVideoLoading && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50">
-                                  <div className="w-12 h-12 border-4 border-[#00ff9d]/20 border-t-[#00ff9d] rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800/80 backdrop-blur-sm z-10">
+                                  <div className="w-12 h-12 border-4 border-[#00ff9d]/20 border-t-[#00ff9d] rounded-full animate-spin mb-3"></div>
+                                  <p className="text-slate-400 text-xs text-center px-4">
+                                    {language === 'fr' ? 'Chargement...' : language === 'es' ? 'Cargando...' : 'Loading...'}
+                                  </p>
                                 </div>
                               )}
                             </>
@@ -790,7 +819,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     );
                   };
 
-                  return <VideoCard key={video.id} video={video} />;
+                  return <VideoCard video={video} />;
                 })}
               </div>
             )}
