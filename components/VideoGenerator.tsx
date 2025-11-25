@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { generateVideo, pollVideoOperation, generateScript, generateViralPrompt, fileToBase64, enhancePromptWithTheme, removeSoraWatermark, pollWatermarkRemoval, AVAILABLE_MODELS, type VideoModel } from '../services/kieService';
-import { ImageIcon, WandIcon, XCircleIcon, AspectRatioIcon, BrainCircuitIcon, FilmIcon, GridPattern, ResolutionIcon, ArrowDownCircleIcon } from './icons/Icons';
+import { generateVideo, pollVideoOperation, generateScript, fileToBase64, enhancePromptWithTheme, removeSoraWatermark, pollWatermarkRemoval, AVAILABLE_MODELS, type VideoModel } from '../services/kieService';
+import { ImageIcon, WandIcon, XCircleIcon, AspectRatioIcon, FilmIcon, GridPattern, ResolutionIcon, ArrowDownCircleIcon } from './icons/Icons';
 import { VIDEO_GENERATION_COST_720P, VIDEO_GENERATION_COST_1080P, SCRIPT_GENERATION_COST } from '../constants';
 import type { AspectRatio, Resolution } from '../types';
 import type { Language } from '../App';
@@ -242,7 +242,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     const isPro = isUserPro(userProfile ?? null);
     const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
     const [resolution, setResolution] = useState<Resolution>('720p');
-    const [isGeneratingViralPrompt, setIsGeneratingViralPrompt] = useState(false);
     const themeOptions = useMemo(() => t.generatorThemeOptions ?? [], [t]);
     const musicOptions = useMemo(() => t.generatorMusicOptions ?? [], [t]);
     const styleCategories = useMemo<StyleCategory[]>(() => CAMERA_STYLE_LIBRARY[language] ?? [], [language]);
@@ -1169,61 +1168,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                                 <button onClick={() => setResolution('1080p')} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-300 ${resolution === '1080p' ? 'bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] text-slate-950 shadow-[0_0_15px_rgba(0,255,153,0.4)]' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'} transform hover:scale-105`} disabled={isLoading}>1080p</button>
                             </div>
                         </div>
-
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                // Check if user has enough tokens
-                                if (userTokens < SCRIPT_GENERATION_COST) {
-                                    setError(t.errorTokensThinking ?? 'Not enough tokens');
-                                    return;
-                                }
-
-                                const shouldPersist = Boolean(supabaseUserId && IS_SUPABASE_CONFIGURED);
-
-                                setIsGeneratingViralPrompt(true);
-                                setError(null);
-                                
-                                try {
-                                    // Generate viral prompt
-                                    const viralPrompt = await generateViralPrompt(language);
-                                    
-                                    // Update the prompt field
-                                    setPrompt(viralPrompt);
-                                    
-                                    // Deduct tokens
-                                    setUserTokens(prev => prev - SCRIPT_GENERATION_COST);
-                                    
-                                    // Update tokens in Supabase if user is logged in
-                                    if (shouldPersist && supabaseUserId) {
-                                        try {
-                                            await updateUserTokens(supabaseUserId, -SCRIPT_GENERATION_COST);
-                                        } catch (tokenError) {
-                                            console.error('Failed to update tokens:', tokenError);
-                                        }
-                                    }
-                                } catch (err: any) {
-                                    setError(err.message || 'Failed to generate viral prompt. Please try again.');
-                                } finally {
-                                    setIsGeneratingViralPrompt(false);
-                                }
-                            }}
-                            disabled={isLoading || isGeneratingViralPrompt || userTokens < SCRIPT_GENERATION_COST}
-                            className="w-full flex items-center justify-between bg-gradient-to-br from-slate-900/60 to-slate-800/60 border border-slate-700/50 p-4 rounded-xl hover:border-[#00ff9d]/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-gradient-to-br from-[#00ff9d]/20 to-[#00b3ff]/20">
-                                    <BrainCircuitIcon className="w-5 h-5 text-[#00ff9d]"/>
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-medium text-slate-200">{t.aiGenerateViralPromptLabel ?? 'No idea? Let our AI decide your next viral video'}</p>
-                                    <p className="text-xs text-slate-400">{t.aiGenerateViralPromptDescription ?? `Costs ${SCRIPT_GENERATION_COST} tokens`}</p>
-                                </div>
-                            </div>
-                            {isGeneratingViralPrompt && (
-                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-[#00ff9d] border-t-transparent"></div>
-                            )}
-                        </button>
 
                         {generationMode === 'photo-to-video' && !isPro ? (
                             <button
