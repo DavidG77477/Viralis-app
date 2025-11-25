@@ -602,15 +602,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         setIsVideoLoading(false);
                       }, isSafari ? 15000 : 10000);
                       
-                      // Pour Safari, forcer le chargement des métadonnées après un court délai
+                      // Pour Safari, on charge les métadonnées seulement (pas la vidéo complète)
+                      // Safari suspend souvent le chargement automatique pour économiser la bande passante
+                      // Le chargement complet se fera au survol (onMouseEnter)
                       let safariLoadTimeout: NodeJS.Timeout | null = null;
                       if (isSafari && videoRef.current) {
                         safariLoadTimeout = setTimeout(() => {
                           if (videoRef.current && videoRef.current.readyState === 0) {
-                            console.log('[Video Debug] Safari: Forcing video load');
+                            console.log('[Video Debug] Safari: Loading video metadata only');
+                            // Charger seulement les métadonnées, pas la vidéo complète
                             videoRef.current.load();
                           }
-                        }, 500);
+                        }, 1000);
                       }
                       
                       // Test if URL is accessible (sauf pour Safari qui peut bloquer)
@@ -675,12 +678,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden rounded-t-2xl">
                           {!videoError ? (
                             <>
+                              {/* Poster/Thumbnail pour Safari - affiché en arrière-plan */}
+                              {isSafari && !video.thumbnail_url && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00ff9d]/20 to-[#00b3ff]/20 flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-[#00ff9d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              )}
                               <video
                                 ref={videoRef}
                                 src={video.video_url}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 controls={false}
-                                preload={isSafari ? "none" : "metadata"}
+                                preload="metadata"
                                 playsInline
                                 muted
                                 // @ts-ignore - Safari-specific attributes
@@ -704,23 +717,37 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                                 }}
                                 onSuspend={() => {
                                   console.log('[Video Debug] Video suspended:', video.video_url);
-                                  // Safari peut suspendre le chargement, on force le chargement des métadonnées
-                                  if (videoRef.current && isSafari) {
-                                    videoRef.current.load();
-                                  }
+                                  // Safari suspend souvent le chargement pour économiser la bande passante
+                                  // On ne force pas le rechargement immédiatement pour éviter une boucle
+                                  // Le chargement se fera au survol (onMouseEnter)
                                 }}
                                 onMouseEnter={(e) => {
                                   if (!videoError) {
                                     const videoEl = e.currentTarget;
                                     videoEl.muted = true; // Ensure muted for autoplay
-                                    // Pour Safari, on charge d'abord les métadonnées
-                                    if (isSafari && videoEl.readyState === 0) {
-                                      videoEl.load();
+                                    // Pour Safari, on charge d'abord les métadonnées si nécessaire
+                                    if (isSafari) {
+                                      if (videoEl.readyState === 0 || videoEl.readyState === 1) {
+                                        console.log('[Video Debug] Safari: Loading video metadata on hover');
+                                        videoEl.load();
+                                        // Attendre un peu que les métadonnées se chargent avant de jouer
+                                        setTimeout(() => {
+                                          videoEl.play().catch((err) => {
+                                            console.warn('[Video Debug] Safari autoplay failed:', err);
+                                          });
+                                        }, 300);
+                                      } else {
+                                        // Les métadonnées sont déjà chargées, on peut jouer directement
+                                        videoEl.play().catch((err) => {
+                                          console.warn('[Video Debug] Autoplay failed:', err);
+                                        });
+                                      }
+                                    } else {
+                                      // Pour les autres navigateurs, jouer directement
+                                      videoEl.play().catch((err) => {
+                                        console.warn('[Video Debug] Autoplay failed:', err);
+                                      });
                                     }
-                                    videoEl.play().catch((err) => {
-                                      console.warn('[Video Debug] Autoplay failed:', err);
-                                      // Ignore play errors (autoplay restrictions)
-                                    });
                                   }
                                 }}
                                 onMouseLeave={(e) => {
