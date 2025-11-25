@@ -1121,27 +1121,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   {subscriptionStatus?.status !== 'canceled' && (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
-                        onClick={async () => {
-                          if (!user || !profile) return;
-                          try {
-                            const portalUrl = await createPortalSession(user.id, language);
-                            window.location.href = portalUrl;
-                          } catch (error: any) {
-                            console.error('Error opening portal:', error);
-                            alert(
-                              language === 'fr'
-                                ? `Erreur lors de l'ouverture du portail: ${error.message || 'Erreur inconnue'}`
-                                : language === 'es'
-                                ? `Error al abrir el portal: ${error.message || 'Error desconocido'}`
-                                : `Error opening portal: ${error.message || 'Unknown error'}`
-                            );
-                          }
-                        }}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 text-sm"
-                      >
-                        {language === 'fr' ? 'Modifier' : language === 'es' ? 'Modificar' : 'Modify'}
-                      </button>
-                      <button
                         onClick={() => {
                           setShowProfileModal(false);
                           setShowCancelModal(true);
