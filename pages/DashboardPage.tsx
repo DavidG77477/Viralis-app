@@ -238,6 +238,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
     bootstrap();
   }, [authLoading, user?.id]); // Dépendre uniquement de user.id au lieu de l'objet user entier
 
+  // Polling pour vérifier les changements de statut d'abonnement toutes les 30 secondes
+  // Seulement si l'utilisateur a un customer_id Stripe (donc potentiellement un abonnement)
+  const subscriptionStatusRef = useRef<SubscriptionStatus | null>(null);
+  subscriptionStatusRef.current = subscriptionStatus;
+
+  useEffect(() => {
+    if (!user?.id || !profile?.stripe_customer_id) {
+      return;
+    }
+
+    // Vérifier le statut toutes les 30 secondes si l'utilisateur a un customer_id
+    const intervalId = setInterval(async () => {
+      try {
+        const currentStatus = await getSubscriptionStatus(user.id);
+        const previousStatus = subscriptionStatusRef.current;
+        const previousStatusJson = previousStatus ? JSON.stringify(previousStatus) : null;
+        const currentStatusJson = currentStatus ? JSON.stringify(currentStatus) : null;
+        
+        // Si le statut a changé, mettre à jour
+        if (previousStatusJson !== currentStatusJson) {
+          console.log('[Dashboard] Subscription status changed, updating...', {
+            previous: previousStatus,
+            current: currentStatus,
+          });
+          setSubscriptionStatus(currentStatus);
+          
+          // Recharger le profil pour synchroniser avec Supabase
+          const updatedProfile = await loadUserProfile(user.id, {
+            email: user.email ?? null,
+            name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+            avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+          });
+          
+          if (updatedProfile) {
+            setProfile(updatedProfile);
+          }
+        }
+      } catch (error) {
+        console.error('[Dashboard] Error polling subscription status:', error);
+      }
+    }, 30000); // Vérifier toutes les 30 secondes
+
+    return () => clearInterval(intervalId);
+  }, [user?.id, profile?.stripe_customer_id]); // Dépendre seulement des IDs nécessaires
+
   const loadUserProfile = async (
     userId: string,
     metadata: { email: string | null; name?: string | null; avatarUrl?: string | null },
