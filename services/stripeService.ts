@@ -20,6 +20,8 @@ export interface SubscriptionStatus {
   planType: 'pro_monthly' | 'pro_annual' | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
+  canceledDate: string | null; // Formatted canceled date
 }
 
 /**

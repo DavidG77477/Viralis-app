@@ -288,13 +288,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           planType = 'pro_annual';
         }
 
+        const subscriptionStatus = subscription.status as 'active' | 'canceled' | 'past_due' | 'unpaid' | null;
+        const canceledAt = (subscription as any).canceled_at 
+          ? new Date((subscription as any).canceled_at * 1000).toISOString() 
+          : null;
+        const currentPeriodEnd = (subscription as any).current_period_end 
+          ? new Date((subscription as any).current_period_end * 1000).toISOString() 
+          : null;
+
         return res.status(200).json({
-          status: subscription.status as 'active' | 'canceled' | 'past_due' | 'unpaid' | null,
+          status: subscriptionStatus,
           planType,
-          currentPeriodEnd: (subscription as any).current_period_end 
-            ? new Date((subscription as any).current_period_end * 1000).toISOString() 
-            : null,
+          currentPeriodEnd,
           cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
+          canceledAt,
+          canceledDate: canceledAt || null, // Return ISO string, frontend will format based on language
         });
       }
 
@@ -640,20 +648,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Mettre à jour le statut dans Supabase
-        await supabase
+        const { error: updateError, data: updatedUser } = await supabase
           .from('users')
           .update({ 
             subscription_status: 'free',
             stripe_subscription_id: null,
           })
-          .eq('id', userData.id);
+          .eq('id', userData.id)
+          .select('id, email, subscription_status, stripe_subscription_id')
+          .single();
+
+        if (updateError) {
+          console.error('[Stripe] ❌ Error updating user status in Supabase:', updateError);
+          console.error('[Stripe] Update error details:', JSON.stringify(updateError, null, 2));
+        } else if (updatedUser) {
+          console.log('[Stripe] ✅ Successfully updated user status in Supabase:', {
+            userId: updatedUser.id,
+            email: updatedUser.email,
+            newStatus: updatedUser.subscription_status,
+            stripe_subscription_id: updatedUser.stripe_subscription_id,
+          });
+        } else {
+          console.warn('[Stripe] ⚠️ Update succeeded but no data returned');
+        }
 
         // Supprimer le plan de distribution de tokens si existe
-        await supabase
+        const { error: distDeleteError } = await supabase
           .from('subscription_token_distributions')
           .delete()
           .eq('user_id', userData.id)
           .eq('subscription_id', subscriptionId);
+
+        if (distDeleteError) {
+          console.warn('[Stripe] Error deleting token distribution:', distDeleteError);
+        } else {
+          console.log('[Stripe] ✅ Deleted token distribution schedule');
+        }
 
         return res.status(200).json({ 
           success: true,

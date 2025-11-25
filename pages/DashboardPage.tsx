@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { createPortalSession, getSubscriptionStatus, cancelSubscription } from '../services/stripeService';
+import { createPortalSession, getSubscriptionStatus, cancelSubscription, type SubscriptionStatus } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -105,6 +105,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const navigate = useNavigate();
   const inferredProfile = (profile ?? null) as (UserProfile & {
     plan?: string | null;
@@ -201,13 +202,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
         // Load subscription status from Stripe if user has a Stripe customer ID
         if (supabaseProfile.stripe_customer_id) {
           try {
-            const subscriptionStatus = await getSubscriptionStatus(supabaseProfile.id);
+            const subscriptionStatusData = await getSubscriptionStatus(supabaseProfile.id);
+            setSubscriptionStatus(subscriptionStatusData);
             // Update profile with subscription status if it differs
-            if (subscriptionStatus.status && subscriptionStatus.planType) {
+            if (subscriptionStatusData.status && subscriptionStatusData.planType) {
               const currentStatus = supabaseProfile.subscription_status;
-              const expectedStatus = subscriptionStatus.planType;
-              if (currentStatus !== expectedStatus) {
-                // Update in Supabase to keep in sync
+              const expectedStatus = subscriptionStatusData.planType;
+              if (currentStatus !== expectedStatus && subscriptionStatusData.status === 'active') {
+                // Update in Supabase to keep in sync (only if active, not if canceled)
                 const { updateUserSubscriptionStatus } = await import('../services/supabaseClient');
                 await updateUserSubscriptionStatus(supabaseProfile.id, expectedStatus);
                 // Update local profile
@@ -947,15 +949,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               </div>
 
               {/* Active Subscription Section */}
-              {isUserPro(profile) ? (
+              {(isUserPro(profile) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active') ? (
                 <div className="bg-slate-800/50 rounded-xl p-6 mb-6 border border-slate-700/50">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">
-                      {language === 'fr' ? 'Abonnement Actif' : language === 'es' ? 'Suscripción Activa' : 'Active Subscription'}
+                      {subscriptionStatus?.status === 'canceled'
+                        ? (language === 'fr' ? 'Abonnement Annulé' : language === 'es' ? 'Suscripción Cancelada' : 'Canceled Subscription')
+                        : (language === 'fr' ? 'Abonnement Actif' : language === 'es' ? 'Suscripción Activa' : 'Active Subscription')}
                     </h3>
-                    <div className="px-3 py-1 bg-gradient-to-r from-[#00ff9d]/20 to-[#00b3ff]/20 border border-[#00ff9d]/30 rounded-lg">
-                      <span className="text-[#00ff9d] font-semibold text-xs">
-                        {language === 'fr' ? 'ACTIF' : language === 'es' ? 'ACTIVO' : 'ACTIVE'}
+                    <div className={`px-3 py-1 border rounded-lg ${
+                      subscriptionStatus?.status === 'canceled'
+                        ? 'bg-red-500/20 border-red-500/30'
+                        : 'bg-gradient-to-r from-[#00ff9d]/20 to-[#00b3ff]/20 border-[#00ff9d]/30'
+                    }`}>
+                      <span className={`font-semibold text-xs ${
+                        subscriptionStatus?.status === 'canceled' ? 'text-red-400' : 'text-[#00ff9d]'
+                      }`}>
+                        {subscriptionStatus?.status === 'canceled'
+                          ? (language === 'fr' ? 'ANNULÉ' : language === 'es' ? 'CANCELADO' : 'CANCELED')
+                          : (language === 'fr' ? 'ACTIF' : language === 'es' ? 'ACTIVO' : 'ACTIVE')}
                       </span>
                     </div>
                   </div>
@@ -984,38 +996,86 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={async () => {
-                        if (!user || !profile) return;
-                        try {
-                          const portalUrl = await createPortalSession(user.id, language);
-                          window.location.href = portalUrl;
-                        } catch (error: any) {
-                          console.error('Error opening portal:', error);
-                          alert(
-                            language === 'fr'
-                              ? `Erreur lors de l'ouverture du portail: ${error.message || 'Erreur inconnue'}`
+                  {subscriptionStatus?.status === 'canceled' && subscriptionStatus?.canceledAt && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                      <p className="text-red-400 text-sm font-medium">
+                        {language === 'fr' 
+                          ? `Abonnement annulé le ${new Date(subscriptionStatus.canceledAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                          : language === 'es'
+                          ? `Suscripción cancelada el ${new Date(subscriptionStatus.canceledAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                          : `Subscription canceled on ${new Date(subscriptionStatus.canceledAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`}
+                      </p>
+                    </div>
+                  )}
+                  {subscriptionStatus?.currentPeriodEnd && (
+                    <div className="mb-4">
+                      <p className="text-slate-400 text-sm">
+                        {subscriptionStatus?.status === 'canceled'
+                          ? (language === 'fr' 
+                              ? `Accès actif jusqu'au ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                  'fr-FR',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                )}`
                               : language === 'es'
-                              ? `Error al abrir el portal: ${error.message || 'Error desconocido'}`
-                              : `Error opening portal: ${error.message || 'Unknown error'}`
-                          );
-                        }
-                      }}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 text-sm"
-                    >
-                      {language === 'fr' ? 'Modifier' : language === 'es' ? 'Modificar' : 'Modify'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowProfileModal(false);
-                        setShowCancelModal(true);
-                      }}
-                      className="flex-1 px-4 py-2 border border-red-500/50 hover:border-red-500 hover:bg-red-500/10 text-red-400 font-medium rounded-lg transition-all duration-200 text-sm"
-                    >
-                      {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : 'Cancel'}
-                    </button>
-                  </div>
+                              ? `Acceso activo hasta el ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                  'es-ES',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                )}`
+                              : `Access active until ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                  'en-US',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                )}`)
+                          : (language === 'fr'
+                              ? `Renouvellement le ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                  'fr-FR',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                )}`
+                              : language === 'es'
+                              ? `Renovación el ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                  'es-ES',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                )}`
+                              : `Renews on ${new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString(
+                                  'en-US',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                )}`)}
+                      </p>
+                    </div>
+                  )}
+                  {subscriptionStatus?.status !== 'canceled' && (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={async () => {
+                          if (!user || !profile) return;
+                          try {
+                            const portalUrl = await createPortalSession(user.id, language);
+                            window.location.href = portalUrl;
+                          } catch (error: any) {
+                            console.error('Error opening portal:', error);
+                            alert(
+                              language === 'fr'
+                                ? `Erreur lors de l'ouverture du portail: ${error.message || 'Erreur inconnue'}`
+                                : language === 'es'
+                                ? `Error al abrir el portal: ${error.message || 'Error desconocido'}`
+                                : `Error opening portal: ${error.message || 'Unknown error'}`
+                            );
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00ff9d] to-[#00b3ff] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-semibold rounded-lg transition-all duration-200 text-sm"
+                      >
+                        {language === 'fr' ? 'Modifier' : language === 'es' ? 'Modificar' : 'Modify'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowProfileModal(false);
+                          setShowCancelModal(true);
+                        }}
+                        className="flex-1 px-4 py-2 border border-red-500/50 hover:border-red-500 hover:bg-red-500/10 text-red-400 font-medium rounded-lg transition-all duration-200 text-sm"
+                      >
+                        {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : 'Cancel'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-slate-800/50 rounded-xl p-6 mb-6 border border-slate-700/50 text-center">
@@ -1100,13 +1160,37 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     );
                     setShowCancelModal(false);
                     
-                    // Recharger le profil pour mettre à jour le statut
-                    if (user) {
-                      await loadUserProfile(user.id, {
+                    // Recharger le profil et le statut d'abonnement pour mettre à jour l'affichage
+                    if (user && profile) {
+                      console.log('[Dashboard] Reloading profile after cancellation...');
+                      const updatedProfile = await loadUserProfile(user.id, {
                         email: user.email ?? null,
                         name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
                         avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
                       });
+                      
+                      console.log('[Dashboard] Profile reloaded:', {
+                        subscription_status: updatedProfile?.subscription_status,
+                        stripe_subscription_id: updatedProfile?.stripe_subscription_id,
+                      });
+                      
+                      // Recharger le statut d'abonnement depuis Stripe
+                      try {
+                        const updatedStatus = await getSubscriptionStatus(profile.id);
+                        console.log('[Dashboard] Subscription status from Stripe:', updatedStatus);
+                        setSubscriptionStatus(updatedStatus);
+                      } catch (error) {
+                        console.error('[Dashboard] Error reloading subscription status:', error);
+                        // Mettre à null si pas d'abonnement
+                        setSubscriptionStatus({
+                          status: null,
+                          planType: null,
+                          currentPeriodEnd: null,
+                          cancelAtPeriodEnd: false,
+                          canceledAt: null,
+                          canceledDate: null,
+                        });
+                      }
                     }
                   } catch (error: any) {
                     console.error('Error cancelling subscription:', error);
