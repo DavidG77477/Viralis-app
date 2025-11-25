@@ -293,20 +293,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(405).json({ error: 'Method not allowed' });
         }
 
-        const { userId } = req.body;
+        const { userId, userEmail } = req.body;
 
-        console.log('[Stripe] Cancel subscription request:', { userId });
+        console.log('[Stripe] Cancel subscription request:', { userId, userEmail });
 
         if (!userId) {
           return res.status(400).json({ error: 'Missing userId' });
         }
 
         // Récupérer l'utilisateur et son subscription_id
+        // D'abord essayer par ID
         let { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, email, stripe_customer_id, stripe_subscription_id')
           .eq('id', userId)
           .single();
+
+        // Si pas trouvé par ID et qu'on a un email, essayer par email
+        if (userError && userError.code === 'PGRST116' && (userEmail || userId.includes('@'))) {
+          const emailToSearch = userEmail || userId;
+          console.log('[Stripe] User not found by ID, trying by email:', emailToSearch);
+          const { data: userByEmail, error: emailError } = await supabase
+            .from('users')
+            .select('id, email, stripe_customer_id, stripe_subscription_id')
+            .eq('email', emailToSearch)
+            .single();
+          
+          if (!emailError && userByEmail) {
+            userData = userByEmail;
+            userError = null;
+            console.log('[Stripe] User found by email:', userByEmail.id);
+          }
+        }
 
         // Si l'utilisateur n'existe pas dans users, chercher dans Stripe
         if (userError && userError.code === 'PGRST116') {

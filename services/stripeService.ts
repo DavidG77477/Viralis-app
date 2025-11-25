@@ -138,7 +138,7 @@ export const PLAN_TO_PRICE_ID: Record<PlanId, string> = PLAN_TO_PRICE_ID_LIVE;
  * @param userId - The user's ID from Supabase
  * @returns Promise with cancellation details
  */
-export const cancelSubscription = async (userId: string): Promise<{
+export const cancelSubscription = async (userId: string, userEmail?: string): Promise<{
   success: boolean;
   message: string;
   cancel_at_period_end: boolean;
@@ -147,7 +147,7 @@ export const cancelSubscription = async (userId: string): Promise<{
   const response = await fetch('/api/stripe?action=cancel-subscription', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({ userId, userEmail }),
   });
   
   if (!response.ok) {

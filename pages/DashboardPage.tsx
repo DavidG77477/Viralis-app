@@ -1083,12 +1083,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                 {language === 'fr' ? 'Conserver mon abonnement' : language === 'es' ? 'Mantener mi suscripción' : 'Keep Subscription'}
               </button>
               <button
-                onClick={async () => {
-                  if (!user || !profile) return;
-                  setIsCancelling(true);
-                  try {
-                    // Annuler l'abonnement (sera annulé à la fin de la période)
-                    const result = await cancelSubscription(user.id);
+                    onClick={async () => {
+                        if (!user || !profile) return;
+                        setIsCancelling(true);
+                        try {
+                          // Annuler l'abonnement (sera annulé à la fin de la période)
+                          // Utiliser profile.id et profile.email pour s'assurer qu'on trouve le bon utilisateur
+                          const result = await cancelSubscription(profile.id, profile.email);
                     
                     // Formater la date de fin
                     const endDate = new Date(result.current_period_end);
