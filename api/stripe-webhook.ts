@@ -50,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Get raw body for webhook signature verification
     // In Vercel with bodyParser: false, req.body is a Buffer
+    console.log('[Stripe Webhook] Received webhook event, verifying signature...');
     const rawBody = Buffer.isBuffer(req.body) 
       ? req.body.toString('utf8')
       : typeof req.body === 'string' 
@@ -57,6 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : JSON.stringify(req.body);
     
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    console.log('[Stripe Webhook] Event verified successfully. Event type:', event.type);
+    console.log('[Stripe Webhook] Event ID:', event.id);
   } catch (err: any) {
     console.error('[Stripe Webhook] Webhook signature verification failed:', err.message);
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
@@ -116,22 +119,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'No price ID in checkout session' });
         }
 
+        console.log('[Stripe Webhook] Price ID found:', priceId);
+        console.log('[Stripe Webhook] Available token amounts:', Object.keys(TOKEN_AMOUNTS));
+        console.log('[Stripe Webhook] Is price ID in TOKEN_AMOUNTS?', priceId in TOKEN_AMOUNTS);
+
         // Handle token packs (one-time payments)
         if (TOKEN_AMOUNTS[priceId]) {
           const tokensToAdd = TOKEN_AMOUNTS[priceId];
+          console.log(`[Stripe Webhook] Adding ${tokensToAdd} tokens to user ${userId}`);
           
           // Add tokens to user account
-          const { error: tokenError } = await supabase.rpc('increment_tokens', {
+          const { error: tokenError, data: tokenData } = await supabase.rpc('increment_tokens', {
             user_id: userId,
             tokens_to_add: tokensToAdd,
           });
 
           if (tokenError) {
             console.error('[Stripe Webhook] Error adding tokens:', tokenError);
+            console.error('[Stripe Webhook] Error details:', JSON.stringify(tokenError, null, 2));
             // Don't fail the webhook, just log the error
           } else {
-            console.log(`[Stripe Webhook] Added ${tokensToAdd} tokens to user ${userId}`);
+            console.log(`[Stripe Webhook] Successfully added ${tokensToAdd} tokens to user ${userId}`);
+            console.log('[Stripe Webhook] Token update result:', tokenData);
           }
+        } else {
+          console.warn(`[Stripe Webhook] Price ID ${priceId} not found in TOKEN_AMOUNTS. Available Price IDs:`, Object.keys(TOKEN_AMOUNTS));
         }
 
         // Handle subscription plans
