@@ -304,43 +304,127 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Récupérer l'utilisateur et son subscription_id
         let { data: userData, error: userError } = await supabase
           .from('users')
-          .select('id, stripe_customer_id, stripe_subscription_id')
+          .select('id, email, stripe_customer_id, stripe_subscription_id')
           .eq('id', userId)
           .single();
 
-        // Si l'utilisateur n'existe pas, essayer de le créer
+        // Si l'utilisateur n'existe pas dans users, chercher dans Stripe
         if (userError && userError.code === 'PGRST116') {
-          console.warn('[Stripe] User profile not found, attempting to create it');
+          console.warn('[Stripe] User profile not found, searching in Stripe');
           
-          // Utiliser RPC ou SQL direct pour créer le profil depuis auth.users
-          // Note: On ne peut pas accéder directement à auth.users via PostgREST
-          // Le trigger handle_new_user devrait créer le profil, mais s'il n'existe pas,
-          // on doit le créer manuellement avec les infos disponibles
-          
-          // Essayer de créer un profil minimal
-          const { data: newUserData, error: createError } = await supabase
-            .from('users')
-            .insert({
-              id: userId,
-              email: `user-${userId.substring(0, 8)}@temp.com`, // Email temporaire
-              name: 'User',
-              provider: 'email',
-              tokens: 30,
-            })
-            .select('id, stripe_customer_id, stripe_subscription_id')
-            .single();
+          try {
+            // 1. Chercher dans les sessions de checkout récentes par client_reference_id
+            const sessions = await stripe.checkout.sessions.list({
+              limit: 100,
+            });
 
-          if (createError || !newUserData) {
-            console.error('[Stripe] Failed to create user profile:', createError);
-            return res.status(404).json({ 
-              error: 'User profile not found',
-              details: 'Your user profile does not exist. Please refresh the page or contact support.',
-              suggestion: 'Try refreshing the page to create your profile automatically'
+            let foundCustomerId: string | null = null;
+            let foundSubscriptionId: string | null = null;
+            let customerEmail: string | null = null;
+
+            // Chercher une session avec ce userId comme client_reference_id
+            for (const session of sessions.data) {
+              if (session.client_reference_id === userId && session.customer) {
+                foundCustomerId = session.customer as string;
+                foundSubscriptionId = session.subscription as string | null;
+                customerEmail = session.customer_email || null;
+                break;
+              }
+            }
+
+            // 2. Si pas trouvé, chercher dans les subscriptions actives
+            if (!foundCustomerId) {
+              const subscriptions = await stripe.subscriptions.list({
+                limit: 100,
+                status: 'all',
+              });
+
+              // Chercher dans les metadata des sessions ou customers
+              for (const sub of subscriptions.data) {
+                const customerId = sub.customer as string;
+                try {
+                  const customer = await stripe.customers.retrieve(customerId);
+                  if (customer && typeof customer === 'object' && !customer.deleted) {
+                    // Vérifier si on peut trouver une session avec ce customer et ce userId
+                    const customerSessions = await stripe.checkout.sessions.list({
+                      customer: customerId,
+                      limit: 10,
+                    });
+                    
+                    for (const sess of customerSessions.data) {
+                      if (sess.client_reference_id === userId) {
+                        foundCustomerId = customerId;
+                        foundSubscriptionId = sub.id;
+                        customerEmail = (customer as any).email || null;
+                        break;
+                      }
+                    }
+                    if (foundCustomerId) break;
+                  }
+                } catch (err) {
+                  // Continue searching
+                  continue;
+                }
+              }
+            }
+
+            if (foundCustomerId) {
+              console.log('[Stripe] Found user in Stripe, creating profile:', {
+                userId,
+                customerId: foundCustomerId,
+                subscriptionId: foundSubscriptionId,
+              });
+
+              // Récupérer les infos complètes du customer
+              const customer = await stripe.customers.retrieve(foundCustomerId);
+              if (customer && typeof customer === 'object' && !customer.deleted) {
+                const email = customerEmail || (customer as any).email || `user-${userId.substring(0, 8)}@temp.com`;
+                const name = (customer as any).name || email.split('@')[0];
+
+                // Créer le profil avec les infos de Stripe
+                const { data: newUserData, error: createError } = await supabase
+                  .from('users')
+                  .insert({
+                    id: userId,
+                    email: email,
+                    name: name,
+                    stripe_customer_id: foundCustomerId,
+                    stripe_subscription_id: foundSubscriptionId,
+                    provider: 'email',
+                    tokens: 30,
+                  })
+                  .select('id, stripe_customer_id, stripe_subscription_id')
+                  .single();
+
+                if (createError || !newUserData) {
+                  console.error('[Stripe] Failed to create user profile:', createError);
+                  return res.status(500).json({ 
+                    error: 'Failed to create user profile',
+                    details: createError?.message || 'Unknown error'
+                  });
+                }
+
+                userData = newUserData;
+                console.log('[Stripe] User profile created from Stripe data:', { userId: userData.id });
+              } else {
+                return res.status(404).json({ 
+                  error: 'User not found',
+                  details: 'Could not retrieve customer information from Stripe'
+                });
+              }
+            } else {
+              return res.status(404).json({ 
+                error: 'User not found',
+                details: 'No Stripe subscription found for this user. Please ensure you have an active subscription.'
+              });
+            }
+          } catch (stripeError: any) {
+            console.error('[Stripe] Error searching in Stripe:', stripeError);
+            return res.status(500).json({ 
+              error: 'Error searching for user in Stripe',
+              details: stripeError.message || 'Unknown error'
             });
           }
-
-          userData = newUserData;
-          console.log('[Stripe] User profile created automatically:', { userId: userData.id });
         } else if (userError) {
           console.error('[Stripe] Error fetching user:', userError);
           console.error('[Stripe] Error code:', userError.code);
