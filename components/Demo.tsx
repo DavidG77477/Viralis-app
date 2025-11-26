@@ -60,18 +60,40 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number] & { videoRef?: React.R
         // @ts-ignore - Safari-specific attributes
         x-webkit-airplay="allow"
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
+        onLoadedMetadata={() => {
+          // Safari: Essayer aussi après chargement des métadonnées (plus tôt)
+          if (isSafari && videoRef?.current && videoRef.current.paused) {
+            setTimeout(() => {
+              if (videoRef?.current && videoRef.current.paused) {
+                videoRef.current.play().then(() => {
+                  console.log('[Demo] Safari secondary video started after loadedMetadata');
+                }).catch((err) => {
+                  console.log('[Demo] Safari secondary video autoplay failed after metadata:', err);
+                });
+              }
+            }, 200);
+          }
+        }}
         onLoadedData={() => {
           // Safari: Forcer la lecture quand la vidéo est chargée
-          if (isSafari && videoRef?.current && videoRef.current.paused) {
-            videoRef.current.play().catch((err) => {
-              console.log('[Demo] Safari secondary video autoplay failed after load:', err);
-            });
+          if (isSafari && videoRef?.current) {
+            setTimeout(() => {
+              if (videoRef?.current && videoRef.current.paused) {
+                videoRef.current.play().then(() => {
+                  console.log('[Demo] Safari secondary video started after loadedData');
+                }).catch((err) => {
+                  console.log('[Demo] Safari secondary video autoplay failed after load:', err);
+                });
+              }
+            }, 100);
           }
         }}
         onCanPlay={() => {
           // Safari: Essayer de jouer quand la vidéo peut jouer
           if (isSafari && videoRef?.current && videoRef.current.paused) {
-            videoRef.current.play().catch((err) => {
+            videoRef.current.play().then(() => {
+              console.log('[Demo] Safari secondary video started after canPlay');
+            }).catch((err) => {
               console.log('[Demo] Safari secondary video autoplay failed after canplay:', err);
             });
           }
@@ -239,19 +261,41 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               // @ts-ignore - Safari-specific attributes
               x-webkit-airplay="allow"
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
+              onLoadedMetadata={() => {
+                // Safari: Essayer aussi après chargement des métadonnées (plus tôt)
+                if (isSafari && featuredVideoRef.current && featuredVideoRef.current.paused) {
+                  setTimeout(() => {
+                    if (featuredVideoRef.current && featuredVideoRef.current.paused) {
+                      featuredVideoRef.current.play().then(() => {
+                        console.log('[Demo] Safari featured video started after loadedMetadata');
+                      }).catch((err) => {
+                        console.log('[Demo] Safari featured video autoplay failed after metadata:', err);
+                      });
+                    }
+                  }, 200);
+                }
+              }}
               onLoadedData={() => {
                 // Safari: Forcer la lecture quand la vidéo est chargée
-                if (isSafari && featuredVideoRef.current && featuredVideoRef.current.paused) {
-                  featuredVideoRef.current.play().catch((err) => {
-                    console.log('[Demo] Safari autoplay failed after load:', err);
-                  });
+                if (isSafari && featuredVideoRef.current) {
+                  setTimeout(() => {
+                    if (featuredVideoRef.current && featuredVideoRef.current.paused) {
+                      featuredVideoRef.current.play().then(() => {
+                        console.log('[Demo] Safari featured video started after loadedData');
+                      }).catch((err) => {
+                        console.log('[Demo] Safari featured video autoplay failed after load:', err);
+                      });
+                    }
+                  }, 100);
                 }
               }}
               onCanPlay={() => {
                 // Safari: Essayer de jouer quand la vidéo peut jouer
                 if (isSafari && featuredVideoRef.current && featuredVideoRef.current.paused) {
-                  featuredVideoRef.current.play().catch((err) => {
-                    console.log('[Demo] Safari autoplay failed after canplay:', err);
+                  featuredVideoRef.current.play().then(() => {
+                    console.log('[Demo] Safari featured video started after canPlay');
+                  }).catch((err) => {
+                    console.log('[Demo] Safari featured video autoplay failed after canplay:', err);
                   });
                 }
               }}
