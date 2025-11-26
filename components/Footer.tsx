@@ -49,12 +49,13 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <Link
-                          to={route}
-                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                        <button
+                          type="button"
+                          onClick={() => navigate(route!)}
+                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer text-left w-full bg-transparent border-none p-0"
                         >
                           {link}
-                        </Link>
+                        </button>
                       ) : (
                         <span className="text-slate-400">{link}</span>
                       )}
@@ -69,19 +70,21 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <Link
-                to="/terms"
-                className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={() => navigate('/terms')}
+                className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
-              </Link>
+              </button>
               <span className="text-slate-600">|</span>
-              <Link
-                to="/privacy"
-                className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={() => navigate('/privacy')}
+                className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-              </Link>
+              </button>
             </div>
           </div>
           <div className="flex space-x-5">
