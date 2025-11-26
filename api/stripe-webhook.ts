@@ -499,13 +499,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Set subscription status to free but keep pro_access_until until current_period_end
-        // La subscription object du webhook devrait contenir current_period_end
+        // current_period_end représente la fin de la période payée :
+        // - Mensuel : dernier paiement + 1 mois
+        // - Annuel : dernier paiement + 1 an
         const updateData: any = { 
           subscription_status: 'free',
           stripe_subscription_id: null,
         };
         
         // Récupérer current_period_end depuis la subscription object du webhook
+        // Cette date représente la fin de la période payée (1 mois ou 1 an après le dernier paiement)
         if (subscription.current_period_end) {
           updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
           console.log('[Stripe Webhook] Pro access until (from subscription object):', updateData.pro_access_until);
@@ -565,12 +568,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Update subscription status and pro_access_until
           // Récupérer current_period_end depuis la subscription Stripe (déjà récupérée)
           // Fonctionne pour les deux types d'abonnements :
-          // - Mensuel : current_period_end sera dans ~1 mois
-          // - Annuel : current_period_end sera dans ~1 an
-          // Stripe calcule automatiquement cette date selon le type d'abonnement
+          // - Mensuel : current_period_end = dernier paiement + 1 mois
+          // - Annuel : current_period_end = dernier paiement + 1 an
+          // Stripe calcule automatiquement current_period_end à partir du dernier paiement réussi
           const updateData: any = { subscription_status: subscriptionStatus };
           
           if (subscription.current_period_end) {
+            // current_period_end représente la fin de la période payée (1 mois ou 1 an après le dernier paiement)
             updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
             console.log('[Stripe Webhook] Pro access until (from current_period_end):', updateData.pro_access_until);
           }
