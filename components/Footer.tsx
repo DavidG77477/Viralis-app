@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { TikTokIcon, YouTubeIcon, InstagramIcon, XLogoIcon, ViralisFullLogo } from './icons/Icons';
 import type { Language } from '../App';
 import { translations } from '../translations';
@@ -40,8 +41,19 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
             </div>
           ))}
         </div>
-        <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-slate-500 text-sm mb-4 md:mb-0">{t.footerCopyright}</p>
+        <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
+            <div className="flex gap-4 text-sm">
+              <Link to="/terms" className="text-slate-400 hover:text-brand-green transition-colors">
+                {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
+              </Link>
+              <span className="text-slate-600">|</span>
+              <Link to="/privacy" className="text-slate-400 hover:text-brand-green transition-colors">
+                {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
+              </Link>
+            </div>
+          </div>
           <div className="flex space-x-5">
             {socialLinks.map((social, index) => (
               <a key={index} href={social.href} className="text-slate-500 hover:text-brand-green transition-colors">
