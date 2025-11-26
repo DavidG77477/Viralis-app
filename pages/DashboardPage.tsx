@@ -1110,7 +1110,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     // Pour les abonnements annulés, toujours afficher la date de fin d'accès si disponible
                     // Utiliser pro_access_until en priorité (source de vérité après annulation)
                     // Sinon utiliser currentPeriodEnd de Stripe
-                    const isCanceled = subscriptionStatus?.status === 'canceled';
+                    // Vérifier aussi si le profil Supabase indique un abonnement annulé (subscription_status === 'free' avec pro_access_until)
+                    const isCanceled = subscriptionStatus?.status === 'canceled' || (profile?.subscription_status === 'free' && profile?.pro_access_until);
                     const accessUntilDate = profile?.pro_access_until || subscriptionStatus?.currentPeriodEnd;
                     
                     // Debug: log pour voir ce qui est disponible
