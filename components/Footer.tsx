@@ -79,7 +79,10 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  navigate('/terms');
+                  e.nativeEvent.stopImmediatePropagation();
+                  setTimeout(() => {
+                    window.location.href = '/terms';
+                  }, 0);
                 }}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
               >
@@ -91,7 +94,10 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  navigate('/privacy');
+                  e.nativeEvent.stopImmediatePropagation();
+                  setTimeout(() => {
+                    window.location.href = '/privacy';
+                  }, 0);
                 }}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
               >
