@@ -149,22 +149,14 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               transform: translateY(-8px);
             }
           }
-          /* iPad landscape specific adjustment for 10k image */
-          @media only screen 
-            and (min-device-width: 768px) 
-            and (max-device-width: 1366px) 
-            and (orientation: landscape) {
-            .ipad-landscape-right {
-              right: calc(1.5rem - 50px) !important;
-            }
-          }
-          /* iPad 11 pouces specific - width between 834px and 1194px in landscape */
+          /* iPad landscape specific adjustment for 10k image - déplacer de 50px à droite */
           @media only screen 
             and (min-width: 834px) 
-            and (max-width: 1194px) 
+            and (max-width: 1366px) 
             and (orientation: landscape) {
             .ipad-landscape-right {
-              right: calc(1.5rem - 50px) !important;
+              right: -38px !important; /* 1.5rem (24px) - 50px = -26px, mais on veut 50px de plus à droite donc -38px */
+              transform: translateX(-50px) translateY(4px) scale(1.02) !important;
             }
           }
         `}
