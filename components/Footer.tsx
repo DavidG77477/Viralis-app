@@ -49,22 +49,19 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <a
-                          href={route}
+                        <span
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                          style={{ userSelect: 'none' }}
                           onMouseDown={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.location.href = route!;
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
+                            if (e.button === 0) { // Only left click
+                              window.location.assign(route!);
+                            }
                           }}
                         >
                           {link}
-                        </a>
+                        </span>
                       ) : (
                         <span className="text-slate-400">{link}</span>
                       )}
@@ -79,39 +76,33 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <a
-                href="/terms"
+              <span
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                style={{ userSelect: 'none' }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  window.location.href = '/terms';
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return false;
+                  if (e.button === 0) { // Only left click
+                    window.location.assign('/terms');
+                  }
                 }}
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
-              </a>
+              </span>
               <span className="text-slate-600">|</span>
-              <a
-                href="/privacy"
+              <span
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                style={{ userSelect: 'none' }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  window.location.href = '/privacy';
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return false;
+                  if (e.button === 0) { // Only left click
+                    window.location.assign('/privacy');
+                  }
                 }}
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-              </a>
+              </span>
             </div>
           </div>
           <div className="flex space-x-5">
