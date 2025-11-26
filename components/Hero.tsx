@@ -155,7 +155,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
             and (max-width: 1366px) 
             and (orientation: landscape) {
             .ipad-landscape-right {
-              right: calc(1.5rem - 150px) !important; /* Déplacer de 150px vers la droite */
+              right: calc(1.5rem - 200px) !important; /* Déplacer de 200px vers la droite */
             }
           }
           /* iPad portrait specific adjustment for 10k image - déplacer plus à droite */
@@ -164,7 +164,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
             and (max-width: 1024px) 
             and (orientation: portrait) {
             .ipad-landscape-right {
-              right: calc(1.5rem - 150px) !important; /* Déplacer de 150px vers la droite */
+              right: calc(1.5rem - 200px) !important; /* Déplacer de 200px vers la droite */
             }
           }
         `}
