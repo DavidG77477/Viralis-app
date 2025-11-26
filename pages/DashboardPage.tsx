@@ -1048,23 +1048,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
 
               {/* Active Subscription Section */}
               {/* Afficher si : abonnement actif OU abonnement annulé (pour montrer les infos d'annulation) */}
-              {(isUserPro(profile, subscriptionStatus) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active' || subscriptionStatus?.planType) ? (
+              {(isUserPro(profile, subscriptionStatus) || subscriptionStatus?.status === 'canceled' || subscriptionStatus?.status === 'active' || subscriptionStatus?.planType || (profile?.subscription_status === 'free' && profile?.pro_access_until)) ? (
                 <div className="bg-slate-800/50 rounded-xl p-6 mb-6 border border-slate-700/50">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">
-                      {subscriptionStatus?.status === 'canceled'
+                      {subscriptionStatus?.status === 'canceled' || (profile?.subscription_status === 'free' && profile?.pro_access_until)
                         ? (language === 'fr' ? 'Abonnement Annulé' : language === 'es' ? 'Suscripción Cancelada' : 'Canceled Subscription')
                         : (language === 'fr' ? 'Abonnement Actif' : language === 'es' ? 'Suscripción Activa' : 'Active Subscription')}
                     </h3>
                     <div className={`px-3 py-1 border rounded-lg ${
-                      subscriptionStatus?.status === 'canceled'
+                      subscriptionStatus?.status === 'canceled' || (profile?.subscription_status === 'free' && profile?.pro_access_until)
                         ? 'bg-red-500/20 border-red-500/30'
                         : 'bg-gradient-to-r from-[#00ff9d]/20 to-[#00b3ff]/20 border-[#00ff9d]/30'
                     }`}>
                       <span className={`font-semibold text-xs ${
-                        subscriptionStatus?.status === 'canceled' ? 'text-red-400' : 'text-[#00ff9d]'
+                        subscriptionStatus?.status === 'canceled' || (profile?.subscription_status === 'free' && profile?.pro_access_until) ? 'text-red-400' : 'text-[#00ff9d]'
                       }`}>
-                        {subscriptionStatus?.status === 'canceled'
+                        {subscriptionStatus?.status === 'canceled' || (profile?.subscription_status === 'free' && profile?.pro_access_until)
                           ? (language === 'fr' ? 'ANNULÉ' : language === 'es' ? 'CANCELADO' : 'CANCELED')
                           : (language === 'fr' ? 'ACTIF' : language === 'es' ? 'ACTIVO' : 'ACTIVE')}
                       </span>
@@ -1199,7 +1199,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       </div>
                     );
                   })()}
-                  {subscriptionStatus?.status !== 'canceled' && (
+                  {!(subscriptionStatus?.status === 'canceled' || (profile?.subscription_status === 'free' && profile?.pro_access_until)) && (
                     <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={() => {
