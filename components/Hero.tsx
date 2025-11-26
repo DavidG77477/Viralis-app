@@ -147,33 +147,6 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               transform: translateY(-8px);
             }
           }
-          /* iPad landscape specific adjustment for 10k image - déplacer plus à droite */
-          @media only screen 
-            and (min-width: 834px) 
-            and (max-width: 1366px) 
-            and (orientation: landscape) {
-            .ipad-landscape-right {
-              right: calc(1.5rem - 200px) !important; /* Déplacer de 200px vers la droite */
-            }
-          }
-          /* iPad portrait specific adjustment for 10k image - déplacer plus à droite */
-          @media only screen 
-            and (min-width: 768px) 
-            and (max-width: 1024px) 
-            and (orientation: portrait) {
-            .ipad-landscape-right {
-              right: calc(1.5rem - 200px) !important; /* Déplacer de 200px vers la droite */
-            }
-          }
-          /* Cacher laptop et 10k en mode portrait iPad */
-          @media only screen 
-            and (min-width: 768px) 
-            and (max-width: 1024px) 
-            and (orientation: portrait) {
-            .hide-ipad-portrait {
-              display: none !important;
-            }
-          }
         `}
       </style>
       <div className="container mx-auto px-4 md:px-8">
