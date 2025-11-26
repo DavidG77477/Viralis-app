@@ -163,7 +163,8 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
             </p>
             <button
               onClick={scrollToGenerator}
-              className="bg-gradient-green text-slate-950 font-bold py-4 px-8 rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_25px_rgba(0,255,153,0.4)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green flex items-center justify-center gap-3"
+              className="text-slate-950 font-bold py-4 px-8 rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_25px_rgba(0,255,153,0.4)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green flex items-center justify-center gap-3"
+              style={{ background: 'linear-gradient(90deg, #00ff9d, #00b3ff)' }}
             >
               <img src={tokenImage} alt="Token" className="w-6 h-6" />
               {t.heroCta}
