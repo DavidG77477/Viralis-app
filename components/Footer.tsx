@@ -33,16 +33,18 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <ul className="space-y-3">
                 {/* FIX: Cast `links` to string[] to resolve TypeScript error where it was inferred as 'unknown'. */}
                 {(links as string[]).map(link => {
-                  // Map footer link text to routes - must match exact text from translations
-                  const linkMap: Record<string, string> = {
-                    'Terms of Service': '/terms',
-                    'Privacy Policy': '/privacy',
-                    'Conditions d\'utilisation': '/terms',
-                    'Politique de confidentialité': '/privacy',
-                    'Términos de Servicio': '/terms',
-                    'Política de Privacidad': '/privacy',
-                  };
-                  const route = linkMap[link];
+                  // Map footer link text to routes - check all possible variations
+                  const normalizedLink = link.toLowerCase().trim();
+                  const isTerms = normalizedLink.includes('terms') || normalizedLink.includes('conditions') || normalizedLink.includes('términos');
+                  const isPrivacy = normalizedLink.includes('privacy') || normalizedLink.includes('confidentialité') || normalizedLink.includes('privacidad');
+                  
+                  let route: string | null = null;
+                  if (isTerms) {
+                    route = '/terms';
+                  } else if (isPrivacy) {
+                    route = '/privacy';
+                  }
+                  
                   return (
                     <li key={link}>
                       {route ? (
