@@ -149,13 +149,13 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               transform: translateY(-8px);
             }
           }
-          /* iPad landscape specific adjustment for 10k image - déplacer de 50px à droite */
+          /* iPad landscape specific adjustment for 10k image - déplacer plus à droite */
           @media only screen 
             and (min-width: 834px) 
             and (max-width: 1366px) 
             and (orientation: landscape) {
             .ipad-landscape-right {
-              right: calc(1.5rem - 50px) !important; /* Déplacer de 50px vers la droite = réduire right de 50px */
+              right: calc(1.5rem - 100px) !important; /* Déplacer de 100px vers la droite */
             }
           }
         `}
