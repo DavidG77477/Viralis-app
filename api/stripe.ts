@@ -287,7 +287,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           id: subscription.id,
           status: subscription.status,
           priceId: priceId,
+          current_period_end: (subscription as any).current_period_end || 'not in list response',
         });
+
+        // Si c'est un abonnement annulé et que current_period_end n'est pas dans la liste,
+        // récupérer la subscription complète depuis Stripe (elle contient toujours current_period_end)
+        let currentPeriodEnd = (subscription as any).current_period_end;
+        if (subscription.status === 'canceled' && !currentPeriodEnd) {
+          console.log('[Stripe] current_period_end not in list response, retrieving full subscription from Stripe...');
+          try {
+            const fullSubscription = await stripe.subscriptions.retrieve(subscription.id);
+            currentPeriodEnd = (fullSubscription as any).current_period_end;
+            console.log('[Stripe] Retrieved full subscription, current_period_end:', currentPeriodEnd);
+            // Mettre à jour l'objet subscription avec les données complètes
+            subscription = fullSubscription as any;
+          } catch (retrieveError) {
+            console.error('[Stripe] Error retrieving full subscription:', retrieveError);
+          }
+        }
 
         // Map price ID to plan type (support both test and live)
         let planType: 'pro_monthly' | 'pro_annual' | null = null;
@@ -314,14 +331,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const canceledAt = (subscription as any).canceled_at 
           ? new Date((subscription as any).canceled_at * 1000).toISOString() 
           : null;
-        const currentPeriodEnd = (subscription as any).current_period_end 
-          ? new Date((subscription as any).current_period_end * 1000).toISOString() 
+        
+        // Convertir currentPeriodEnd en ISO string si disponible
+        const currentPeriodEndISO = currentPeriodEnd 
+          ? new Date(currentPeriodEnd * 1000).toISOString() 
           : null;
+        
+        console.log('[Stripe] Final subscription data:', {
+          status: subscriptionStatus,
+          planType,
+          currentPeriodEnd: currentPeriodEndISO,
+          canceledAt,
+        });
 
         return res.status(200).json({
           status: subscriptionStatus,
           planType,
-          currentPeriodEnd,
+          currentPeriodEnd: currentPeriodEndISO,
           cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
           canceledAt,
           canceledDate: canceledAt || null, // Return ISO string, frontend will format based on language
