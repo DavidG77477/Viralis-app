@@ -667,6 +667,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           canceledAt: canceledSubscription.canceled_at 
             ? new Date(canceledSubscription.canceled_at * 1000).toISOString()
             : null,
+          current_period_end: (canceledSubscription as any).current_period_end 
+            ? new Date((canceledSubscription as any).current_period_end * 1000).toISOString()
+            : null,
         });
 
         // Récupérer le planType et current_period_end avant de mettre à jour (pour garder l'accès jusqu'à la fin)
@@ -715,7 +718,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Si on a une date de fin d'accès, l'ajouter
         if (proAccessUntil) {
           updateData.pro_access_until = proAccessUntil;
+          console.log('[Stripe] ✅ Will update pro_access_until to:', proAccessUntil);
+        } else {
+          console.warn('[Stripe] ⚠️ No proAccessUntil date available - current_period_end may not be in canceledSubscription');
         }
+        
+        console.log('[Stripe] Updating user with data:', updateData);
         
         const { error: updateError, data: updatedUser } = await supabase
           .from('users')
@@ -735,6 +743,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             stripe_subscription_id: updatedUser.stripe_subscription_id,
             pro_access_until: updatedUser.pro_access_until || 'N/A',
           });
+          
+          if (!updatedUser.pro_access_until && proAccessUntil) {
+            console.error('[Stripe] ⚠️ WARNING: pro_access_until was not saved even though proAccessUntil was provided!');
+          }
         } else {
           console.warn('[Stripe] ⚠️ Update succeeded but no data returned');
         }
