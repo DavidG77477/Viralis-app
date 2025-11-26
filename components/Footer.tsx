@@ -48,12 +48,17 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <Link
-                          to={route}
+                        <a
+                          href={route}
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.pathname = route!;
+                          }}
                         >
                           {link}
-                        </Link>
+                        </a>
                       ) : (
                         <span className="text-slate-400">{link}</span>
                       )}
@@ -68,19 +73,29 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <Link
-                to="/terms"
+              <a
+                href="/terms"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.location.pathname = '/terms';
+                }}
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
-              </Link>
+              </a>
               <span className="text-slate-600">|</span>
-              <Link
-                to="/privacy"
+              <a
+                href="/privacy"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.location.pathname = '/privacy';
+                }}
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-              </Link>
+              </a>
             </div>
           </div>
           <div className="flex space-x-5">
