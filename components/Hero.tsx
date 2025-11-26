@@ -176,9 +176,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               <span>{t.heroTrust3}</span>
             </div>
           </div>
-          <div className="relative flex-1 flex justify-center 
-                          translate-x-0 md:translate-x-2 lg:translate-x-4 xl:translate-x-8
-                          min-h-[400px] md:min-h-[500px] lg:min-h-[600px]">
+          <div className="relative flex-1 flex justify-center translate-x-2 md:translate-x-4 lg:translate-x-8">
             {floatingReactions.map((reaction) => {
               const reactionStyle: React.CSSProperties = {
                 top: reaction.top,
@@ -207,9 +205,8 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 </div>
               );
             })}
-            {/* Glowing background effect - Ajusté pour iPad */}
             <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
-              <div className="relative h-[340px] w-[420px] md:h-[400px] md:w-[500px] lg:h-[440px] lg:w-[560px] max-w-full rounded-[40px]">
+              <div className="relative h-[440px] w-[560px] max-w-full rounded-[40px]">
                 <div className="absolute inset-0 rounded-[40px] bg-gradient-to-r from-[#00ff9d]/60 via-[#00b3ff]/50 to-[#00ff9d]/60 blur-[120px] opacity-50" />
                 <div 
                   className="relative h-full w-full rounded-[40px] bg-gradient-to-r from-[#00ff9d]/80 via-[#00b3ff]/70 to-[#00ff9d]/80"
@@ -229,48 +226,39 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 />
               </div>
             </div>
-            {/* Laptop Image - Position optimisée pour iPad portrait, paysage et desktop */}
-            <div className="pointer-events-none absolute hidden md:block z-15
-                            md:left-[-3rem] md:top-16 md:translate-x-4 md:translate-y-6 md:scale-[1.0]
-                            lg:left-[-1rem] lg:top-24 lg:translate-x-8 lg:translate-y-9 lg:scale-[1.3]
-                            xl:left-0 xl:top-28 xl:translate-x-8 xl:translate-y-9 xl:scale-[1.45]">
+            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15 
+                            lg:left-[-2rem]">
               <img
                 src={laptopImage}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="max-w-[260px] md:max-w-[280px] lg:max-w-[340px] xl:max-w-[360px] w-full rounded-2xl opacity-100"
+                className="max-w-[360px] w-full rounded-2xl opacity-100"
                 style={{
                   animation: 'float-gentle 3s ease-in-out infinite',
                   animationDelay: '0s'
                 }}
               />
             </div>
-            {/* Secondary Image (10k) - Position optimisée pour iPad portrait, paysage et desktop */}
-            <div className="pointer-events-none absolute hidden md:block z-20
-                            md:right-2 md:top-6 md:translate-x-1 md:translate-y-1 md:scale-[0.85]
-                            lg:right-4 lg:top-8 lg:translate-x-1 lg:translate-y-1 lg:scale-[0.95]
-                            xl:right-6 xl:top-10 xl:translate-x-1 xl:translate-y-1 xl:scale-[1.02]">
+            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20
+                            lg:right-10">
               <img
                 src={secondaryImage}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="max-w-[260px] md:max-w-[280px] lg:max-w-[340px] xl:max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
+                className="max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
                 style={{
                   animation: 'float-gentle 3.5s ease-in-out infinite',
                   animationDelay: '1.2s'
                 }}
               />
             </div>
-            {/* Main Hero Image (2k) - Position optimisée pour iPad portrait, paysage et desktop */}
             <img
               src={heroImage}
               alt="Preview of viral video"
               loading="lazy"
-              className="relative z-20 rounded-2xl shadow-lg 
-                         max-w-[300px] md:max-w-[360px] lg:max-w-[420px] xl:max-w-[480px] 
-                         w-full"
+              className="relative z-20 rounded-2xl shadow-lg max-w-[480px] w-full"
               style={{
                 animation: 'float-gentle 4s ease-in-out infinite',
                 animationDelay: '0.6s'
