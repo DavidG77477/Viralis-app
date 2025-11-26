@@ -1340,13 +1340,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       console.log('[Dashboard] Profile reloaded:', {
                         subscription_status: updatedProfile?.subscription_status,
                         stripe_subscription_id: updatedProfile?.stripe_subscription_id,
+                        pro_access_until: updatedProfile?.pro_access_until,
                       });
                       
                       // Recharger le statut d'abonnement depuis Stripe
                       try {
                         const updatedStatus = await getSubscriptionStatus(profile.id);
                         console.log('[Dashboard] Subscription status from Stripe:', updatedStatus);
+                        console.log('[Dashboard] currentPeriodEnd from Stripe:', updatedStatus?.currentPeriodEnd);
                         setSubscriptionStatus(updatedStatus);
+                        
+                        // Si pro_access_until n'est pas encore défini mais que currentPeriodEnd est disponible,
+                        // mettre à jour le profil localement pour l'affichage immédiat
+                        if (updatedProfile && !updatedProfile.pro_access_until && updatedStatus?.currentPeriodEnd) {
+                          console.log('[Dashboard] Updating local profile with currentPeriodEnd for immediate display');
+                          setProfile({ ...updatedProfile, pro_access_until: updatedStatus.currentPeriodEnd });
+                        }
                         // Reload purchase history after cancellation
                         await loadPurchaseHistory(profile.id);
                       } catch (error) {
