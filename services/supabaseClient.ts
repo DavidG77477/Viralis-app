@@ -47,12 +47,15 @@ export interface UserProfile {
 export const isUserPro = (profile: UserProfile | null, subscriptionStatus?: { status: string | null; currentPeriodEnd: string | null } | null): boolean => {
   if (!profile) return false;
   
-  // Vérifier si l'utilisateur a un abonnement actif
+  // Vérifier si l'utilisateur a un abonnement actif (mensuel ou annuel)
   if (profile.subscription_status === 'pro_monthly' || profile.subscription_status === 'pro_annual') {
     return true;
   }
   
   // Vérifier si l'utilisateur a encore accès Pro grâce à pro_access_until
+  // Fonctionne pour les deux types d'abonnements :
+  // - Mensuel : pro_access_until sera dans ~1 mois après annulation
+  // - Annuel : pro_access_until sera dans ~1 an après annulation
   if (profile.pro_access_until) {
     const accessUntil = new Date(profile.pro_access_until);
     const now = new Date();

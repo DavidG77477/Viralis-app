@@ -564,6 +564,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           // Update subscription status and pro_access_until
           // Récupérer current_period_end depuis la subscription Stripe (déjà récupérée)
+          // Fonctionne pour les deux types d'abonnements :
+          // - Mensuel : current_period_end sera dans ~1 mois
+          // - Annuel : current_period_end sera dans ~1 an
+          // Stripe calcule automatiquement cette date selon le type d'abonnement
           const updateData: any = { subscription_status: subscriptionStatus };
           
           if (subscription.current_period_end) {

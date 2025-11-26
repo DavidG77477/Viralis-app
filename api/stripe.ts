@@ -670,10 +670,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Récupérer le planType et current_period_end avant de mettre à jour (pour garder l'accès jusqu'à la fin)
+        // Fonctionne pour les deux types d'abonnements :
+        // - Mensuel : current_period_end sera dans ~1 mois
+        // - Annuel : current_period_end sera dans ~1 an
         let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
         let proAccessUntil: string | null = null;
         try {
           // Récupérer la subscription depuis canceledSubscription (elle contient encore current_period_end)
+          // Stripe calcule automatiquement current_period_end selon le type d'abonnement
           const currentPeriodEnd = (canceledSubscription as any).current_period_end;
           if (currentPeriodEnd) {
             // Convertir le timestamp Unix en ISO string
