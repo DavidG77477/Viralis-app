@@ -54,7 +54,10 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            navigate(route!);
+                            e.nativeEvent.stopImmediatePropagation();
+                            setTimeout(() => {
+                              window.location.href = route!;
+                            }, 0);
                           }}
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer text-left w-full"
                         >
