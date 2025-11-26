@@ -682,11 +682,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
           // Récupérer current_period_end depuis canceledSubscription
           // Cette date représente la fin de la période payée (1 mois ou 1 an après le dernier paiement)
-          const currentPeriodEnd = (canceledSubscription as any).current_period_end;
+          let currentPeriodEnd = (canceledSubscription as any).current_period_end;
+          
+          // Si current_period_end n'est pas disponible dans canceledSubscription, 
+          // récupérer la subscription depuis Stripe (elle devrait toujours avoir current_period_end)
+          if (!currentPeriodEnd) {
+            console.log('[Stripe] current_period_end not in canceledSubscription, retrieving from Stripe...');
+            try {
+              const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+              currentPeriodEnd = (retrievedSubscription as any).current_period_end;
+              console.log('[Stripe] Retrieved current_period_end from Stripe:', currentPeriodEnd);
+            } catch (retrieveError) {
+              console.warn('[Stripe] Could not retrieve subscription from Stripe:', retrieveError);
+            }
+          }
+          
           if (currentPeriodEnd) {
             // Convertir le timestamp Unix en ISO string
             proAccessUntil = new Date(currentPeriodEnd * 1000).toISOString();
-            console.log('[Stripe] Pro access until (from current_period_end):', proAccessUntil);
+            console.log('[Stripe] ✅ Pro access until (from current_period_end):', proAccessUntil);
+          } else {
+            console.error('[Stripe] ❌ current_period_end is not available in canceledSubscription or retrieved subscription');
           }
           
           const priceId = (canceledSubscription as any).items?.data?.[0]?.price?.id;
