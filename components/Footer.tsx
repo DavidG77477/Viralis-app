@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { TikTokIcon, YouTubeIcon, InstagramIcon, XLogoIcon, ViralisFullLogo } from './icons/Icons';
 import type { Language } from '../App';
 import { translations } from '../translations';
@@ -12,6 +12,7 @@ const socialLinks = [
 ];
 
 const Footer: React.FC<{ language: Language }> = ({ language }) => {
+  const navigate = useNavigate();
   const t = translations[language];
   const footerLinks = t.footerLinks;
   
@@ -48,16 +49,15 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <a 
-                          href={route}
-                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.location.href = route!;
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigate(route!);
                           }}
+                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer text-left w-full"
                         >
                           {link}
-                        </a>
+                        </button>
                       ) : (
                         <a href="#" className="text-slate-400 hover:text-brand-green transition-colors">{link}</a>
                       )}
@@ -72,27 +72,21 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <a 
-                href="/terms"
+              <button
+                type="button"
+                onClick={() => navigate('/terms')}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = '/terms';
-                }}
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
-              </a>
+              </button>
               <span className="text-slate-600">|</span>
-              <a 
-                href="/privacy"
+              <button
+                type="button"
+                onClick={() => navigate('/privacy')}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = '/privacy';
-                }}
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-              </a>
+              </button>
             </div>
           </div>
           <div className="flex space-x-5">
