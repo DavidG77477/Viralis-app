@@ -416,10 +416,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
   const handleSignOut = async () => {
     try {
       await signOut();
+      // Force une redirection complète pour Safari (navigate() peut ne pas fonctionner)
+      window.location.href = '/';
     } catch (error) {
       console.error('Erreur lors de la déconnexion :', error);
-    } finally {
-      navigate('/');
+      // Même en cas d'erreur, rediriger pour Safari
+      window.location.href = '/';
     }
   };
 
@@ -831,43 +833,45 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                           
                           {!videoError ? (
                             <>
-                              {/* Afficher la première frame capturée ou la thumbnail comme poster */}
-                              {posterImage ? (
-                                <img
-                                  src={posterImage}
-                                  alt="Video thumbnail"
-                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 z-10"
-                                />
-                              ) : video.thumbnail_url ? (
-                                <img
-                                  src={video.thumbnail_url}
-                                  alt="Video thumbnail"
-                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 z-10"
-                                />
-                              ) : null}
-                              {/* Vidéo cachée - utilisée uniquement pour capturer la première frame */}
+                              {/* Afficher la vidéo directement en autoplay (sans son) */}
                               <video
                                 ref={videoRef}
                                 src={video.video_url}
-                                className="hidden"
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 controls={false}
-                                preload="metadata"
+                                preload="auto"
                                 playsInline
                                 muted
+                                autoPlay
+                                loop
+                                poster={video.thumbnail_url || undefined}
                                 // @ts-ignore - Safari-specific attributes
                                 webkit-playsinline="true"
                                 // @ts-ignore - Safari-specific attributes
                                 x-webkit-airplay="allow"
+                                // Pour Safari, ne pas utiliser crossOrigin si cela bloque le chargement
                                 {...(isSafari ? {} : { crossOrigin: 'anonymous' })}
                                 onError={(e) => handleVideoError(e)}
                                 onLoadedMetadata={handleVideoLoadedMetadata}
-                                onSeeked={handleVideoSeeked}
                                 onCanPlay={handleVideoCanPlay}
+                                onPlay={() => {
+                                  // Safari: Forcer la lecture une fois que la vidéo peut jouer
+                                  console.log('[Video Debug] Video started playing');
+                                  setIsVideoLoading(false);
+                                }}
                                 onLoadedData={() => {
                                   console.log('[Video Debug] Video data loaded:', video.video_url);
-                                  // Essayer de capturer la première frame si pas encore fait
-                                  if (!posterImage && videoRef.current && videoRef.current.readyState >= 2) {
-                                    videoRef.current.currentTime = 0.1;
+                                  setIsVideoLoading(false);
+                                  // Safari: Essayer de jouer la vidéo automatiquement
+                                  if (isSafari && videoRef.current) {
+                                    videoRef.current.play().then(() => {
+                                      console.log('[Video Debug] Safari: Video autoplay started successfully');
+                                      setIsVideoLoading(false);
+                                    }).catch((err) => {
+                                      console.log('[Video Debug] Safari autoplay prevented:', err);
+                                      // L'autoplay a été bloqué, mais la vidéo est chargée
+                                      setIsVideoLoading(false);
+                                    });
                                   }
                                 }}
                                 onLoadStart={() => {
