@@ -15,6 +15,7 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
   const t = translations[language];
     
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -165,7 +166,16 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                         <div className="relative" ref={dropdownRef}>
                             <button
                                 ref={dropdownButtonRef}
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                onClick={() => {
+                                    if (dropdownButtonRef.current) {
+                                        const rect = dropdownButtonRef.current.getBoundingClientRect();
+                                        setDropdownPosition({
+                                            top: rect.bottom + window.scrollY + 8, // 8px = mt-2 equivalent
+                                            right: window.innerWidth - rect.right,
+                                        });
+                                    }
+                                    setIsDropdownOpen(!isDropdownOpen);
+                                }}
                                 className="flex items-center justify-center gap-1.5 border border-slate-700/50 rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-600 hover:bg-slate-800/50 transition-all duration-200 backdrop-blur-sm min-w-[60px]"
                                 aria-haspopup="true"
                                 aria-expanded={isDropdownOpen}
@@ -179,7 +189,13 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                                 </svg>
                             </button>
                             {isDropdownOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-36 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden animate-fade-in">
+                                <div 
+                                    className="fixed w-36 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden animate-fade-in z-[9999]"
+                                    style={{
+                                        top: `${dropdownPosition.top}px`,
+                                        right: `${dropdownPosition.right}px`,
+                                    }}
+                                >
                                     <ul role="menu" className="py-1">
                                         {languageOptions.map(option => (
                                             <li key={option.code}>
