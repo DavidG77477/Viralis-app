@@ -2,8 +2,6 @@ import React from 'react';
 import type { Language } from '../App';
 import { translations } from '../translations';
 import heroImage from '../attached_assets/2k.png';
-import secondaryImage from '../attached_assets/10k.png';
-import laptopImage from '../attached_assets/laptop.png';
 import tokenImage from '../attached_assets/token.png';
 
 interface FloatingReaction {
@@ -252,33 +250,6 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                   }}
                 />
               </div>
-            </div>
-            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15 hide-ipad-portrait
-                            lg:left-[-2rem]">
-              <img
-                src={laptopImage}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                className="max-w-[360px] w-full rounded-2xl opacity-100"
-                style={{
-                  animation: 'float-gentle 3s ease-in-out infinite',
-                  animationDelay: '0s'
-                }}
-              />
-            </div>
-            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20 ipad-landscape-right hide-ipad-portrait">
-              <img
-                src={secondaryImage}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                className="max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
-                style={{
-                  animation: 'float-gentle 3.5s ease-in-out infinite',
-                  animationDelay: '1.2s'
-                }}
-              />
             </div>
             <img
               src={heroImage}
