@@ -771,20 +771,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         
         // Programmer l'annulation dans Stripe pour la date calculée
-        const canceledSubscription = await stripe.subscriptions.update(subscriptionId, {
-          cancel_at: cancelAtTimestamp,
-          cancel_at_period_end: false, // On annule à la date spécifique calculée
-        });
-
-        console.log('[Stripe] Subscription scheduled for cancellation:', {
-          subscriptionId: canceledSubscription.id,
-          status: canceledSubscription.status,
-          cancelAt: cancelAtTimestamp ? new Date(cancelAtTimestamp * 1000).toISOString() : null,
-          cancelAtPeriodEnd: (canceledSubscription as any).cancel_at_period_end,
-          current_period_end: (canceledSubscription as any).current_period_end 
-            ? new Date((canceledSubscription as any).current_period_end * 1000).toISOString()
-            : null,
-        });
+        let canceledSubscription;
+        try {
+          canceledSubscription = await stripe.subscriptions.update(subscriptionId, {
+            cancel_at: cancelAtTimestamp,
+          });
+          
+          console.log('[Stripe] Subscription scheduled for cancellation:', {
+            subscriptionId: canceledSubscription.id,
+            status: canceledSubscription.status,
+            cancelAt: cancelAtTimestamp ? new Date(cancelAtTimestamp * 1000).toISOString() : null,
+            cancelAtPeriodEnd: (canceledSubscription as any).cancel_at_period_end,
+            current_period_end: (canceledSubscription as any).current_period_end 
+              ? new Date((canceledSubscription as any).current_period_end * 1000).toISOString()
+              : null,
+          });
+        } catch (stripeError: any) {
+          console.error('[Stripe] Error scheduling cancellation:', stripeError);
+          console.error('[Stripe] Error details:', {
+            message: stripeError.message,
+            type: stripeError.type,
+            code: stripeError.code,
+            decline_code: stripeError.decline_code,
+            param: stripeError.param,
+            subscriptionId,
+            cancelAtTimestamp,
+            cancelAtDate: new Date(cancelAtTimestamp * 1000).toISOString(),
+          });
+          
+          return res.status(500).json({ 
+            error: 'Failed to schedule subscription cancellation',
+            details: stripeError.message || 'Stripe operation failed',
+            code: stripeError.code || 'unknown_error',
+            type: stripeError.type || 'StripeAPIError',
+          });
+        }
 
         // Calculer pro_access_until comme la date d'annulation programmée (déjà calculée comme maintenant + période)
         // Cette date est la même que cancelAtTimestamp puisque nous programmons l'annulation pour cette date
