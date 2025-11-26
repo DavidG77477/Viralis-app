@@ -52,10 +52,6 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                         <a
                           href={route}
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.location.href = route!;
-                          }}
                         >
                           {link}
                         </a>
@@ -76,10 +72,6 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <a
                 href="/terms"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = '/terms';
-                }}
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
               </a>
@@ -87,10 +79,6 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <a
                 href="/privacy"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = '/privacy';
-                }}
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
               </a>
