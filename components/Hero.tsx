@@ -258,7 +258,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               src={heroImage}
               alt="Preview of viral video"
               loading="lazy"
-              className="relative z-20 rounded-2xl shadow-lg max-w-[480px] w-full"
+              className="relative z-20 rounded-2xl shadow-lg max-w-[480px] h-auto"
               style={{
                 animation: 'float-gentle 4s ease-in-out infinite',
                 animationDelay: '0.6s'
