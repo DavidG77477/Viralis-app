@@ -224,27 +224,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
         await loadUserVideos(supabaseProfile.id);
         // Load subscription status and purchase history from Stripe
         // Even if user doesn't have stripe_customer_id yet, try to load (will search by email)
-        try {
+          try {
           const subscriptionStatusData = await getSubscriptionStatus(supabaseProfile.id);
           setSubscriptionStatus(subscriptionStatusData);
-          // Update profile with subscription status if it differs
+            // Update profile with subscription status if it differs
           if (subscriptionStatusData.status && subscriptionStatusData.planType) {
-            const currentStatus = supabaseProfile.subscription_status;
+              const currentStatus = supabaseProfile.subscription_status;
             const expectedStatus = subscriptionStatusData.planType;
             if (currentStatus !== expectedStatus && subscriptionStatusData.status === 'active') {
               // Update in Supabase to keep in sync (only if active, not if canceled)
-              const { updateUserSubscriptionStatus } = await import('../services/supabaseClient');
-              await updateUserSubscriptionStatus(supabaseProfile.id, expectedStatus);
-              // Update local profile
-              setProfile({ ...supabaseProfile, subscription_status: expectedStatus });
+                const { updateUserSubscriptionStatus } = await import('../services/supabaseClient');
+                await updateUserSubscriptionStatus(supabaseProfile.id, expectedStatus);
+                // Update local profile
+                setProfile({ ...supabaseProfile, subscription_status: expectedStatus });
+              }
             }
-          }
 
           // Load purchase history (will search by customer_id or email)
           await loadPurchaseHistory(supabaseProfile.id);
-        } catch (error) {
+          } catch (error) {
           console.error('Error loading subscription status or purchase history:', error);
-          // Don't fail the whole page load if subscription status fails
+            // Don't fail the whole page load if subscription status fails
         }
       }
       setIsLoading(false);
@@ -1100,7 +1100,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       <p className="text-red-400 text-sm font-medium">
                         {language === 'fr' 
                           ? `Abonnement annulé le ${new Date(subscriptionStatus.canceledAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                          : language === 'es'
+                              : language === 'es'
                           ? `Suscripción cancelada el ${new Date(subscriptionStatus.canceledAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}`
                           : `Subscription canceled on ${new Date(subscriptionStatus.canceledAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`}
                       </p>
@@ -1113,11 +1113,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     const isCanceled = subscriptionStatus?.status === 'canceled';
                     const accessUntilDate = profile?.pro_access_until || subscriptionStatus?.currentPeriodEnd;
                     
-                    // Si l'abonnement est annulé, afficher la date même si elle n'est pas encore dans pro_access_until
-                    // (elle sera mise à jour lors de la prochaine synchronisation)
+                    // Debug: log pour voir ce qui est disponible
+                    if (isCanceled) {
+                      console.log('[Dashboard] Canceled subscription - accessUntilDate:', accessUntilDate, 'profile.pro_access_until:', profile?.pro_access_until, 'subscriptionStatus.currentPeriodEnd:', subscriptionStatus?.currentPeriodEnd);
+                    }
+                    
+                    // Si l'abonnement est annulé, toujours afficher quelque chose
                     if (isCanceled) {
                       if (!accessUntilDate) {
                         // Si pas de date disponible, afficher un message indiquant qu'on récupère l'info
+                        // Cela peut arriver si l'abonnement vient d'être annulé et que les données ne sont pas encore synchronisées
                         return (
                           <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                             <p className="text-blue-400 text-sm font-medium">
@@ -1196,16 +1201,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                   })()}
                   {subscriptionStatus?.status !== 'canceled' && (
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <button
-                        onClick={() => {
-                          setShowProfileModal(false);
-                          setShowCancelModal(true);
-                        }}
-                        className="flex-1 px-4 py-2 border border-red-500/50 hover:border-red-500 hover:bg-red-500/10 text-red-400 font-medium rounded-lg transition-all duration-200 text-sm"
-                      >
-                        {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : 'Cancel'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setShowProfileModal(false);
+                        setShowCancelModal(true);
+                      }}
+                      className="flex-1 px-4 py-2 border border-red-500/50 hover:border-red-500 hover:bg-red-500/10 text-red-400 font-medium rounded-lg transition-all duration-200 text-sm"
+                    >
+                      {language === 'fr' ? 'Annuler' : language === 'es' ? 'Cancelar' : 'Cancel'}
+                    </button>
+                  </div>
                   )}
                 </div>
               ) : (
@@ -1224,8 +1229,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
               )}
             </div>
           </div>
-        </div>
-      )}
+                </div>
+              )}
 
       {/* Token Notification Modal */}
       {showTokenNotification && (
