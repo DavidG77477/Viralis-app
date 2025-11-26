@@ -734,23 +734,47 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         setIsVideoLoading(false);
                       }, isSafari ? 15000 : 10000);
                       
-                      // Pour Safari, forcer le chargement des métadonnées pour capturer la première frame
+                      // Pour Safari, forcer le chargement et l'autoplay
                       let safariLoadTimeout: NodeJS.Timeout | null = null;
                       if (isSafari && videoRef.current) {
                         // Forcer le chargement immédiatement
-                        console.log('[Video Debug] Safari: Forcing video metadata load');
+                        console.log('[Video Debug] Safari: Forcing video load and autoplay');
                         videoRef.current.load();
+                        
+                        // Essayer de jouer la vidéo automatiquement (Safari permet autoplay si muted)
+                        const tryPlay = () => {
+                          if (videoRef.current && videoRef.current.paused) {
+                            videoRef.current.play().then(() => {
+                              console.log('[Video Debug] Safari: Video autoplay started');
+                              setIsVideoLoading(false);
+                            }).catch((err) => {
+                              console.log('[Video Debug] Safari: Autoplay prevented, will retry:', err);
+                            });
+                          }
+                        };
+                        
+                        // Essayer de jouer quand la vidéo est prête
+                        if (videoRef.current.readyState >= 2) {
+                          tryPlay();
+                        } else {
+                          videoRef.current.addEventListener('loadeddata', tryPlay, { once: true });
+                          videoRef.current.addEventListener('canplay', tryPlay, { once: true });
+                        }
                         
                         // Si après 2 secondes les métadonnées ne sont pas chargées, réessayer
                         safariLoadTimeout = setTimeout(() => {
                           if (videoRef.current && videoRef.current.readyState < 2) {
                             console.log('[Video Debug] Safari: Retrying video load after 2s');
                             videoRef.current.load();
+                            tryPlay();
                           }
                         }, 2000);
                       } else if (videoRef.current) {
-                        // Pour les autres navigateurs, charger normalement
+                        // Pour les autres navigateurs, charger normalement et essayer l'autoplay
                         videoRef.current.load();
+                        videoRef.current.play().catch((err) => {
+                          console.log('[Video Debug] Autoplay prevented:', err);
+                        });
                       }
                       
                       // Test if URL is accessible (sauf pour Safari qui peut bloquer)
@@ -795,26 +819,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     
                     const handleVideoLoadedMetadata = () => {
                       console.log('[Video Debug] Video metadata loaded:', video.video_url);
-                      // Capturer la première frame pour l'afficher comme poster
-                      if (videoRef.current) {
-                        // Aller à la première frame (0 secondes)
-                        videoRef.current.currentTime = 0.1; // Petit offset pour s'assurer qu'on a une frame
+                      // Pour Safari, essayer de jouer immédiatement après le chargement des métadonnées
+                      if (isSafari && videoRef.current && videoRef.current.paused) {
+                        videoRef.current.play().then(() => {
+                          console.log('[Video Debug] Safari: Video started after metadata load');
+                          setIsVideoLoading(false);
+                        }).catch((err) => {
+                          console.log('[Video Debug] Safari: Autoplay failed after metadata:', err);
+                        });
                       }
                     };
                     
-                    const handleVideoSeeked = () => {
-                      // Une fois que la vidéo a cherché la première frame, on la capture
-                      console.log('[Video Debug] Video seeked to first frame, capturing...');
-                      captureFirstFrame();
-                      setIsVideoLoading(false);
-                    };
-                    
                     const handleVideoCanPlay = () => {
-                      // Si on peut jouer, essayer de capturer la première frame
-                      if (videoRef.current && !posterImage) {
-                        console.log('[Video Debug] Video can play, trying to capture first frame');
-                        if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA
-                          videoRef.current.currentTime = 0.1;
+                      // Si on peut jouer, essayer de démarrer l'autoplay (spécifiquement pour Safari)
+                      console.log('[Video Debug] Video can play, trying to start autoplay');
+                      if (videoRef.current) {
+                        // Pour Safari, forcer la lecture si elle n'a pas déjà démarré
+                        if (isSafari && videoRef.current.paused) {
+                          videoRef.current.play().then(() => {
+                            console.log('[Video Debug] Safari: Video started playing after canplay event');
+                            setIsVideoLoading(false);
+                          }).catch((err) => {
+                            console.log('[Video Debug] Safari: Autoplay still prevented:', err);
+                            setIsVideoLoading(false);
+                          });
+                        } else if (!isSafari) {
+                          // Pour les autres navigateurs, la vidéo devrait déjà jouer avec autoplay
+                          setIsVideoLoading(false);
                         }
                       }
                     };
