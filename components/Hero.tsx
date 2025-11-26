@@ -155,8 +155,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
             and (max-width: 1366px) 
             and (orientation: landscape) {
             .ipad-landscape-right {
-              right: -38px !important; /* 1.5rem (24px) - 50px = -26px, mais on veut 50px de plus à droite donc -38px */
-              transform: translateX(-50px) translateY(4px) scale(1.02) !important;
+              right: calc(1.5rem - 50px) !important; /* Déplacer de 50px vers la droite = réduire right de 50px */
             }
           }
         `}
