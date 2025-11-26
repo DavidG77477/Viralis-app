@@ -114,7 +114,10 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [videoUrl, setVideoUrl] = useState('');
     const featuredVideoRef = useRef<HTMLVideoElement | null>(null);
-    const secondaryVideoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+    // Créer les refs pour toutes les vidéos secondaires dès le début
+    const secondaryVideoRefs = useRef<React.RefObject<HTMLVideoElement>[]>(
+      secondaryVideos.map(() => React.createRef<HTMLVideoElement>())
+    );
 
     // Détecter Safari (y compris iPhone)
     const isSafari = typeof window !== 'undefined' && 
@@ -129,43 +132,60 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
     // Forcer l'autoplay sur Safari après chargement
     useEffect(() => {
         const tryPlayVideos = () => {
+            console.log('[Demo] Attempting to play all videos on Safari...');
+            
             // Featured video
             if (featuredVideoRef.current && featuredVideoRef.current.paused) {
-                featuredVideoRef.current.play().catch((err) => {
+                featuredVideoRef.current.play().then(() => {
+                    console.log('[Demo] Featured video started playing');
+                }).catch((err) => {
                     console.log('[Demo] Featured video autoplay prevented:', err);
                 });
             }
             
-            // Secondary videos
-            secondaryVideoRefs.current.forEach((videoRef) => {
-                if (videoRef && videoRef.paused) {
-                    videoRef.play().catch((err) => {
-                        console.log('[Demo] Secondary video autoplay prevented:', err);
+            // Secondary videos - utiliser .current pour accéder à l'élément
+            secondaryVideoRefs.current.forEach((videoRef, index) => {
+                if (videoRef?.current && videoRef.current.paused) {
+                    videoRef.current.play().then(() => {
+                        console.log(`[Demo] Secondary video ${index} started playing`);
+                    }).catch((err) => {
+                        console.log(`[Demo] Secondary video ${index} autoplay prevented:`, err);
                     });
                 }
             });
         };
 
         if (isSafari) {
-            // Pour Safari, essayer de jouer après un court délai
-            const timeout = setTimeout(tryPlayVideos, 500);
+            // Pour Safari, essayer plusieurs fois avec des délais différents
+            const timeouts: NodeJS.Timeout[] = [];
+            
+            // Premier essai après 500ms
+            timeouts.push(setTimeout(tryPlayVideos, 500));
+            
+            // Deuxième essai après 1.5s (quand les vidéos sont chargées)
+            timeouts.push(setTimeout(tryPlayVideos, 1500));
+            
+            // Troisième essai après 3s
+            timeouts.push(setTimeout(tryPlayVideos, 3000));
             
             // Aussi essayer après interaction utilisateur (clique n'importe où)
             const handleUserInteraction = () => {
+                console.log('[Demo] User interaction detected, attempting to play videos');
                 tryPlayVideos();
-                // Nettoyer après la première interaction
-                document.removeEventListener('touchstart', handleUserInteraction);
-                document.removeEventListener('click', handleUserInteraction);
             };
             
             document.addEventListener('touchstart', handleUserInteraction, { once: true });
             document.addEventListener('click', handleUserInteraction, { once: true });
             
             return () => {
-                clearTimeout(timeout);
+                timeouts.forEach(timeout => clearTimeout(timeout));
                 document.removeEventListener('touchstart', handleUserInteraction);
                 document.removeEventListener('click', handleUserInteraction);
             };
+        } else {
+            // Pour les autres navigateurs, essayer une fois après chargement
+            const timeout = setTimeout(tryPlayVideos, 1000);
+            return () => clearTimeout(timeout);
         }
     }, [isSafari]);
 
@@ -287,12 +307,7 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
-          {secondaryVideos.map((video, index) => {
-            // Créer une ref pour chaque vidéo secondaire
-            if (!secondaryVideoRefs.current[index]) {
-              secondaryVideoRefs.current[index] = React.createRef<HTMLVideoElement>();
-            }
-            return (
+          {secondaryVideos.map((video, index) => (
               <div 
                 key={index} 
                 className="animate-fade-in-up"
@@ -301,13 +316,12 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
                 <div onClick={() => video.video && handlePlayVideo(video.video)}>
                   <DemoCard 
                     {...video} 
-                    videoRef={secondaryVideoRefs.current[index] as React.RefObject<HTMLVideoElement>}
+                    videoRef={secondaryVideoRefs.current[index]}
                     isSafari={isSafari}
                   />
                 </div>
               </div>
-            );
-          })}
+            ))}
         </div>
       </div>
     </section>
