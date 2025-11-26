@@ -32,11 +32,27 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <h4 className="font-bold text-white mb-4">{title}</h4>
               <ul className="space-y-3">
                 {/* FIX: Cast `links` to string[] to resolve TypeScript error where it was inferred as 'unknown'. */}
-                {(links as string[]).map(link => (
-                  <li key={link}>
-                    <a href="#" className="text-slate-400 hover:text-brand-green transition-colors">{link}</a>
-                  </li>
-                ))}
+                {(links as string[]).map(link => {
+                  // Map footer link text to routes
+                  const linkMap: Record<string, string> = {
+                    'Terms of Service': '/terms',
+                    'Conditions d\'Utilisation': '/terms',
+                    'Términos de Servicio': '/terms',
+                    'Privacy Policy': '/privacy',
+                    'Politique de Confidentialité': '/privacy',
+                    'Política de Privacidad': '/privacy',
+                  };
+                  const route = linkMap[link];
+                  return (
+                    <li key={link}>
+                      {route ? (
+                        <Link to={route} className="text-slate-400 hover:text-brand-green transition-colors">{link}</Link>
+                      ) : (
+                        <a href="#" className="text-slate-400 hover:text-brand-green transition-colors">{link}</a>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
