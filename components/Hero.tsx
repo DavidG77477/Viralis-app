@@ -241,7 +241,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               />
             </div>
             <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20
-                            lg:right-16 xl:right-6">
+                            lg:translate-x-[51px] xl:translate-x-1">
               <img
                 src={secondaryImage}
                 alt=""
