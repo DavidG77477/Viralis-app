@@ -337,9 +337,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? new Date(currentPeriodEnd * 1000).toISOString() 
           : null;
         
-        // Si l'abonnement est annulé et que current_period_end n'est pas disponible,
-        // essayer de le calculer à partir de la dernière invoice ou utiliser une estimation
-        if (subscriptionStatus === 'canceled' && !currentPeriodEndISO && planType) {
+        // Pour les abonnements annulés, calculer la date de fin d'accès comme : date d'annulation + 1 mois (ou 1 an)
+        // C'est différent de current_period_end qui représente la fin de la période de facturation
+        if (subscriptionStatus === 'canceled' && canceledAt && planType) {
+          const canceledDate = new Date(canceledAt);
+          const accessEndDate = new Date(canceledDate);
+          
+          // Calculer la date de fin d'accès : date d'annulation + période
+          if (planType === 'pro_monthly') {
+            accessEndDate.setMonth(accessEndDate.getMonth() + 1);
+            console.log('[Stripe] Calculated access end date for monthly: canceled_at + 1 month');
+          } else if (planType === 'pro_annual') {
+            accessEndDate.setFullYear(accessEndDate.getFullYear() + 1);
+            console.log('[Stripe] Calculated access end date for annual: canceled_at + 1 year');
+          }
+          
+          // Utiliser cette date calculée comme currentPeriodEnd pour l'affichage
+          currentPeriodEndISO = accessEndDate.toISOString();
+          console.log('[Stripe] Access end date (canceled_at + period):', currentPeriodEndISO);
+        } else if (subscriptionStatus === 'canceled' && !currentPeriodEndISO && planType) {
+          // Fallback si canceledAt n'est pas disponible
           console.log('[Stripe] current_period_end not available for canceled subscription, trying to get from last invoice...');
           
           try {
@@ -360,24 +377,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           } catch (invoiceError) {
             console.warn('[Stripe] Could not get current_period_end from invoice:', invoiceError);
-          }
-          
-          // Si toujours pas disponible, essayer de l'estimer à partir de canceled_at + période
-          if (!currentPeriodEndISO && canceledAt && planType) {
-            const canceledDate = new Date(canceledAt);
-            const estimatedEnd = new Date(canceledDate);
-            
-            if (planType === 'pro_monthly') {
-              estimatedEnd.setMonth(estimatedEnd.getMonth() + 1);
-            } else if (planType === 'pro_annual') {
-              estimatedEnd.setFullYear(estimatedEnd.getFullYear() + 1);
-            }
-            
-            // Utiliser cette estimation seulement si elle est dans le futur
-            if (estimatedEnd > new Date()) {
-              currentPeriodEndISO = estimatedEnd.toISOString();
-              console.log('[Stripe] Estimated current_period_end from canceled_at + period:', currentPeriodEndISO);
-            }
           }
         }
         
@@ -750,29 +749,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
         let proAccessUntil: string | null = null;
         try {
-          // Récupérer current_period_end depuis canceledSubscription
-          // Cette date représente la fin de la période payée (1 mois ou 1 an après le dernier paiement)
-          let currentPeriodEnd = (canceledSubscription as any).current_period_end;
+          // Pour les abonnements annulés, calculer la date de fin d'accès comme : date d'annulation + 1 mois (ou 1 an)
+          // C'est différent de current_period_end qui représente la fin de la période de facturation
+          const canceledAtTimestamp = (canceledSubscription as any).canceled_at;
           
-          // Si current_period_end n'est pas disponible dans canceledSubscription, 
-          // récupérer la subscription depuis Stripe (elle devrait toujours avoir current_period_end)
-          if (!currentPeriodEnd) {
-            console.log('[Stripe] current_period_end not in canceledSubscription, retrieving from Stripe...');
-            try {
-              const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-              currentPeriodEnd = (retrievedSubscription as any).current_period_end;
-              console.log('[Stripe] Retrieved current_period_end from Stripe:', currentPeriodEnd);
-            } catch (retrieveError) {
-              console.warn('[Stripe] Could not retrieve subscription from Stripe:', retrieveError);
+          if (canceledAtTimestamp) {
+            const canceledDate = new Date(canceledAtTimestamp * 1000);
+            const accessEndDate = new Date(canceledDate);
+            
+            // D'abord déterminer le type d'abonnement pour savoir quelle période ajouter
+            const priceId = (canceledSubscription as any).items?.data?.[0]?.price?.id;
+            const proMonthlyPriceIds = [
+              'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
+              'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+            ];
+            const proAnnualPriceIds = [
+              'price_1STdyaQ95ijGuOd8OjQauruf', // Live
+              'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+            ];
+            
+            if (proMonthlyPriceIds.includes(priceId)) {
+              planTypeToKeep = 'pro_monthly';
+              accessEndDate.setMonth(accessEndDate.getMonth() + 1);
+              console.log('[Stripe] Calculated pro_access_until for monthly: canceled_at + 1 month');
+            } else if (proAnnualPriceIds.includes(priceId)) {
+              planTypeToKeep = 'pro_annual';
+              accessEndDate.setFullYear(accessEndDate.getFullYear() + 1);
+              console.log('[Stripe] Calculated pro_access_until for annual: canceled_at + 1 year');
             }
-          }
-          
-          if (currentPeriodEnd) {
-            // Convertir le timestamp Unix en ISO string
-            proAccessUntil = new Date(currentPeriodEnd * 1000).toISOString();
-            console.log('[Stripe] ✅ Pro access until (from current_period_end):', proAccessUntil);
+            
+            proAccessUntil = accessEndDate.toISOString();
+            console.log('[Stripe] ✅ Pro access until (canceled_at + period):', proAccessUntil);
           } else {
-            console.error('[Stripe] ❌ current_period_end is not available in canceledSubscription or retrieved subscription');
+            console.warn('[Stripe] ⚠️ canceled_at not available in canceledSubscription');
+            
+            // Fallback: essayer de récupérer current_period_end depuis Stripe
+            let currentPeriodEnd = (canceledSubscription as any).current_period_end;
+            if (!currentPeriodEnd) {
+              console.log('[Stripe] current_period_end not in canceledSubscription, retrieving from Stripe...');
+              try {
+                const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+                currentPeriodEnd = (retrievedSubscription as any).current_period_end;
+                console.log('[Stripe] Retrieved current_period_end from Stripe:', currentPeriodEnd);
+              } catch (retrieveError) {
+                console.warn('[Stripe] Could not retrieve subscription from Stripe:', retrieveError);
+              }
+            }
+            
+            if (currentPeriodEnd) {
+              proAccessUntil = new Date(currentPeriodEnd * 1000).toISOString();
+              console.log('[Stripe] ✅ Pro access until (from current_period_end fallback):', proAccessUntil);
+            } else {
+              console.error('[Stripe] ❌ Could not determine pro_access_until - no canceled_at or current_period_end');
+            }
           }
           
           const priceId = (canceledSubscription as any).items?.data?.[0]?.price?.id;

@@ -498,30 +498,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`[Stripe Webhook] Deleted token distribution schedule for user ${userData.id}`);
         }
 
-        // Set subscription status to free but keep pro_access_until until current_period_end
-        // current_period_end représente la fin de la période payée :
-        // - Mensuel : dernier paiement + 1 mois
-        // - Annuel : dernier paiement + 1 an
+        // Set subscription status to free but keep pro_access_until until canceled_at + 1 mois/1 an
+        // Pour les abonnements annulés, la date de fin d'accès = date d'annulation + période (1 mois ou 1 an)
         const updateData: any = { 
           subscription_status: 'free',
           stripe_subscription_id: null,
         };
         
-        // Récupérer current_period_end depuis la subscription object du webhook
-        // Cette date représente la fin de la période payée (1 mois ou 1 an après le dernier paiement)
-        if (subscription.current_period_end) {
-          updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
-          console.log('[Stripe Webhook] Pro access until (from subscription object):', updateData.pro_access_until);
+        // Calculer pro_access_until à partir de canceled_at + période
+        const canceledAtTimestamp = (subscription as any).canceled_at;
+        if (canceledAtTimestamp) {
+          const canceledDate = new Date(canceledAtTimestamp * 1000);
+          const accessEndDate = new Date(canceledDate);
+          
+          // Déterminer le type d'abonnement pour savoir quelle période ajouter
+          const priceId = subscription.items.data[0]?.price.id;
+          const proMonthlyPriceIds = [
+            'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
+            'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+          ];
+          const proAnnualPriceIds = [
+            'price_1STdyaQ95ijGuOd8OjQauruf', // Live
+            'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+          ];
+          
+          if (proMonthlyPriceIds.includes(priceId)) {
+            accessEndDate.setMonth(accessEndDate.getMonth() + 1);
+            console.log('[Stripe Webhook] Calculated pro_access_until for monthly: canceled_at + 1 month');
+          } else if (proAnnualPriceIds.includes(priceId)) {
+            accessEndDate.setFullYear(accessEndDate.getFullYear() + 1);
+            console.log('[Stripe Webhook] Calculated pro_access_until for annual: canceled_at + 1 year');
+          }
+          
+          updateData.pro_access_until = accessEndDate.toISOString();
+          console.log('[Stripe Webhook] Pro access until (canceled_at + period):', updateData.pro_access_until);
         } else {
-          // Si pas disponible dans l'objet webhook, essayer de récupérer depuis Stripe
-          try {
-            const canceledSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-            if (canceledSubscription.current_period_end) {
-              updateData.pro_access_until = new Date(canceledSubscription.current_period_end * 1000).toISOString();
-              console.log('[Stripe Webhook] Pro access until (from Stripe API):', updateData.pro_access_until);
+          // Fallback: utiliser current_period_end si canceled_at n'est pas disponible
+          if (subscription.current_period_end) {
+            updateData.pro_access_until = new Date(subscription.current_period_end * 1000).toISOString();
+            console.log('[Stripe Webhook] Pro access until (from current_period_end fallback):', updateData.pro_access_until);
+          } else {
+            // Dernier fallback: récupérer depuis Stripe
+            try {
+              const canceledSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+              if (canceledSubscription.current_period_end) {
+                updateData.pro_access_until = new Date(canceledSubscription.current_period_end * 1000).toISOString();
+                console.log('[Stripe Webhook] Pro access until (from Stripe API):', updateData.pro_access_until);
+              }
+            } catch (err) {
+              console.warn('[Stripe Webhook] Could not retrieve current_period_end from canceled subscription:', err);
             }
-          } catch (err) {
-            console.warn('[Stripe Webhook] Could not retrieve current_period_end from canceled subscription:', err);
           }
         }
         
