@@ -750,44 +750,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         console.log('[Stripe] Plan type:', planTypeToKeep);
         
-        // Programmer l'annulation à la fin de la période actuelle dans Stripe
-        // L'abonnement restera actif jusqu'à current_period_end, mais ne sera pas renouvelé
-        const now = Math.floor(Date.now() / 1000);
-        let cancelAtTimestamp: number;
+        // Calculer la date de fin d'accès Pro (maintenant + période)
+        // Cette date sera stockée dans Supabase, pas dans Stripe
+        const now = new Date();
+        let proAccessUntil: string | null = null;
         
         if (planTypeToKeep === 'pro_monthly') {
-          // Calculer la date d'annulation comme maintenant + 1 mois
-          const cancelDate = new Date();
-          cancelDate.setMonth(cancelDate.getMonth() + 1);
-          cancelAtTimestamp = Math.floor(cancelDate.getTime() / 1000);
+          // Calculer la date de fin d'accès comme maintenant + 1 mois
+          const accessEndDate = new Date(now);
+          accessEndDate.setMonth(accessEndDate.getMonth() + 1);
+          proAccessUntil = accessEndDate.toISOString();
+          console.log('[Stripe] Calculated pro_access_until for monthly: now + 1 month =', proAccessUntil);
         } else if (planTypeToKeep === 'pro_annual') {
-          // Calculer la date d'annulation comme maintenant + 1 an
-          const cancelDate = new Date();
-          cancelDate.setFullYear(cancelDate.getFullYear() + 1);
-          cancelAtTimestamp = Math.floor(cancelDate.getTime() / 1000);
-        } else {
-          // Fallback: utiliser current_period_end si disponible
-          cancelAtTimestamp = (currentSubscription as any).current_period_end || now;
+          // Calculer la date de fin d'accès comme maintenant + 1 an
+          const accessEndDate = new Date(now);
+          accessEndDate.setFullYear(accessEndDate.getFullYear() + 1);
+          proAccessUntil = accessEndDate.toISOString();
+          console.log('[Stripe] Calculated pro_access_until for annual: now + 1 year =', proAccessUntil);
         }
         
-        // Programmer l'annulation dans Stripe pour la date calculée
+        // Annuler immédiatement l'abonnement dans Stripe
+        // On gère l'accès Pro jusqu'à pro_access_until dans notre système Supabase
         let canceledSubscription;
         try {
-          canceledSubscription = await stripe.subscriptions.update(subscriptionId, {
-            cancel_at: cancelAtTimestamp,
-          });
+          canceledSubscription = await stripe.subscriptions.cancel(subscriptionId);
           
-          console.log('[Stripe] Subscription scheduled for cancellation:', {
+          console.log('[Stripe] Subscription cancelled immediately:', {
             subscriptionId: canceledSubscription.id,
             status: canceledSubscription.status,
-            cancelAt: cancelAtTimestamp ? new Date(cancelAtTimestamp * 1000).toISOString() : null,
-            cancelAtPeriodEnd: (canceledSubscription as any).cancel_at_period_end,
-            current_period_end: (canceledSubscription as any).current_period_end 
-              ? new Date((canceledSubscription as any).current_period_end * 1000).toISOString()
-              : null,
-          });
+            canceledAt: (canceledSubscription as any).canceled_at 
+              ? new Date((canceledSubscription as any).canceled_at * 1000).toISOString()
+            : null,
+        });
         } catch (stripeError: any) {
-          console.error('[Stripe] Error scheduling cancellation:', stripeError);
+          console.error('[Stripe] Error cancelling subscription:', stripeError);
           console.error('[Stripe] Error details:', {
             message: stripeError.message,
             type: stripeError.type,
@@ -795,28 +791,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             decline_code: stripeError.decline_code,
             param: stripeError.param,
             subscriptionId,
-            cancelAtTimestamp,
-            cancelAtDate: new Date(cancelAtTimestamp * 1000).toISOString(),
           });
           
           return res.status(500).json({ 
-            error: 'Failed to schedule subscription cancellation',
+            error: 'Failed to cancel subscription',
             details: stripeError.message || 'Stripe operation failed',
             code: stripeError.code || 'unknown_error',
             type: stripeError.type || 'StripeAPIError',
           });
         }
 
-        // Calculer pro_access_until comme la date d'annulation programmée (déjà calculée comme maintenant + période)
-        // Cette date est la même que cancelAtTimestamp puisque nous programmons l'annulation pour cette date
-        let proAccessUntil: string | null = null;
-        try {
-          // Utiliser la date calculée (maintenant + période)
-          proAccessUntil = new Date(cancelAtTimestamp * 1000).toISOString();
-          console.log('[Stripe] ✅ Pro access until (cancel_at timestamp):', proAccessUntil);
-        } catch (err) {
-          console.warn('[Stripe] Could not calculate pro_access_until:', err);
-        }
+        // proAccessUntil a déjà été calculé plus haut (maintenant + période)
+        console.log('[Stripe] ✅ Pro access until (calculated):', proAccessUntil);
 
         // Mettre à jour le statut dans Supabase
         // On met subscription_status à 'free' mais on garde pro_access_until jusqu'à current_period_end
@@ -876,9 +862,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.status(200).json({ 
           success: true,
-          message: `Subscription scheduled for cancellation on ${new Date(cancelAtTimestamp * 1000).toLocaleDateString()}. Access will remain active until then.`,
+          message: proAccessUntil 
+            ? `Subscription cancelled. Access will remain active until ${new Date(proAccessUntil).toLocaleDateString()}.`
+            : 'Subscription cancelled successfully.',
           status: canceledSubscription.status,
-          cancel_at: new Date(cancelAtTimestamp * 1000).toISOString(),
+          canceled_at: (canceledSubscription as any).canceled_at 
+            ? new Date((canceledSubscription as any).canceled_at * 1000).toISOString()
+            : null,
           pro_access_until: proAccessUntil,
         });
       }
