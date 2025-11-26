@@ -779,21 +779,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log('[Stripe] Calculated pro_access_until for annual: now + 1 year =', proAccessUntil);
         }
         
-        // Annuler immédiatement l'abonnement dans Stripe
-        // On gère l'accès Pro jusqu'à pro_access_until dans notre système Supabase
+        // Programmer l'annulation dans Stripe pour la date calculée (maintenant + période)
+        // Ainsi, l'utilisateur continuera d'être facturé jusqu'à cette date, puis Stripe annulera automatiquement
+        const cancelAtTimestamp = Math.floor(new Date(proAccessUntil).getTime() / 1000);
+        
         let canceledSubscription;
         try {
-          canceledSubscription = await stripe.subscriptions.cancel(subscriptionId);
+          // Programmer l'annulation à la date spécifique
+          canceledSubscription = await stripe.subscriptions.update(subscriptionId, {
+            cancel_at: cancelAtTimestamp,
+          });
           
-          console.log('[Stripe] Subscription cancelled immediately:', {
+          console.log('[Stripe] Subscription scheduled for cancellation at:', {
             subscriptionId: canceledSubscription.id,
             status: canceledSubscription.status,
-            canceledAt: (canceledSubscription as any).canceled_at 
-              ? new Date((canceledSubscription as any).canceled_at * 1000).toISOString()
-            : null,
+            cancel_at: cancelAtTimestamp ? new Date(cancelAtTimestamp * 1000).toISOString() : null,
+            cancel_at_period_end: (canceledSubscription as any).cancel_at_period_end,
+            pro_access_until: proAccessUntil,
         });
         } catch (stripeError: any) {
-          console.error('[Stripe] Error cancelling subscription:', stripeError);
+          console.error('[Stripe] Error scheduling subscription cancellation:', stripeError);
           console.error('[Stripe] Error details:', {
             message: stripeError.message,
             type: stripeError.type,
@@ -801,14 +806,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             decline_code: stripeError.decline_code,
             param: stripeError.param,
             subscriptionId,
+            cancelAtTimestamp,
+            cancelAtDate: new Date(cancelAtTimestamp * 1000).toISOString(),
           });
           
-          return res.status(500).json({ 
-            error: 'Failed to cancel subscription',
-            details: stripeError.message || 'Stripe operation failed',
-            code: stripeError.code || 'unknown_error',
-            type: stripeError.type || 'StripeAPIError',
-          });
+          // Si la programmation échoue (par exemple, date trop lointaine), annuler immédiatement
+          console.warn('[Stripe] Scheduling failed, falling back to immediate cancellation');
+          try {
+            canceledSubscription = await stripe.subscriptions.cancel(subscriptionId);
+            console.log('[Stripe] Subscription cancelled immediately as fallback');
+          } catch (immediateCancelError: any) {
+            console.error('[Stripe] Immediate cancellation also failed:', immediateCancelError);
+            return res.status(500).json({ 
+              error: 'Failed to cancel subscription',
+              details: immediateCancelError.message || stripeError.message || 'Stripe operation failed',
+              code: immediateCancelError.code || stripeError.code || 'unknown_error',
+              type: immediateCancelError.type || stripeError.type || 'StripeAPIError',
+            });
+          }
         }
 
         // proAccessUntil a déjà été calculé plus haut (maintenant + période)
