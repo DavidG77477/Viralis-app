@@ -910,9 +910,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               foundSubscriptionId = canceledSubscription.id;
               const priceId = canceledSubscription.items.data[0]?.price.id;
               subscriptionStatus = 'free'; // Statut à 'free' pour les annulés
+              
+              // Essayer d'obtenir current_period_end depuis la liste
               if ((canceledSubscription as any).current_period_end) {
                 currentPeriodEnd = new Date((canceledSubscription as any).current_period_end * 1000).toISOString();
+              } else {
+                // Si pas disponible dans la liste, récupérer la subscription complète depuis Stripe
+                console.log('[Stripe] current_period_end not in canceled subscription list, retrieving full subscription...');
+                try {
+                  const fullCanceledSubscription = await stripe.subscriptions.retrieve(canceledSubscription.id);
+                  if ((fullCanceledSubscription as any).current_period_end) {
+                    currentPeriodEnd = new Date((fullCanceledSubscription as any).current_period_end * 1000).toISOString();
+                    console.log('[Stripe] Retrieved current_period_end from full subscription:', currentPeriodEnd);
+                  }
+                } catch (retrieveError) {
+                  console.error('[Stripe] Error retrieving full canceled subscription:', retrieveError);
+                }
               }
+              
               console.log('[Stripe] Found canceled subscription by customer_id:', foundSubscriptionId, 'current_period_end:', currentPeriodEnd);
             }
           }
