@@ -176,7 +176,9 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               <span>{t.heroTrust3}</span>
             </div>
           </div>
-          <div className="relative flex-1 flex justify-center translate-x-2 md:translate-x-4 lg:translate-x-8">
+          <div className="relative flex-1 flex justify-center 
+                          translate-x-0 md:translate-x-2 lg:translate-x-4 xl:translate-x-8
+                          min-h-[400px] md:min-h-[500px] lg:min-h-[600px]">
             {floatingReactions.map((reaction) => {
               const reactionStyle: React.CSSProperties = {
                 top: reaction.top,
@@ -205,8 +207,9 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 </div>
               );
             })}
+            {/* Glowing background effect - Ajusté pour iPad */}
             <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
-              <div className="relative h-[440px] w-[560px] max-w-full rounded-[40px]">
+              <div className="relative h-[340px] w-[420px] md:h-[400px] md:w-[500px] lg:h-[440px] lg:w-[560px] max-w-full rounded-[40px]">
                 <div className="absolute inset-0 rounded-[40px] bg-gradient-to-r from-[#00ff9d]/60 via-[#00b3ff]/50 to-[#00ff9d]/60 blur-[120px] opacity-50" />
                 <div 
                   className="relative h-full w-full rounded-[40px] bg-gradient-to-r from-[#00ff9d]/80 via-[#00b3ff]/70 to-[#00ff9d]/80"
@@ -226,37 +229,46 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 />
               </div>
             </div>
-            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15">
+            {/* Laptop Image - Position optimisée pour iPad et desktop */}
+            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15 
+                            md:left-[-2rem] md:top-20 md:scale-[1.2]
+                            lg:left-0 lg:top-28 lg:scale-[1.45]
+                            xl:scale-[1.6]">
               <img
                 src={laptopImage}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="max-w-[360px] w-full rounded-2xl opacity-100"
+                className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px] w-full rounded-2xl opacity-100"
                 style={{
                   animation: 'float-gentle 3s ease-in-out infinite',
                   animationDelay: '0s'
                 }}
               />
             </div>
-            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20">
+            {/* Secondary Image (10k) - Position optimisée pour iPad et desktop */}
+            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20
+                            md:right-4 md:top-8 md:scale-[0.9]
+                            lg:right-6 lg:top-10 lg:scale-[1.02]
+                            xl:scale-[1.1]">
               <img
                 src={secondaryImage}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
+                className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
                 style={{
                   animation: 'float-gentle 3.5s ease-in-out infinite',
                   animationDelay: '1.2s'
                 }}
               />
             </div>
+            {/* Main Hero Image (2k) - Position optimisée pour iPad et desktop */}
             <img
               src={heroImage}
               alt="Preview of viral video"
               loading="lazy"
-              className="relative z-20 rounded-2xl shadow-lg max-w-[480px] w-full"
+              className="relative z-20 rounded-2xl shadow-lg max-w-[320px] md:max-w-[400px] lg:max-w-[480px] w-full"
               style={{
                 animation: 'float-gentle 4s ease-in-out infinite',
                 animationDelay: '0.6s'
