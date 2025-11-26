@@ -167,6 +167,15 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               right: calc(1.5rem - 200px) !important; /* Déplacer de 200px vers la droite */
             }
           }
+          /* Cacher laptop et 10k en mode portrait iPad */
+          @media only screen 
+            and (min-width: 768px) 
+            and (max-width: 1024px) 
+            and (orientation: portrait) {
+            .hide-ipad-portrait {
+              display: none !important;
+            }
+          }
         `}
       </style>
       <div className="container mx-auto px-4 md:px-8">
@@ -244,7 +253,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 />
               </div>
             </div>
-            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15 
+            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15 hide-ipad-portrait
                             lg:left-[-2rem]">
               <img
                 src={laptopImage}
@@ -258,7 +267,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 }}
               />
             </div>
-            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20 ipad-landscape-right">
+            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20 ipad-landscape-right hide-ipad-portrait">
               <img
                 src={secondaryImage}
                 alt=""
