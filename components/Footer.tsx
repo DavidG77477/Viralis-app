@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { TikTokIcon, YouTubeIcon, InstagramIcon, XLogoIcon, ViralisFullLogo } from './icons/Icons';
 import type { Language } from '../App';
 import { translations } from '../translations';
@@ -12,7 +12,6 @@ const socialLinks = [
 ];
 
 const Footer: React.FC<{ language: Language }> = ({ language }) => {
-  const navigate = useNavigate();
   const t = translations[language];
   const footerLinks = t.footerLinks;
   
@@ -49,12 +48,12 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <button
-                          onClick={() => navigate(route)}
-                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer text-left"
+                        <Link 
+                          to={route}
+                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                         >
                           {link}
-                        </button>
+                        </Link>
                       ) : (
                         <a href="#" className="text-slate-400 hover:text-brand-green transition-colors">{link}</a>
                       )}
@@ -69,19 +68,19 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <button
-                onClick={() => navigate('/terms')}
+              <Link 
+                to="/terms"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
-              </button>
+              </Link>
               <span className="text-slate-600">|</span>
-              <button
-                onClick={() => navigate('/privacy')}
+              <Link 
+                to="/privacy"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-              </button>
+              </Link>
             </div>
           </div>
           <div className="flex space-x-5">
