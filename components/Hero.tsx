@@ -229,46 +229,48 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 />
               </div>
             </div>
-            {/* Laptop Image - Position optimisée pour iPad et desktop */}
-            <div className="pointer-events-none absolute left-0 top-28 hidden translate-x-8 translate-y-9 scale-[1.45] md:block z-15 
-                            md:left-[-2rem] md:top-20 md:scale-[1.2]
-                            lg:left-0 lg:top-28 lg:scale-[1.45]
-                            xl:scale-[1.6]">
+            {/* Laptop Image - Position optimisée pour iPad portrait, paysage et desktop */}
+            <div className="pointer-events-none absolute hidden md:block z-15
+                            md:left-[-3rem] md:top-16 md:translate-x-4 md:translate-y-6 md:scale-[1.0]
+                            lg:left-[-1rem] lg:top-24 lg:translate-x-8 lg:translate-y-9 lg:scale-[1.3]
+                            xl:left-0 xl:top-28 xl:translate-x-8 xl:translate-y-9 xl:scale-[1.45]">
               <img
                 src={laptopImage}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px] w-full rounded-2xl opacity-100"
+                className="max-w-[260px] md:max-w-[280px] lg:max-w-[340px] xl:max-w-[360px] w-full rounded-2xl opacity-100"
                 style={{
                   animation: 'float-gentle 3s ease-in-out infinite',
                   animationDelay: '0s'
                 }}
               />
             </div>
-            {/* Secondary Image (10k) - Position optimisée pour iPad et desktop */}
-            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20
-                            md:right-4 md:top-8 md:scale-[0.9]
-                            lg:right-6 lg:top-10 lg:scale-[1.02]
-                            xl:scale-[1.1]">
+            {/* Secondary Image (10k) - Position optimisée pour iPad portrait, paysage et desktop */}
+            <div className="pointer-events-none absolute hidden md:block z-20
+                            md:right-2 md:top-6 md:translate-x-1 md:translate-y-1 md:scale-[0.85]
+                            lg:right-4 lg:top-8 lg:translate-x-1 lg:translate-y-1 lg:scale-[0.95]
+                            xl:right-6 xl:top-10 xl:translate-x-1 xl:translate-y-1 xl:scale-[1.02]">
               <img
                 src={secondaryImage}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
+                className="max-w-[260px] md:max-w-[280px] lg:max-w-[340px] xl:max-w-[360px] w-full rounded-2xl opacity-100 blur-[0.5px]"
                 style={{
                   animation: 'float-gentle 3.5s ease-in-out infinite',
                   animationDelay: '1.2s'
                 }}
               />
             </div>
-            {/* Main Hero Image (2k) - Position optimisée pour iPad et desktop */}
+            {/* Main Hero Image (2k) - Position optimisée pour iPad portrait, paysage et desktop */}
             <img
               src={heroImage}
               alt="Preview of viral video"
               loading="lazy"
-              className="relative z-20 rounded-2xl shadow-lg max-w-[320px] md:max-w-[400px] lg:max-w-[480px] w-full"
+              className="relative z-20 rounded-2xl shadow-lg 
+                         max-w-[300px] md:max-w-[360px] lg:max-w-[420px] xl:max-w-[480px] 
+                         w-full"
               style={{
                 animation: 'float-gentle 4s ease-in-out infinite',
                 animationDelay: '0.6s'
