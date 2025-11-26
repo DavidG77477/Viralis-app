@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TikTokIcon, YouTubeIcon, InstagramIcon, XLogoIcon, ViralisFullLogo } from './icons/Icons';
 import type { Language } from '../App';
@@ -15,6 +15,40 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
   const navigate = useNavigate();
   const t = translations[language];
   const footerLinks = t.footerLinks;
+  const termsRef = useRef<HTMLSpanElement>(null);
+  const privacyRef = useRef<HTMLSpanElement>(null);
+  
+  useEffect(() => {
+    const handleTermsClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      window.location.href = '/terms';
+    };
+    
+    const handlePrivacyClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      window.location.href = '/privacy';
+    };
+    
+    if (termsRef.current) {
+      termsRef.current.addEventListener('click', handleTermsClick, { capture: true });
+    }
+    if (privacyRef.current) {
+      privacyRef.current.addEventListener('click', handlePrivacyClick, { capture: true });
+    }
+    
+    return () => {
+      if (termsRef.current) {
+        termsRef.current.removeEventListener('click', handleTermsClick, { capture: true });
+      }
+      if (privacyRef.current) {
+        privacyRef.current.removeEventListener('click', handlePrivacyClick, { capture: true });
+      }
+    };
+  }, []);
   
   return (
     <footer className="bg-slate-950/50 border-t border-slate-800 py-16 px-4 md:px-8">
@@ -83,39 +117,17 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
               <span
+                ref={termsRef}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                 style={{ userSelect: 'none' }}
-                ref={(el) => {
-                  if (el) {
-                    el.addEventListener('click', (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.stopImmediatePropagation();
-                      setTimeout(() => {
-                        window.location.href = '/terms';
-                      }, 10);
-                    }, { capture: true, once: true });
-                  }
-                }}
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
               </span>
               <span className="text-slate-600">|</span>
               <span
+                ref={privacyRef}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                 style={{ userSelect: 'none' }}
-                ref={(el) => {
-                  if (el) {
-                    el.addEventListener('click', (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.stopImmediatePropagation();
-                      setTimeout(() => {
-                        window.location.href = '/privacy';
-                      }, 10);
-                    }, { capture: true, once: true });
-                  }
-                }}
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
               </span>
