@@ -847,8 +847,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               foundSubscriptionId = activeSubscription.id;
               const priceId = activeSubscription.items.data[0]?.price.id;
               subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId] || null;
-              if (activeSubscription.current_period_end) {
-                currentPeriodEnd = new Date(activeSubscription.current_period_end * 1000).toISOString();
+              if ((activeSubscription as any).current_period_end) {
+                currentPeriodEnd = new Date((activeSubscription as any).current_period_end * 1000).toISOString();
               }
               console.log('[Stripe] Found active subscription by customer_id:', foundSubscriptionId);
             } else if (canceledSubscription) {
@@ -856,8 +856,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               foundSubscriptionId = canceledSubscription.id;
               const priceId = canceledSubscription.items.data[0]?.price.id;
               subscriptionStatus = 'free'; // Statut à 'free' pour les annulés
-              if (canceledSubscription.current_period_end) {
-                currentPeriodEnd = new Date(canceledSubscription.current_period_end * 1000).toISOString();
+              if ((canceledSubscription as any).current_period_end) {
+                currentPeriodEnd = new Date((canceledSubscription as any).current_period_end * 1000).toISOString();
               }
               console.log('[Stripe] Found canceled subscription by customer_id:', foundSubscriptionId, 'current_period_end:', currentPeriodEnd);
             }
