@@ -12,7 +12,7 @@ import {
   SupabaseCredentialsError,
   isUserPro,
 } from '../services/supabaseClient';
-import { getSubscriptionStatus, cancelSubscription, getPurchaseHistory, type SubscriptionStatus, type PurchaseHistoryItem } from '../services/stripeService';
+import { getSubscriptionStatus, cancelSubscription, getPurchaseHistory, syncUserSubscription, type SubscriptionStatus, type PurchaseHistoryItem } from '../services/stripeService';
 import VideoGenerator from '../components/VideoGenerator';
 import type { Language } from '../App';
 import logoImage from '../attached_assets/LOGO.png';
@@ -1343,6 +1343,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         pro_access_until: updatedProfile?.pro_access_until,
                       });
                       
+                      // Synchroniser l'abonnement pour mettre à jour pro_access_until
+                      try {
+                        console.log('[Dashboard] Syncing subscription to update pro_access_until...');
+                        await syncUserSubscription(profile.id, profile.email || undefined);
+                        console.log('[Dashboard] Subscription synced');
+                        
+                        // Recharger le profil après synchronisation
+                        const syncedProfile = await loadUserProfile(user.id, {
+                          email: user.email ?? null,
+                          name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+                          avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+                        });
+                        
+                        if (syncedProfile) {
+                          setProfile(syncedProfile);
+                        }
+                      } catch (error) {
+                        console.error('[Dashboard] Error syncing subscription:', error);
+                      }
+                      
                       // Recharger le statut d'abonnement depuis Stripe
                       try {
                         const updatedStatus = await getSubscriptionStatus(profile.id);
@@ -1352,10 +1372,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         
                         // Si pro_access_until n'est pas encore défini mais que currentPeriodEnd est disponible,
                         // mettre à jour le profil localement pour l'affichage immédiat
-                        if (updatedProfile && !updatedProfile.pro_access_until && updatedStatus?.currentPeriodEnd) {
+                        const finalProfile = profile ? await loadUserProfile(user.id, {
+                          email: user.email ?? null,
+                          name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+                          avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+                        }) : null;
+                        
+                        if (finalProfile && !finalProfile.pro_access_until && updatedStatus?.currentPeriodEnd) {
                           console.log('[Dashboard] Updating local profile with currentPeriodEnd for immediate display');
-                          setProfile({ ...updatedProfile, pro_access_until: updatedStatus.currentPeriodEnd });
+                          setProfile({ ...finalProfile, pro_access_until: updatedStatus.currentPeriodEnd });
+                        } else if (finalProfile && finalProfile.pro_access_until) {
+                          console.log('[Dashboard] pro_access_until is now set:', finalProfile.pro_access_until);
+                          setProfile(finalProfile);
                         }
+                        
                         // Reload purchase history after cancellation
                         await loadPurchaseHistory(profile.id);
                       } catch (error) {
