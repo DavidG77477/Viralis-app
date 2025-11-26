@@ -204,7 +204,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               );
             })}
             <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
-              <div className="relative h-[440px] w-[560px] max-w-full rounded-[40px]">
+              <div className="relative h-[440px] w-[400px] max-w-full rounded-[40px]">
                 <div className="absolute inset-0 rounded-[40px] bg-gradient-to-r from-[#00ff9d]/60 via-[#00b3ff]/50 to-[#00ff9d]/60 blur-[120px] opacity-50" />
                 <div 
                   className="relative h-full w-full rounded-[40px] bg-gradient-to-r from-[#00ff9d]/80 via-[#00b3ff]/70 to-[#00ff9d]/80"
