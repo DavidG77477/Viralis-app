@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { TikTokIcon, YouTubeIcon, InstagramIcon, XLogoIcon, ViralisFullLogo } from './icons/Icons';
 import type { Language } from '../App';
 import { translations } from '../translations';
@@ -49,12 +49,12 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <a
-                          href={route}
+                        <Link
+                          to={route}
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                         >
                           {link}
-                        </a>
+                        </Link>
                       ) : (
                         <span className="text-slate-400">{link}</span>
                       )}
@@ -69,19 +69,19 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <a
-                href="/terms"
+              <Link
+                to="/terms"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
-              </a>
+              </Link>
               <span className="text-slate-600">|</span>
-              <a
-                href="/privacy"
+              <Link
+                to="/privacy"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-              </a>
+              </Link>
             </div>
           </div>
           <div className="flex space-x-5">
