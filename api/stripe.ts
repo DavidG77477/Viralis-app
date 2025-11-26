@@ -984,24 +984,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               const priceId = canceledSubscription.items.data[0]?.price.id;
               subscriptionStatus = 'free'; // Statut à 'free' pour les annulés
               
-              // Essayer d'obtenir current_period_end depuis la liste
-              if ((canceledSubscription as any).current_period_end) {
-                currentPeriodEnd = new Date((canceledSubscription as any).current_period_end * 1000).toISOString();
+              // Calculer pro_access_until comme canceled_at + période (1 mois ou 1 an)
+              const canceledAtTimestamp = (canceledSubscription as any).canceled_at;
+              if (canceledAtTimestamp) {
+                const canceledDate = new Date(canceledAtTimestamp * 1000);
+                const accessEndDate = new Date(canceledDate);
+                
+                // Déterminer le type d'abonnement
+                const proMonthlyPriceIds = [
+                  'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
+                  'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+                ];
+                const proAnnualPriceIds = [
+                  'price_1STdyaQ95ijGuOd8OjQauruf', // Live
+                  'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+                ];
+                
+                if (proMonthlyPriceIds.includes(priceId)) {
+                  accessEndDate.setMonth(accessEndDate.getMonth() + 1);
+                  console.log('[Stripe] Calculated currentPeriodEnd for monthly: canceled_at + 1 month');
+                } else if (proAnnualPriceIds.includes(priceId)) {
+                  accessEndDate.setFullYear(accessEndDate.getFullYear() + 1);
+                  console.log('[Stripe] Calculated currentPeriodEnd for annual: canceled_at + 1 year');
+                }
+                
+                currentPeriodEnd = accessEndDate.toISOString();
+                console.log('[Stripe] Found canceled subscription by customer_id:', foundSubscriptionId, 'pro_access_until:', currentPeriodEnd);
               } else {
-                // Si pas disponible dans la liste, récupérer la subscription complète depuis Stripe
-                console.log('[Stripe] current_period_end not in canceled subscription list, retrieving full subscription...');
-                try {
-                  const fullCanceledSubscription = await stripe.subscriptions.retrieve(canceledSubscription.id);
-                  if ((fullCanceledSubscription as any).current_period_end) {
-                    currentPeriodEnd = new Date((fullCanceledSubscription as any).current_period_end * 1000).toISOString();
-                    console.log('[Stripe] Retrieved current_period_end from full subscription:', currentPeriodEnd);
+                // Fallback: utiliser current_period_end si canceled_at n'est pas disponible
+                if ((canceledSubscription as any).current_period_end) {
+                  currentPeriodEnd = new Date((canceledSubscription as any).current_period_end * 1000).toISOString();
+                } else {
+                  // Dernier fallback: récupérer la subscription complète depuis Stripe
+                  console.log('[Stripe] current_period_end not in canceled subscription list, retrieving full subscription...');
+                  try {
+                    const fullCanceledSubscription = await stripe.subscriptions.retrieve(canceledSubscription.id);
+                    if ((fullCanceledSubscription as any).current_period_end) {
+                      currentPeriodEnd = new Date((fullCanceledSubscription as any).current_period_end * 1000).toISOString();
+                      console.log('[Stripe] Retrieved current_period_end from full subscription:', currentPeriodEnd);
+                    }
+                  } catch (retrieveError) {
+                    console.error('[Stripe] Error retrieving full canceled subscription:', retrieveError);
                   }
-                } catch (retrieveError) {
-                  console.error('[Stripe] Error retrieving full canceled subscription:', retrieveError);
                 }
               }
-              
-              console.log('[Stripe] Found canceled subscription by customer_id:', foundSubscriptionId, 'current_period_end:', currentPeriodEnd);
             }
           }
           
