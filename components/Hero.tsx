@@ -205,17 +205,17 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
             })}
             <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
               <div className="relative h-[440px] w-[400px] max-w-full rounded-[40px]">
-                <div className="absolute inset-0 rounded-[40px] bg-gradient-to-r from-[#00ff9d]/60 via-[#00b3ff]/50 to-[#00ff9d]/60 blur-[120px] opacity-50" />
+                <div className="absolute inset-0 rounded-[40px] bg-gradient-to-r from-[#00ff9d]/60 via-[#00b3ff]/50 to-[#00ff9d]/60 blur-[180px] opacity-70" />
                 <div 
                   className="relative h-full w-full rounded-[40px] bg-gradient-to-r from-[#00ff9d]/80 via-[#00b3ff]/70 to-[#00ff9d]/80"
                   style={{
                     boxShadow: `
-                      0 0 40px rgba(0, 255, 157, 0.4),
-                      0 0 80px rgba(0, 179, 255, 0.3),
-                      0 0 120px rgba(0, 255, 157, 0.25),
-                      0 0 160px rgba(0, 179, 255, 0.2),
-                      0 0 200px rgba(0, 255, 157, 0.15),
-                      0 0 240px rgba(0, 179, 255, 0.1),
+                      0 0 60px rgba(0, 255, 157, 0.5),
+                      0 0 120px rgba(0, 179, 255, 0.4),
+                      0 0 180px rgba(0, 255, 157, 0.35),
+                      0 0 240px rgba(0, 179, 255, 0.3),
+                      0 0 300px rgba(0, 255, 157, 0.25),
+                      0 0 360px rgba(0, 179, 255, 0.2),
                       inset 0 0 30px rgba(0, 255, 157, 0.3),
                       inset 0 0 60px rgba(0, 179, 255, 0.2),
                       inset 0 0 90px rgba(0, 255, 157, 0.15)
