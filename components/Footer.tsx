@@ -48,7 +48,16 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                   return (
                     <li key={link}>
                       {route ? (
-                        <Link to={route} className="text-slate-400 hover:text-brand-green transition-colors">{link}</Link>
+                        <Link 
+                          to={route} 
+                          className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            window.location.href = route || '#';
+                          }}
+                        >
+                          {link}
+                        </Link>
                       ) : (
                         <a href="#" className="text-slate-400 hover:text-brand-green transition-colors">{link}</a>
                       )}
@@ -63,11 +72,25 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-500 text-sm">{t.footerCopyright}</p>
             <div className="flex gap-4 text-sm">
-              <Link to="/terms" className="text-slate-400 hover:text-brand-green transition-colors">
+              <Link 
+                to="/terms" 
+                className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = '/terms';
+                }}
+              >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
               </Link>
               <span className="text-slate-600">|</span>
-              <Link to="/privacy" className="text-slate-400 hover:text-brand-green transition-colors">
+              <Link 
+                to="/privacy" 
+                className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = '/privacy';
+                }}
+              >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
               </Link>
             </div>
