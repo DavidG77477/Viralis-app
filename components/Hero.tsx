@@ -95,6 +95,105 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
     },
   ];
 
+  const moneyEmojis: FloatingReaction[] = [
+    {
+      id: 'money-dollar-1',
+      emoji: '💵',
+      top: '50%',
+      left: '50%',
+      floatX: '-180px',
+      floatY: '-200px',
+      delay: '0.5s',
+      duration: '10s',
+      startScale: 0.6,
+      endScale: 1.5,
+    },
+    {
+      id: 'money-euro-1',
+      emoji: '💶',
+      top: '50%',
+      left: '50%',
+      floatX: '200px',
+      floatY: '-180px',
+      delay: '1.5s',
+      duration: '11s',
+      startScale: 0.55,
+      endScale: 1.6,
+    },
+    {
+      id: 'money-pound-1',
+      emoji: '💷',
+      top: '50%',
+      left: '50%',
+      floatX: '-150px',
+      floatY: '-160px',
+      delay: '2.8s',
+      duration: '12s',
+      startScale: 0.65,
+      endScale: 1.7,
+    },
+    {
+      id: 'money-yen-1',
+      emoji: '💴',
+      top: '50%',
+      left: '50%',
+      floatX: '170px',
+      floatY: '-190px',
+      delay: '4s',
+      duration: '10.5s',
+      startScale: 0.6,
+      endScale: 1.55,
+    },
+    {
+      id: 'money-bag-1',
+      emoji: '💰',
+      top: '50%',
+      left: '50%',
+      floatX: '-220px',
+      floatY: '-170px',
+      delay: '5.2s',
+      duration: '11.5s',
+      startScale: 0.7,
+      endScale: 1.8,
+    },
+    {
+      id: 'money-flying-1',
+      emoji: '💸',
+      top: '50%',
+      left: '50%',
+      floatX: '190px',
+      floatY: '-150px',
+      delay: '6.5s',
+      duration: '10s',
+      startScale: 0.55,
+      endScale: 1.5,
+    },
+    {
+      id: 'money-dollar-2',
+      emoji: '💵',
+      top: '50%',
+      left: '50%',
+      floatX: '-140px',
+      floatY: '-210px',
+      delay: '7.8s',
+      duration: '12s',
+      startScale: 0.6,
+      endScale: 1.65,
+    },
+    {
+      id: 'money-euro-2',
+      emoji: '💶',
+      top: '50%',
+      left: '50%',
+      floatX: '160px',
+      floatY: '-200px',
+      delay: '9s',
+      duration: '11s',
+      startScale: 0.65,
+      endScale: 1.7,
+    },
+  ];
+
   const Laurel: React.FC<{ direction?: 'left' | 'right' }> = ({ direction = 'left' }) => (
     <svg
       aria-hidden="true"
@@ -209,6 +308,36 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 >
                   <span className="text-3xl md:text-4xl drop-shadow-[0_10px_18px_rgba(0,0,0,0.35)]">
                     {reaction.emoji}
+                  </span>
+                </div>
+              );
+            })}
+            {/* Money emojis qui sortent de derrière l'image 2k */}
+            {moneyEmojis.map((money) => {
+              const moneyStyle: React.CSSProperties = {
+                top: money.top,
+                left: money.left,
+                animationDelay: money.delay,
+                animationDuration: money.duration,
+                animationTimingFunction: 'ease-out',
+                animationIterationCount: 'infinite',
+                animationName: 'viralis-float-reaction',
+                transform: 'translate(-50%, -50%)',
+              };
+
+              (moneyStyle as unknown as Record<string, string | number>)['--float-x'] = money.floatX;
+              (moneyStyle as unknown as Record<string, string | number>)['--float-y'] = money.floatY;
+              (moneyStyle as unknown as Record<string, string | number>)['--start-scale'] = money.startScale;
+              (moneyStyle as unknown as Record<string, string | number>)['--end-scale'] = money.endScale;
+
+              return (
+                <div
+                  key={money.id}
+                  className="pointer-events-none absolute hidden md:flex items-center justify-center z-25"
+                  style={moneyStyle}
+                >
+                  <span className="text-2xl md:text-3xl drop-shadow-[0_8px_16px_rgba(255,215,0,0.4)] filter brightness-110">
+                    {money.emoji}
                   </span>
                 </div>
               );
