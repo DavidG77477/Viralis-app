@@ -333,9 +333,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : null;
         
         // Convertir currentPeriodEnd en ISO string si disponible
-        const currentPeriodEndISO = currentPeriodEnd 
+        let currentPeriodEndISO = currentPeriodEnd 
           ? new Date(currentPeriodEnd * 1000).toISOString() 
           : null;
+        
+        // Si l'abonnement est annulé et que current_period_end n'est pas disponible,
+        // essayer de le calculer à partir de la dernière invoice ou utiliser une estimation
+        if (subscriptionStatus === 'canceled' && !currentPeriodEndISO && planType) {
+          console.log('[Stripe] current_period_end not available for canceled subscription, trying to get from last invoice...');
+          
+          try {
+            // Essayer de récupérer la dernière invoice pour obtenir la période de facturation
+            const invoices = await stripe.invoices.list({
+              customer: customerId,
+              subscription: subscription.id,
+              limit: 1,
+            });
+            
+            if (invoices.data.length > 0) {
+              const lastInvoice = invoices.data[0];
+              // Si l'invoice a une période de facturation, l'utiliser
+              if ((lastInvoice as any).period_end) {
+                currentPeriodEndISO = new Date((lastInvoice as any).period_end * 1000).toISOString();
+                console.log('[Stripe] Found current_period_end from last invoice:', currentPeriodEndISO);
+              }
+            }
+          } catch (invoiceError) {
+            console.warn('[Stripe] Could not get current_period_end from invoice:', invoiceError);
+          }
+          
+          // Si toujours pas disponible, essayer de l'estimer à partir de canceled_at + période
+          if (!currentPeriodEndISO && canceledAt && planType) {
+            const canceledDate = new Date(canceledAt);
+            const estimatedEnd = new Date(canceledDate);
+            
+            if (planType === 'pro_monthly') {
+              estimatedEnd.setMonth(estimatedEnd.getMonth() + 1);
+            } else if (planType === 'pro_annual') {
+              estimatedEnd.setFullYear(estimatedEnd.getFullYear() + 1);
+            }
+            
+            // Utiliser cette estimation seulement si elle est dans le futur
+            if (estimatedEnd > new Date()) {
+              currentPeriodEndISO = estimatedEnd.toISOString();
+              console.log('[Stripe] Estimated current_period_end from canceled_at + period:', currentPeriodEndISO);
+            }
+          }
+        }
         
         console.log('[Stripe] Final subscription data:', {
           status: subscriptionStatus,
