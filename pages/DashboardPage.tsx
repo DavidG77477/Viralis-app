@@ -1113,12 +1113,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                     const isCanceled = subscriptionStatus?.status === 'canceled';
                     const accessUntilDate = profile?.pro_access_until || subscriptionStatus?.currentPeriodEnd;
                     
-                    if (!accessUntilDate) return null;
-                    
-                    const isExpired = new Date(accessUntilDate) < new Date();
-                    
-                    // Toujours afficher la date de fin d'accès pour les abonnements annulés
+                    // Si l'abonnement est annulé, afficher la date même si elle n'est pas encore dans pro_access_until
+                    // (elle sera mise à jour lors de la prochaine synchronisation)
                     if (isCanceled) {
+                      if (!accessUntilDate) {
+                        // Si pas de date disponible, afficher un message indiquant qu'on récupère l'info
+                        return (
+                          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <p className="text-blue-400 text-sm font-medium">
+                              {language === 'fr' 
+                                ? 'Récupération de la date de fin d\'accès...'
+                                : language === 'es'
+                                ? 'Recuperando fecha de fin de acceso...'
+                                : 'Retrieving access end date...'}
+                            </p>
+                          </div>
+                        );
+                      }
+                      
                       return (
                         <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                           <p className="text-blue-400 text-sm font-medium">
@@ -1140,6 +1152,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                         </div>
                       );
                     }
+                    
+                    if (!accessUntilDate) return null;
+                    
+                    const isExpired = new Date(accessUntilDate) < new Date();
                     
                     // Pour les abonnements actifs, afficher la date de renouvellement
                     return (
