@@ -727,100 +727,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // Annuler l'abonnement immédiatement dans Stripe
-        const canceledSubscription = await stripe.subscriptions.cancel(subscriptionId);
+        // Récupérer l'abonnement avant de le modifier pour obtenir le planType et current_period_end
+        const currentSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+        
+        // Déterminer le type d'abonnement
+        const priceId = currentSubscription.items.data[0]?.price.id;
+        const proMonthlyPriceIds = [
+          'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
+          'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+        ];
+        const proAnnualPriceIds = [
+          'price_1STdyaQ95ijGuOd8OjQauruf', // Live
+          'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+        ];
+        
+        let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
+        if (proMonthlyPriceIds.includes(priceId)) {
+          planTypeToKeep = 'pro_monthly';
+        } else if (proAnnualPriceIds.includes(priceId)) {
+          planTypeToKeep = 'pro_annual';
+        }
+        
+        console.log('[Stripe] Plan type:', planTypeToKeep);
+        
+        // Programmer l'annulation à la fin de la période actuelle dans Stripe
+        // L'abonnement restera actif jusqu'à current_period_end, mais ne sera pas renouvelé
+        const now = Math.floor(Date.now() / 1000);
+        let cancelAtTimestamp: number;
+        
+        if (planTypeToKeep === 'pro_monthly') {
+          // Calculer la date d'annulation comme maintenant + 1 mois
+          const cancelDate = new Date();
+          cancelDate.setMonth(cancelDate.getMonth() + 1);
+          cancelAtTimestamp = Math.floor(cancelDate.getTime() / 1000);
+        } else if (planTypeToKeep === 'pro_annual') {
+          // Calculer la date d'annulation comme maintenant + 1 an
+          const cancelDate = new Date();
+          cancelDate.setFullYear(cancelDate.getFullYear() + 1);
+          cancelAtTimestamp = Math.floor(cancelDate.getTime() / 1000);
+        } else {
+          // Fallback: utiliser current_period_end si disponible
+          cancelAtTimestamp = (currentSubscription as any).current_period_end || now;
+        }
+        
+        // Programmer l'annulation dans Stripe pour la date calculée
+        const canceledSubscription = await stripe.subscriptions.update(subscriptionId, {
+          cancel_at: cancelAtTimestamp,
+          cancel_at_period_end: false, // On annule à la date spécifique calculée
+        });
 
-        console.log('[Stripe] Subscription cancelled immediately:', {
+        console.log('[Stripe] Subscription scheduled for cancellation:', {
           subscriptionId: canceledSubscription.id,
           status: canceledSubscription.status,
-          canceledAt: canceledSubscription.canceled_at 
-            ? new Date(canceledSubscription.canceled_at * 1000).toISOString()
-            : null,
+          cancelAt: cancelAtTimestamp ? new Date(cancelAtTimestamp * 1000).toISOString() : null,
+          cancelAtPeriodEnd: (canceledSubscription as any).cancel_at_period_end,
           current_period_end: (canceledSubscription as any).current_period_end 
             ? new Date((canceledSubscription as any).current_period_end * 1000).toISOString()
             : null,
         });
 
-        // Récupérer le planType et current_period_end avant de mettre à jour (pour garder l'accès jusqu'à la fin)
-        // Fonctionne pour les deux types d'abonnements :
-        // - Mensuel : current_period_end = dernier paiement + 1 mois
-        // - Annuel : current_period_end = dernier paiement + 1 an
-        // Stripe calcule automatiquement current_period_end à partir du dernier paiement réussi
-        let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
+        // Calculer pro_access_until comme la date d'annulation programmée (déjà calculée comme maintenant + période)
+        // Cette date est la même que cancelAtTimestamp puisque nous programmons l'annulation pour cette date
         let proAccessUntil: string | null = null;
         try {
-          // Pour les abonnements annulés, calculer la date de fin d'accès comme : date d'annulation + 1 mois (ou 1 an)
-          // C'est différent de current_period_end qui représente la fin de la période de facturation
-          const canceledAtTimestamp = (canceledSubscription as any).canceled_at;
-          
-          if (canceledAtTimestamp) {
-            const canceledDate = new Date(canceledAtTimestamp * 1000);
-            const accessEndDate = new Date(canceledDate);
-            
-            // D'abord déterminer le type d'abonnement pour savoir quelle période ajouter
-            const priceId = (canceledSubscription as any).items?.data?.[0]?.price?.id;
-            const proMonthlyPriceIds = [
-              'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
-              'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
-            ];
-            const proAnnualPriceIds = [
-              'price_1STdyaQ95ijGuOd8OjQauruf', // Live
-              'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
-            ];
-            
-            if (proMonthlyPriceIds.includes(priceId)) {
-              planTypeToKeep = 'pro_monthly';
-              accessEndDate.setMonth(accessEndDate.getMonth() + 1);
-              console.log('[Stripe] Calculated pro_access_until for monthly: canceled_at + 1 month');
-            } else if (proAnnualPriceIds.includes(priceId)) {
-              planTypeToKeep = 'pro_annual';
-              accessEndDate.setFullYear(accessEndDate.getFullYear() + 1);
-              console.log('[Stripe] Calculated pro_access_until for annual: canceled_at + 1 year');
-            }
-            
-            proAccessUntil = accessEndDate.toISOString();
-            console.log('[Stripe] ✅ Pro access until (canceled_at + period):', proAccessUntil);
-          } else {
-            console.warn('[Stripe] ⚠️ canceled_at not available in canceledSubscription');
-            
-            // Fallback: essayer de récupérer current_period_end depuis Stripe
-            let currentPeriodEnd = (canceledSubscription as any).current_period_end;
-            if (!currentPeriodEnd) {
-              console.log('[Stripe] current_period_end not in canceledSubscription, retrieving from Stripe...');
-              try {
-                const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-                currentPeriodEnd = (retrievedSubscription as any).current_period_end;
-                console.log('[Stripe] Retrieved current_period_end from Stripe:', currentPeriodEnd);
-              } catch (retrieveError) {
-                console.warn('[Stripe] Could not retrieve subscription from Stripe:', retrieveError);
-              }
-            }
-            
-            if (currentPeriodEnd) {
-              proAccessUntil = new Date(currentPeriodEnd * 1000).toISOString();
-              console.log('[Stripe] ✅ Pro access until (from current_period_end fallback):', proAccessUntil);
-            } else {
-              console.error('[Stripe] ❌ Could not determine pro_access_until - no canceled_at or current_period_end');
-            }
-          }
-          
-          const priceId = (canceledSubscription as any).items?.data?.[0]?.price?.id;
-          const proMonthlyPriceIds = [
-            'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
-            'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
-          ];
-          const proAnnualPriceIds = [
-            'price_1STdyaQ95ijGuOd8OjQauruf', // Live
-            'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
-          ];
-          if (proMonthlyPriceIds.includes(priceId)) {
-            planTypeToKeep = 'pro_monthly';
-          } else if (proAnnualPriceIds.includes(priceId)) {
-            planTypeToKeep = 'pro_annual';
-          }
-          console.log('[Stripe] Plan type before cancellation:', planTypeToKeep);
+          // Utiliser la date calculée (maintenant + période)
+          proAccessUntil = new Date(cancelAtTimestamp * 1000).toISOString();
+          console.log('[Stripe] ✅ Pro access until (cancel_at timestamp):', proAccessUntil);
         } catch (err) {
-          console.warn('[Stripe] Could not retrieve plan type or current_period_end before cancellation:', err);
+          console.warn('[Stripe] Could not calculate pro_access_until:', err);
         }
 
         // Mettre à jour le statut dans Supabase
@@ -881,11 +855,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.status(200).json({ 
           success: true,
-          message: 'Subscription cancelled immediately. No further charges will be made.',
+          message: `Subscription scheduled for cancellation on ${new Date(cancelAtTimestamp * 1000).toLocaleDateString()}. Access will remain active until then.`,
           status: canceledSubscription.status,
-          canceled_at: canceledSubscription.canceled_at 
-            ? new Date(canceledSubscription.canceled_at * 1000).toISOString()
-            : null,
+          cancel_at: new Date(cancelAtTimestamp * 1000).toISOString(),
+          pro_access_until: proAccessUntil,
         });
       }
 
