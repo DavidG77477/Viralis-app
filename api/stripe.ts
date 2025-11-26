@@ -824,7 +824,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let subscriptionStatus: string | null = null;
 
         try {
-          // Méthode 1: Chercher par customer_id si disponible
+          // Méthode 1: Chercher par customer_id si disponible (actif ou annulé)
+          let currentPeriodEnd: string | null = null;
           if (foundCustomerId) {
             console.log('[Stripe] Searching by customer_id:', foundCustomerId);
             const subscriptions = await stripe.subscriptions.list({
@@ -833,15 +834,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               limit: 10,
             });
 
+            // Préférer les abonnements actifs, mais aussi chercher les annulés
             const activeSubscription = subscriptions.data.find(
               sub => sub.status === 'active' || sub.status === 'trialing'
+            );
+            
+            const canceledSubscription = subscriptions.data.find(
+              sub => sub.status === 'canceled'
             );
 
             if (activeSubscription) {
               foundSubscriptionId = activeSubscription.id;
               const priceId = activeSubscription.items.data[0]?.price.id;
               subscriptionStatus = PRICE_TO_SUBSCRIPTION_STATUS[priceId] || null;
-              console.log('[Stripe] Found subscription by customer_id:', foundSubscriptionId);
+              if (activeSubscription.current_period_end) {
+                currentPeriodEnd = new Date(activeSubscription.current_period_end * 1000).toISOString();
+              }
+              console.log('[Stripe] Found active subscription by customer_id:', foundSubscriptionId);
+            } else if (canceledSubscription) {
+              // Même si annulé, on récupère les infos pour mettre à jour pro_access_until
+              foundSubscriptionId = canceledSubscription.id;
+              const priceId = canceledSubscription.items.data[0]?.price.id;
+              subscriptionStatus = 'free'; // Statut à 'free' pour les annulés
+              if (canceledSubscription.current_period_end) {
+                currentPeriodEnd = new Date(canceledSubscription.current_period_end * 1000).toISOString();
+              }
+              console.log('[Stripe] Found canceled subscription by customer_id:', foundSubscriptionId, 'current_period_end:', currentPeriodEnd);
             }
           }
           
@@ -905,8 +923,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          // Mettre à jour l'utilisateur avec les IDs trouvés
-          if (foundCustomerId || foundSubscriptionId || subscriptionStatus) {
+          // Mettre à jour l'utilisateur avec les IDs trouvés et pro_access_until
+          if (foundCustomerId || foundSubscriptionId || subscriptionStatus || currentPeriodEnd) {
             const updateData: any = {};
             
             if (foundCustomerId && foundCustomerId !== userData.stripe_customer_id) {
@@ -919,6 +937,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (subscriptionStatus && subscriptionStatus !== userData.subscription_status) {
               updateData.subscription_status = subscriptionStatus;
+            }
+            
+            // Mettre à jour pro_access_until si l'abonnement est annulé et qu'on a current_period_end
+            if (currentPeriodEnd && subscriptionStatus === 'free') {
+              updateData.pro_access_until = currentPeriodEnd;
+              console.log('[Stripe] Setting pro_access_until for canceled subscription:', currentPeriodEnd);
+            } else if (currentPeriodEnd && subscriptionStatus) {
+              // Même pour les abonnements actifs, mettre à jour pro_access_until
+              updateData.pro_access_until = currentPeriodEnd;
             }
 
             if (Object.keys(updateData).length > 0) {
@@ -944,6 +971,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   stripe_customer_id: foundCustomerId || userData.stripe_customer_id,
                   stripe_subscription_id: foundSubscriptionId || userData.stripe_subscription_id,
                   subscription_status: subscriptionStatus || userData.subscription_status,
+                  pro_access_until: currentPeriodEnd || null,
                   updated: updateData,
                 }
               });
