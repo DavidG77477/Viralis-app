@@ -152,8 +152,8 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
         `}
       </style>
       <div className="container mx-auto px-4 md:px-8">
-        <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
-          <div className="flex-1 max-w-2xl text-center md:text-left">
+        <div className="flex flex-col items-center justify-between gap-8 md:flex-row md:items-start lg:items-center">
+          <div className="flex-1 max-w-2xl text-center md:text-left w-full md:w-auto">
             <h1
               className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6"
               style={{ background: 'linear-gradient(90deg, #00ff9d, #00b3ff)', WebkitBackgroundClip: 'text', color: 'transparent' }}
