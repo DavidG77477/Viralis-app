@@ -158,6 +158,15 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               right: calc(1.5rem - 150px) !important; /* Déplacer de 150px vers la droite */
             }
           }
+          /* iPad portrait specific adjustment for 10k image - déplacer plus à droite */
+          @media only screen 
+            and (min-width: 768px) 
+            and (max-width: 1024px) 
+            and (orientation: portrait) {
+            .ipad-landscape-right {
+              right: calc(1.5rem - 150px) !important; /* Déplacer de 150px vers la droite */
+            }
+          }
         `}
       </style>
       <div className="container mx-auto px-4 md:px-8">
