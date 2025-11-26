@@ -21,9 +21,9 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
       <div className="container mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
             <div className="md:col-span-3">
-                <a href="#" className="flex items-center mb-4">
+                <Link to="/" className="flex items-center mb-4">
                   <ViralisFullLogo className="h-20 w-auto md:h-24" />
-                </a>
+                </Link>
                 <p className="text-slate-400 text-sm mt-4 max-w-xs">
                     {t.footerDescription}
                 </p>
@@ -52,11 +52,15 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                         <Link
                           to={route}
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(route!);
+                          }}
                         >
                           {link}
                         </Link>
                       ) : (
-                        <a href="#" className="text-slate-400 hover:text-brand-green transition-colors">{link}</a>
+                        <span className="text-slate-400">{link}</span>
                       )}
                     </li>
                   );
@@ -72,6 +76,10 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <Link
                 to="/terms"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/terms');
+                }}
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
               </Link>
@@ -79,6 +87,10 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <Link
                 to="/privacy"
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/privacy');
+                }}
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
               </Link>
@@ -86,7 +98,16 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
           </div>
           <div className="flex space-x-5">
             {socialLinks.map((social, index) => (
-              <a key={index} href={social.href} className="text-slate-500 hover:text-brand-green transition-colors">
+              <a 
+                key={index} 
+                href={social.href} 
+                className="text-slate-500 hover:text-brand-green transition-colors"
+                onClick={(e) => {
+                  if (social.href === '#') {
+                    e.preventDefault();
+                  }
+                }}
+              >
                 <social.icon className="w-6 h-6" />
               </a>
             ))}
