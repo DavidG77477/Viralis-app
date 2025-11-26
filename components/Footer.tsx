@@ -52,11 +52,17 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
                         <span
                           className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                           style={{ userSelect: 'none' }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (e.button === 0) { // Only left click
-                              window.location.assign(route!);
+                          ref={(el) => {
+                            if (el) {
+                              el.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.stopImmediatePropagation();
+                                const targetRoute = route!;
+                                setTimeout(() => {
+                                  window.location.href = targetRoute;
+                                }, 10);
+                              }, { capture: true, once: true });
                             }
                           }}
                         >
@@ -79,11 +85,16 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <span
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                 style={{ userSelect: 'none' }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.button === 0) { // Only left click
-                    window.location.assign('/terms');
+                ref={(el) => {
+                  if (el) {
+                    el.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.stopImmediatePropagation();
+                      setTimeout(() => {
+                        window.location.href = '/terms';
+                      }, 10);
+                    }, { capture: true, once: true });
                   }
                 }}
               >
@@ -93,11 +104,16 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <span
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer"
                 style={{ userSelect: 'none' }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.button === 0) { // Only left click
-                    window.location.assign('/privacy');
+                ref={(el) => {
+                  if (el) {
+                    el.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.stopImmediatePropagation();
+                      setTimeout(() => {
+                        window.location.href = '/privacy';
+                      }, 10);
+                    }, { capture: true, once: true });
                   }
                 }}
               >
