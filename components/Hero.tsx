@@ -149,6 +149,16 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               transform: translateY(-8px);
             }
           }
+          /* iPad landscape specific adjustment for 10k image */
+          @media only screen 
+            and (min-device-width: 768px) 
+            and (max-device-width: 1366px) 
+            and (orientation: landscape) 
+            and (-webkit-min-device-pixel-ratio: 1) {
+            .ipad-landscape-right {
+              right: calc(1.5rem - 50px) !important;
+            }
+          }
         `}
       </style>
       <div className="container mx-auto px-4 md:px-8">
@@ -240,8 +250,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 }}
               />
             </div>
-            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20
-                            lg:translate-x-[51px] xl:translate-x-1">
+            <div className="pointer-events-none absolute right-6 top-10 hidden translate-x-1 translate-y-1 scale-[1.02] md:block z-20 ipad-landscape-right">
               <img
                 src={secondaryImage}
                 alt=""
