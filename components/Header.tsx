@@ -49,6 +49,17 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
     es: "Cerrar sesión",
   };
 
+  // Fonction pour calculer et mettre à jour la position du dropdown
+  const updateDropdownPosition = () => {
+    if (dropdownButtonRef.current) {
+      const rect = dropdownButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 8, // 8px = mt-2 equivalent
+        right: window.innerWidth - rect.right,
+      });
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
@@ -60,14 +71,31 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
       }
     };
     
+    const handleScroll = () => {
+      if (isDropdownOpen) {
+        updateDropdownPosition();
+      }
+    };
+    
+    const handleResize = () => {
+      if (isDropdownOpen) {
+        updateDropdownPosition();
+      }
+    };
+    
     if (isDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
+      updateDropdownPosition(); // Mettre à jour la position initiale
     }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
     };
   }, [isDropdownOpen]);
 
@@ -167,14 +195,20 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                             <button
                                 ref={dropdownButtonRef}
                                 onClick={() => {
-                                    if (dropdownButtonRef.current) {
-                                        const rect = dropdownButtonRef.current.getBoundingClientRect();
-                                        setDropdownPosition({
-                                            top: rect.bottom + window.scrollY + 8, // 8px = mt-2 equivalent
-                                            right: window.innerWidth - rect.right,
-                                        });
+                                    const willBeOpen = !isDropdownOpen;
+                                    setIsDropdownOpen(willBeOpen);
+                                    if (willBeOpen) {
+                                        // La position sera calculée dans le useEffect
+                                        setTimeout(() => {
+                                            if (dropdownButtonRef.current) {
+                                                const rect = dropdownButtonRef.current.getBoundingClientRect();
+                                                setDropdownPosition({
+                                                    top: rect.bottom + window.scrollY + 8, // 8px = mt-2 equivalent
+                                                    right: window.innerWidth - rect.right,
+                                                });
+                                            }
+                                        }, 0);
                                     }
-                                    setIsDropdownOpen(!isDropdownOpen);
                                 }}
                                 className="flex items-center justify-center gap-1.5 border border-slate-700/50 rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-600 hover:bg-slate-800/50 transition-all duration-200 backdrop-blur-sm min-w-[60px]"
                                 aria-haspopup="true"
