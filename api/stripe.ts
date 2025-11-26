@@ -272,15 +272,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Prefer active subscription, but also check canceled ones
+        // Prioriser les abonnements actifs, mais aussi inclure les annulés récents
+        // Trier par date de création décroissante pour obtenir le plus récent
+        subscriptions.data.sort((a, b) => (b as any).created - (a as any).created);
+        
         let subscription = subscriptions.data.find(sub => sub.status === 'active' || sub.status === 'trialing');
         if (!subscription) {
           // If no active, get the most recent canceled subscription
           subscription = subscriptions.data.find(sub => sub.status === 'canceled');
         }
         if (!subscription) {
-          // Fallback to first subscription
+          // Fallback to first subscription (most recent)
           subscription = subscriptions.data[0];
         }
+        
+        console.log('[Stripe] Selected subscription:', {
+          id: subscription?.id,
+          status: subscription?.status,
+          created: (subscription as any)?.created ? new Date((subscription as any).created * 1000).toISOString() : 'unknown',
+        });
 
         const priceId = subscription.items.data[0]?.price.id;
         console.log('[Stripe] Found subscription:', {

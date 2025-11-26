@@ -1356,19 +1356,50 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                           avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
                         });
                         
-                        if (syncedProfile) {
-                          setProfile(syncedProfile);
-                        }
-                      } catch (error) {
-                        console.error('[Dashboard] Error syncing subscription:', error);
+                      if (syncedProfile) {
+                        setProfile(syncedProfile);
+                        console.log('[Dashboard] Profile updated after sync:', {
+                          subscription_status: syncedProfile.subscription_status,
+                          pro_access_until: syncedProfile.pro_access_until,
+                        });
                       }
+                    } catch (error) {
+                      console.error('[Dashboard] Error syncing subscription:', error);
+                    }
+                    
+                    // Recharger le statut d'abonnement depuis Stripe
+                    try {
+                      const updatedStatus = await getSubscriptionStatus(profile.id);
+                      console.log('[Dashboard] Subscription status from Stripe:', updatedStatus);
+                      console.log('[Dashboard] Status:', updatedStatus?.status);
+                      console.log('[Dashboard] currentPeriodEnd from Stripe:', updatedStatus?.currentPeriodEnd);
                       
-                      // Recharger le statut d'abonnement depuis Stripe
-                      try {
-                        const updatedStatus = await getSubscriptionStatus(profile.id);
-                        console.log('[Dashboard] Subscription status from Stripe:', updatedStatus);
-                        console.log('[Dashboard] currentPeriodEnd from Stripe:', updatedStatus?.currentPeriodEnd);
+                      // Forcer le statut à "canceled" si l'abonnement a été annulé et que Stripe retourne null
+                      // Mais vérifier d'abord dans le profil Supabase si on a pro_access_until (signe qu'il a été annulé)
+                      const finalProfileReload = await loadUserProfile(user.id, {
+                        email: user.email ?? null,
+                        name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+                        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
+                      });
+                      
+                      if (finalProfileReload?.pro_access_until && finalProfileReload.subscription_status === 'free') {
+                        // L'abonnement a été annulé, forcer le statut à canceled pour l'affichage
+                        if (!updatedStatus || updatedStatus.status !== 'canceled') {
+                          console.log('[Dashboard] Forcing status to canceled based on pro_access_until');
+                          setSubscriptionStatus({
+                            status: 'canceled',
+                            planType: updatedStatus?.planType || (finalProfileReload.subscription_status === 'free' ? null : finalProfileReload.subscription_status as any) || null,
+                            currentPeriodEnd: finalProfileReload.pro_access_until || updatedStatus?.currentPeriodEnd || null,
+                            cancelAtPeriodEnd: false,
+                            canceledAt: new Date().toISOString(),
+                            canceledDate: new Date().toLocaleDateString(),
+                          });
+                        } else {
+                          setSubscriptionStatus(updatedStatus);
+                        }
+                      } else {
                         setSubscriptionStatus(updatedStatus);
+                      }
                         
                         // Si pro_access_until n'est pas encore défini mais que currentPeriodEnd est disponible,
                         // mettre à jour le profil localement pour l'affichage immédiat
