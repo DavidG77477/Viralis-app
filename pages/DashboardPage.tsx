@@ -1106,19 +1106,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                       </p>
                     </div>
                   )}
-                  {(subscriptionStatus?.currentPeriodEnd || profile?.pro_access_until) && (
-                    <div className="mb-4">
-                      <p className="text-slate-400 text-sm">
-                        {(() => {
-                          // Utiliser currentPeriodEnd de Stripe si disponible, sinon pro_access_until du profil
-                          const accessUntilDate = subscriptionStatus?.currentPeriodEnd || profile?.pro_access_until;
-                          if (!accessUntilDate) return null;
-                          
-                          const isCanceled = subscriptionStatus?.status === 'canceled';
-                          const isExpired = new Date(accessUntilDate) < new Date();
-                          
-                          if (isCanceled || isExpired) {
-                            return language === 'fr' 
+                  {(() => {
+                    // Pour les abonnements annulés, toujours afficher la date de fin d'accès si disponible
+                    // Utiliser pro_access_until en priorité (source de vérité après annulation)
+                    // Sinon utiliser currentPeriodEnd de Stripe
+                    const isCanceled = subscriptionStatus?.status === 'canceled';
+                    const accessUntilDate = profile?.pro_access_until || subscriptionStatus?.currentPeriodEnd;
+                    
+                    if (!accessUntilDate) return null;
+                    
+                    const isExpired = new Date(accessUntilDate) < new Date();
+                    
+                    // Toujours afficher la date de fin d'accès pour les abonnements annulés
+                    if (isCanceled) {
+                      return (
+                        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                          <p className="text-blue-400 text-sm font-medium">
+                            {language === 'fr' 
                               ? `Accès actif jusqu'au ${new Date(accessUntilDate).toLocaleDateString(
                                   'fr-FR',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
@@ -1131,27 +1135,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ language, onLanguageChang
                               : `Access active until ${new Date(accessUntilDate).toLocaleDateString(
                                   'en-US',
                                   { year: 'numeric', month: 'long', day: 'numeric' }
-                                )}`;
-                          } else {
-                            return language === 'fr'
-                              ? `Renouvellement le ${new Date(accessUntilDate).toLocaleDateString(
-                                  'fr-FR',
-                                  { year: 'numeric', month: 'long', day: 'numeric' }
-                                )}`
-                              : language === 'es'
-                              ? `Renovación el ${new Date(accessUntilDate).toLocaleDateString(
-                                  'es-ES',
-                                  { year: 'numeric', month: 'long', day: 'numeric' }
-                                )}`
-                              : `Renews on ${new Date(accessUntilDate).toLocaleDateString(
-                                  'en-US',
-                                  { year: 'numeric', month: 'long', day: 'numeric' }
-                                )}`;
-                          }
-                        })()}
-                      </p>
-                    </div>
-                  )}
+                                )}`}
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    // Pour les abonnements actifs, afficher la date de renouvellement
+                    return (
+                      <div className="mb-4">
+                        <p className="text-slate-400 text-sm">
+                          {isExpired
+                            ? (language === 'fr' 
+                                ? `Accès actif jusqu'au ${new Date(accessUntilDate).toLocaleDateString(
+                                    'fr-FR',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                  )}`
+                                : language === 'es'
+                                ? `Acceso activo hasta el ${new Date(accessUntilDate).toLocaleDateString(
+                                    'es-ES',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                  )}`
+                                : `Access active until ${new Date(accessUntilDate).toLocaleDateString(
+                                    'en-US',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                  )}`)
+                            : (language === 'fr'
+                                ? `Renouvellement le ${new Date(accessUntilDate).toLocaleDateString(
+                                    'fr-FR',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                  )}`
+                                : language === 'es'
+                                ? `Renovación el ${new Date(accessUntilDate).toLocaleDateString(
+                                    'es-ES',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                  )}`
+                                : `Renews on ${new Date(accessUntilDate).toLocaleDateString(
+                                    'en-US',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                  )}`)}
+                        </p>
+                      </div>
+                    );
+                  })()}
                   {subscriptionStatus?.status !== 'canceled' && (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
