@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PlayIcon } from './icons/Icons';
 import VideoModal from './VideoModal';
 import type { Language } from '../App';
@@ -29,10 +29,12 @@ const featuredVideoUrl = '/videos/un_cafe-con_leche.mp4';
 const featuredVideoViews = '20M';
 const featuredVideoLikes = '1.2M';
 
-const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
+const DemoCard: React.FC<(typeof secondaryVideos)[number] & { videoRef?: React.RefObject<HTMLVideoElement>; isSafari?: boolean }> = ({
   video,
   caption,
   placeholder,
+  videoRef,
+  isSafari,
 }) => (
   <div className="relative rounded-3xl overflow-hidden group cursor-pointer animate-fade-in-up border-2 border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl hover:border-[#00ff9d]/60 transition-all duration-700 hover:scale-[1.03] hover:shadow-[0_12px_48px_rgba(0,255,153,0.3)] hover:-translate-y-2">
     {/* Animated gradient border glow */}
@@ -46,13 +48,34 @@ const DemoCard: React.FC<(typeof secondaryVideos)[number]> = ({
     
     {video ? (
       <video
+        ref={videoRef}
         src={video}
         muted
         playsInline
         preload="auto"
         autoPlay
         loop
+        // @ts-ignore - Safari-specific attributes
+        webkit-playsinline="true"
+        // @ts-ignore - Safari-specific attributes
+        x-webkit-airplay="allow"
         className="w-full h-full object-cover aspect-[9/16] transition-transform duration-700 group-hover:scale-110"
+        onLoadedData={() => {
+          // Safari: Forcer la lecture quand la vidéo est chargée
+          if (isSafari && videoRef?.current && videoRef.current.paused) {
+            videoRef.current.play().catch((err) => {
+              console.log('[Demo] Safari secondary video autoplay failed after load:', err);
+            });
+          }
+        }}
+        onCanPlay={() => {
+          // Safari: Essayer de jouer quand la vidéo peut jouer
+          if (isSafari && videoRef?.current && videoRef.current.paused) {
+            videoRef.current.play().catch((err) => {
+              console.log('[Demo] Safari secondary video autoplay failed after canplay:', err);
+            });
+          }
+        }}
       />
     ) : (
       <img
@@ -91,11 +114,60 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [videoUrl, setVideoUrl] = useState('');
     const featuredVideoRef = useRef<HTMLVideoElement | null>(null);
+    const secondaryVideoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+    // Détecter Safari (y compris iPhone)
+    const isSafari = typeof window !== 'undefined' && 
+      (/^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+       /iPhone|iPad|iPod/i.test(navigator.userAgent));
 
     const handlePlayVideo = (url: string) => {
         setVideoUrl(url);
         setIsModalOpen(true);
     };
+
+    // Forcer l'autoplay sur Safari après chargement
+    useEffect(() => {
+        const tryPlayVideos = () => {
+            // Featured video
+            if (featuredVideoRef.current && featuredVideoRef.current.paused) {
+                featuredVideoRef.current.play().catch((err) => {
+                    console.log('[Demo] Featured video autoplay prevented:', err);
+                });
+            }
+            
+            // Secondary videos
+            secondaryVideoRefs.current.forEach((videoRef) => {
+                if (videoRef && videoRef.paused) {
+                    videoRef.play().catch((err) => {
+                        console.log('[Demo] Secondary video autoplay prevented:', err);
+                    });
+                }
+            });
+        };
+
+        if (isSafari) {
+            // Pour Safari, essayer de jouer après un court délai
+            const timeout = setTimeout(tryPlayVideos, 500);
+            
+            // Aussi essayer après interaction utilisateur (clique n'importe où)
+            const handleUserInteraction = () => {
+                tryPlayVideos();
+                // Nettoyer après la première interaction
+                document.removeEventListener('touchstart', handleUserInteraction);
+                document.removeEventListener('click', handleUserInteraction);
+            };
+            
+            document.addEventListener('touchstart', handleUserInteraction, { once: true });
+            document.addEventListener('click', handleUserInteraction, { once: true });
+            
+            return () => {
+                clearTimeout(timeout);
+                document.removeEventListener('touchstart', handleUserInteraction);
+                document.removeEventListener('click', handleUserInteraction);
+            };
+        }
+    }, [isSafari]);
 
   return (
     <>
@@ -142,7 +214,27 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
               preload="auto"
               autoPlay
               loop
+              // @ts-ignore - Safari-specific attributes
+              webkit-playsinline="true"
+              // @ts-ignore - Safari-specific attributes
+              x-webkit-airplay="allow"
               className="w-full h-full object-cover aspect-video transition-transform duration-700 group-hover:scale-[1.02] relative z-0"
+              onLoadedData={() => {
+                // Safari: Forcer la lecture quand la vidéo est chargée
+                if (isSafari && featuredVideoRef.current && featuredVideoRef.current.paused) {
+                  featuredVideoRef.current.play().catch((err) => {
+                    console.log('[Demo] Safari autoplay failed after load:', err);
+                  });
+                }
+              }}
+              onCanPlay={() => {
+                // Safari: Essayer de jouer quand la vidéo peut jouer
+                if (isSafari && featuredVideoRef.current && featuredVideoRef.current.paused) {
+                  featuredVideoRef.current.play().catch((err) => {
+                    console.log('[Demo] Safari autoplay failed after canplay:', err);
+                  });
+                }
+              }}
             />
             
             {/* Enhanced gradient overlay */}
@@ -195,17 +287,27 @@ const Demo: React.FC<{ language: Language }> = ({ language }) => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
-          {secondaryVideos.map((video, index) => (
-            <div 
-              key={index} 
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${index * 0.15}s` }}
-            >
-              <div onClick={() => video.video && handlePlayVideo(video.video)}>
-                <DemoCard {...video} />
+          {secondaryVideos.map((video, index) => {
+            // Créer une ref pour chaque vidéo secondaire
+            if (!secondaryVideoRefs.current[index]) {
+              secondaryVideoRefs.current[index] = React.createRef<HTMLVideoElement>();
+            }
+            return (
+              <div 
+                key={index} 
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 0.15}s` }}
+              >
+                <div onClick={() => video.video && handlePlayVideo(video.video)}>
+                  <DemoCard 
+                    {...video} 
+                    videoRef={secondaryVideoRefs.current[index] as React.RefObject<HTMLVideoElement>}
+                    isSafari={isSafari}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
