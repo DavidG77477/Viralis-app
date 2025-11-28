@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import type { Language } from '../App';
 import { translations } from '../translations';
@@ -54,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
     if (dropdownButtonRef.current) {
       const rect = dropdownButtonRef.current.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY + 8, // 8px = mt-2 equivalent
+        top: rect.bottom + 8, // 8px de marge en bas, pas besoin de scrollY avec fixed
         right: window.innerWidth - rect.right,
       });
     }
@@ -191,22 +192,16 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                         )}
                         
                         {/* Language Dropdown */}
-                        <div className="relative" ref={dropdownRef}>
+                        <div className="relative">
                             <button
                                 ref={dropdownButtonRef}
                                 onClick={() => {
                                     const willBeOpen = !isDropdownOpen;
                                     setIsDropdownOpen(willBeOpen);
                                     if (willBeOpen) {
-                                        // La position sera calculée dans le useEffect
+                                        // Calculer la position immédiatement
                                         setTimeout(() => {
-                                            if (dropdownButtonRef.current) {
-                                                const rect = dropdownButtonRef.current.getBoundingClientRect();
-                                                setDropdownPosition({
-                                                    top: rect.bottom + window.scrollY + 8, // 8px = mt-2 equivalent
-                                                    right: window.innerWidth - rect.right,
-                                                });
-                                            }
+                                            updateDropdownPosition();
                                         }, 0);
                                     }
                                 }}
@@ -222,8 +217,9 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
-                            {isDropdownOpen && (
+                            {isDropdownOpen && typeof window !== 'undefined' && createPortal(
                                 <div 
+                                    ref={dropdownRef}
                                     className="fixed w-36 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden animate-fade-in z-[9999]"
                                     style={{
                                         top: `${dropdownPosition.top}px`,
@@ -257,7 +253,8 @@ const Header: React.FC<HeaderProps> = ({ language, onLanguageChange }) => {
                                             </li>
                                         ))}
                                     </ul>
-                                </div>
+                                </div>,
+                                document.body
                             )}
                         </div>
                     </div>
