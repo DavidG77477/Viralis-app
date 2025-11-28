@@ -72,7 +72,12 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
             <div className="flex gap-4 text-sm">
               <button
                 type="button"
-                onClick={() => navigate('/terms')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[Footer] Clicking Terms button, navigating to /terms');
+                  navigate('/terms');
+                }}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 {language === 'fr' ? 'Conditions d\'Utilisation' : language === 'es' ? 'Términos de Servicio' : 'Terms of Service'}
@@ -80,7 +85,12 @@ const Footer: React.FC<{ language: Language }> = ({ language }) => {
               <span className="text-slate-600">|</span>
               <button
                 type="button"
-                onClick={() => navigate('/privacy')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[Footer] Clicking Privacy button, navigating to /privacy');
+                  navigate('/privacy');
+                }}
                 className="text-slate-400 hover:text-brand-green transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 {language === 'fr' ? 'Politique de Confidentialité' : language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
