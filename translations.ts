@@ -550,7 +550,6 @@ export const translations = {
         // Footer
         footerDescription: "Transformez vos idées en vidéos virales et monétisables avec Viralis Studio.",
         footerLinks: {
-            Ressources: ["Centre d'aide", "Documentation API", "Communauté"],
             Légal: ["Conditions d'utilisation", "Politique de confidentialité"]
         },
         footerCopyright: "© 2025 Viralis Studio. Tous droits réservés.",
@@ -1105,7 +1104,6 @@ export const translations = {
         // Footer
         footerDescription: "Turn your ideas into viral and monetizable videos with Viralis Studio.",
         footerLinks: {
-            Resources: ["Help Center", "API Documentation", "Community"],
             Legal: ["Terms of Service", "Privacy Policy"]
         },
         footerCopyright: "© 2025 Viralis Studio. All rights reserved.",
@@ -1661,7 +1659,6 @@ export const translations = {
         // Footer
         footerDescription: "Transforma tus ideas en videos virales y monetizables con Viralis Studio.",
         footerLinks: {
-            Recursos: ["Centro de Ayuda", "Documentación de API", "Comunidad"],
             Legal: ["Términos de Servicio", "Política de Privacidad"]
         },
         footerCopyright: "© 2025 Viralis Studio. Todos los derechos reservados.",
