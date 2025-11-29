@@ -22,12 +22,12 @@ const TOKEN_AMOUNTS: Record<string, number> = {
   'price_1SXNvGPt6mHWDz2HgoV6VX8Y': 1200, // Premium Token Pack (Test)
 };
 
-// Plan ID to subscription status mapping (LIVE + TEST MODE)
+// Plan ID to subscription status mapping (LIVE MODE + legacy test IDs for existing subscriptions)
 const PRICE_TO_SUBSCRIPTION_STATUS: Record<string, 'pro_monthly' | 'pro_annual'> = {
-  // Live mode
+  // Live mode (primary)
   'price_1STdvsQ95ijGuOd8DTnBtkkE': 'pro_monthly',
   'price_1STdyaQ95ijGuOd8OjQauruf': 'pro_annual',
-  // Test mode
+  // Test mode (legacy - kept for existing subscriptions created in test mode)
   'price_1SXNw9Pt6mHWDz2H2gH72U3w': 'pro_monthly',
   'price_1SXNxXPt6mHWDz2H8rm3Vnwh': 'pro_annual',
 };
@@ -515,11 +515,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const priceId = subscription.items.data[0]?.price.id;
           const proMonthlyPriceIds = [
             'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
-            'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+            'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test (legacy - kept for existing subscriptions)
           ];
           const proAnnualPriceIds = [
             'price_1STdyaQ95ijGuOd8OjQauruf', // Live
-            'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+            'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test (legacy - kept for existing subscriptions)
           ];
           
           if (proMonthlyPriceIds.includes(priceId)) {

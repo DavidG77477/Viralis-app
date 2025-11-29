@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Get Stripe secret key and determine mode
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
-const isTestMode = stripeSecretKey.startsWith('sk_test_');
+// FORCE LIVE MODE - Always use live Price IDs
+const isTestMode = false;
 
 // Plan ID to Stripe Price ID mapping - LIVE MODE
 const PLAN_TO_PRICE_ID_LIVE: Record<string, string> = {
@@ -14,7 +15,7 @@ const PLAN_TO_PRICE_ID_LIVE: Record<string, string> = {
   'pro-annual': 'price_1STdyaQ95ijGuOd8OjQauruf',
 };
 
-// Plan ID to Stripe Price ID mapping - TEST MODE
+// Plan ID to Stripe Price ID mapping - TEST MODE (kept for reference only)
 const PLAN_TO_PRICE_ID_TEST: Record<string, string> = {
   'token-pack': 'price_1SXNuYPt6mHWDz2H77mFGPPJ',
   'premium-tokens': 'price_1SXNvGPt6mHWDz2HgoV6VX8Y',
@@ -22,15 +23,15 @@ const PLAN_TO_PRICE_ID_TEST: Record<string, string> = {
   'pro-annual': 'price_1SXNxXPt6mHWDz2H8rm3Vnwh',
 };
 
-// Select Price IDs based on mode
-const PLAN_TO_PRICE_ID = isTestMode ? PLAN_TO_PRICE_ID_TEST : PLAN_TO_PRICE_ID_LIVE;
+// FORCE LIVE MODE - Always use live Price IDs
+const PLAN_TO_PRICE_ID = PLAN_TO_PRICE_ID_LIVE;
 
-// Price ID to subscription status mapping (LIVE + TEST MODE)
+// Price ID to subscription status mapping (LIVE MODE + legacy test IDs for existing subscriptions)
 const PRICE_TO_SUBSCRIPTION_STATUS: Record<string, 'pro_monthly' | 'pro_annual'> = {
-  // Live mode
+  // Live mode (primary)
   'price_1STdvsQ95ijGuOd8DTnBtkkE': 'pro_monthly',
   'price_1STdyaQ95ijGuOd8OjQauruf': 'pro_annual',
-  // Test mode
+  // Test mode (legacy - kept for existing subscriptions created in test mode)
   'price_1SXNw9Pt6mHWDz2H2gH72U3w': 'pro_monthly',
   'price_1SXNxXPt6mHWDz2H8rm3Vnwh': 'pro_annual',
 };
@@ -91,13 +92,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Log mode for debugging
-        if (isTestMode) {
-          console.log('[Stripe] Running in TEST mode');
-        } else if (stripeSecretKey.startsWith('sk_live_')) {
-          console.log('[Stripe] Running in LIVE mode');
-        } else {
-          console.warn('[Stripe] Unknown key format, may cause errors');
-        }
+        // LIVE MODE - All Price IDs are live
+        console.log('[Stripe] Running in LIVE mode');
 
         // Get user email from Supabase
         let customerEmail: string | undefined;
@@ -316,15 +312,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        // Map price ID to plan type (support both test and live)
+        // Map price ID to plan type (LIVE MODE - test IDs kept for legacy subscriptions)
         let planType: 'pro_monthly' | 'pro_annual' | null = null;
         const proMonthlyPriceIds = [
           'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
-          'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+          'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test (legacy - kept for existing subscriptions)
         ];
         const proAnnualPriceIds = [
           'price_1STdyaQ95ijGuOd8OjQauruf', // Live
-          'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+          'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test (legacy - kept for existing subscriptions)
         ];
         
         if (proMonthlyPriceIds.includes(priceId)) {
@@ -744,11 +740,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const priceId = currentSubscription.items.data[0]?.price.id;
         const proMonthlyPriceIds = [
           'price_1STdvsQ95ijGuOd8DTnBtkkE', // Live
-          'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test
+          'price_1SXNw9Pt6mHWDz2H2gH72U3w', // Test (legacy - kept for existing subscriptions)
         ];
         const proAnnualPriceIds = [
           'price_1STdyaQ95ijGuOd8OjQauruf', // Live
-          'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test
+          'price_1SXNxXPt6mHWDz2H8rm3Vnwh', // Test (legacy - kept for existing subscriptions)
         ];
         
         let planTypeToKeep: 'pro_monthly' | 'pro_annual' | null = null;
