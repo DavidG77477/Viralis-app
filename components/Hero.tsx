@@ -333,7 +333,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               return (
                 <div
                   key={money.id}
-                  className="pointer-events-none absolute hidden md:flex items-center justify-center z-25"
+                  className="pointer-events-none absolute hidden md:flex items-center justify-center z-10"
                   style={moneyStyle}
                 >
                   <span className="text-2xl md:text-3xl drop-shadow-[0_8px_16px_rgba(255,215,0,0.4)] filter brightness-110">
@@ -342,7 +342,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
                 </div>
               );
             })}
-            <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
+            <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex" style={{ zIndex: 15 }}>
               <div className="relative h-[440px] w-[400px] max-w-full rounded-[40px]">
                 <div className="absolute inset-0 rounded-[40px] bg-gradient-to-r from-[#00ff9d]/60 via-[#00b3ff]/50 to-[#00ff9d]/60 blur-[180px] opacity-70" />
                 <div 
@@ -367,7 +367,7 @@ const Hero: React.FC<{ language: Language }> = ({ language }) => {
               src={heroImage}
               alt="Preview of viral video"
               loading="lazy"
-              className="relative z-20 rounded-2xl shadow-lg max-w-[480px] h-auto"
+              className="relative z-30 rounded-2xl shadow-lg max-w-[480px] h-auto"
               style={{
                 animation: 'float-gentle 4s ease-in-out infinite',
                 animationDelay: '0.6s'
