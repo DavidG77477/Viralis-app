@@ -284,9 +284,22 @@ export const generateVideo = async (params: GenerateVideoParams) => {
     // ou en cas d'erreur : { "code": 422, "message": "error message", "data": null }
     
     if (data.code && data.code !== 200) {
-        console.error('[KIE] API Error:', data);
+        console.error('[KIE] API Error:', JSON.stringify(data, null, 2));
         if (data.code === 402) {
-            throw new Error('Crédits insuffisants sur votre compte KIE. Veuillez recharger votre compte sur https://kie.ai');
+            // Vérifier si le message indique vraiment un problème de crédits
+            const errorMessage = (data.message || data.msg || '').toLowerCase();
+            const isCreditError = errorMessage.includes('credit') || 
+                                  errorMessage.includes('insufficient') || 
+                                  errorMessage.includes('balance') ||
+                                  errorMessage.includes('fond');
+            
+            if (isCreditError) {
+                throw new Error('Crédits insuffisants sur votre compte KIE. Veuillez recharger votre compte sur https://kie.ai');
+            } else {
+                // Si ce n'est pas un problème de crédits, afficher le message original
+                const originalMsg = data.message || data.msg || 'Erreur API KIE';
+                throw new Error(`Erreur API KIE (402): ${originalMsg}. Si vous avez encore des crédits, cela peut être un problème temporaire. Réessayez dans quelques instants.`);
+            }
         }
         if (data.code === 422) {
             const errorMsg = data.message || data.msg || 'Invalid request';
