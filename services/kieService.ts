@@ -423,6 +423,13 @@ export const pollVideoOperation = async (operation: KieVideoResponse): Promise<V
         
         const data = result.data;
         
+        // Si data est null, la tâche n'est pas encore disponible, continuer le polling
+        if (!data || data === null) {
+            console.log(`[KIE] recordInfo is null, task not yet available. Continuing polling... (attempt: ${attempts + 1}/${maxAttemptsEstimate})`);
+            attempts++;
+            continue;
+        }
+        
         // Gestion pour Sora (/jobs/recordInfo)
         if (useSoraEndpoint) {
             const state = data.state;
@@ -588,6 +595,12 @@ export const pollWatermarkRemoval = async (taskId: string): Promise<string> => {
         }
         
         const data = result.data;
+        
+        // Si data est null, la tâche n'est pas encore disponible, continuer le polling
+        if (!data || data === null) {
+            console.log(`[KIE] Watermark removal: recordInfo is null, task not yet available. Continuing polling... (attempt: ${attempt + 1}/${maxAttempts})`);
+            continue;
+        }
         
         // Vérifier si la tâche est terminée
         if (data.status === 'completed' || data.successFlag === 1) {
