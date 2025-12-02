@@ -394,6 +394,14 @@ export const savePendingVideoTask = async (task: Omit<PendingVideoTask, 'created
 // Variable globale pour tracker si la table n'existe pas (évite les logs répétés)
 let tableNotFoundLogged = false;
 
+// Classe d'erreur pour indiquer que la table n'existe pas
+export class TableNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TableNotFoundError';
+  }
+}
+
 export const getPendingVideoTask = async (taskId: string, userId: string): Promise<PendingVideoTask | null> => {
   if (!IS_SUPABASE_CONFIGURED) {
     return null;
@@ -417,8 +425,8 @@ export const getPendingVideoTask = async (taskId: string, userId: string): Promi
         console.warn('[Supabase] Table pending_video_tasks not found in PostgREST cache. This may indicate the table needs to be created or the cache needs to refresh.');
         tableNotFoundLogged = true; // Ne logger qu'une seule fois
       }
-      // Retourner null silencieusement pour éviter les logs répétés
-      return null;
+      // Lancer une erreur spécifique pour que le code appelant puisse la distinguer
+      throw new TableNotFoundError('Table pending_video_tasks not found');
     }
     
     // PGRST116 = no rows returned (normal si la tâche n'existe pas encore)

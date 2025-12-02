@@ -6,7 +6,7 @@ import { VIDEO_GENERATION_COST_720P, VIDEO_GENERATION_COST_1080P, SCRIPT_GENERAT
 import type { AspectRatio, Resolution } from '../types';
 import type { Language } from '../App';
 import { translations } from '../translations';
-import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED, isUserPro, type UserProfile, getPendingVideoTask } from '../services/supabaseClient';
+import { saveVideo, updateUserTokens, IS_SUPABASE_CONFIGURED, isUserPro, type UserProfile, getPendingVideoTask, TableNotFoundError } from '../services/supabaseClient';
 import type { Video } from '../services/supabaseClient';
 import SocialProofStats from './SocialProofStats';
 
@@ -527,16 +527,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                     try {
                         const pendingTask = await getPendingVideoTask(initialOperation.taskId, supabaseUserId);
                         
-                        // Si null est retourné, cela peut signifier que la table n'existe pas
-                        // On continue à essayer mais on compte les erreurs
+                        // Si null est retourné, la tâche n'existe pas encore (normal, elle sera créée par le webhook)
+                        // Ce n'est PAS une erreur, on continue simplement à attendre
                         if (pendingTask === null) {
-                            consecutiveErrors++;
-                            // Si trop d'erreurs consécutives, arrêter le polling
-                            if (consecutiveErrors >= maxConsecutiveErrors) {
-                                tableNotFound = true;
-                                console.warn('[VideoGenerator] Table pending_video_tasks not available. Video generation may still be in progress. Check your dashboard later.');
-                                break;
-                            }
+                            // Réinitialiser le compteur car null signifie juste "pas encore créé", pas une erreur
+                            consecutiveErrors = 0;
                             continue; // Continuer à essayer
                         }
                         
@@ -552,6 +547,13 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
                         // Réinitialiser le compteur d'erreurs si on a une réponse valide
                         consecutiveErrors = 0;
                     } catch (error: any) {
+                        // Si c'est une erreur de table non trouvée, arrêter immédiatement
+                        if (error instanceof TableNotFoundError) {
+                            tableNotFound = true;
+                            console.warn('[VideoGenerator] Table pending_video_tasks not available. Video generation may still be in progress. Check your dashboard later.');
+                            break;
+                        }
+                        
                         consecutiveErrors++;
                         // Si c'est une erreur de génération (pas de cache), arrêter immédiatement
                         if (error?.message && !error.message.includes('cache')) {
